@@ -1,0 +1,24 @@
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# Python cache (basura tecnica de Python)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# VS Code config local
+.vscode/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Variables de entorno (si mas adelante tenes API keys)
+.env
+.env.local

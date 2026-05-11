@@ -1,0 +1,50 @@
+{
+  "portfolios": {
+    "personal": ["YPF", "PAM", "TGS", "MELI"],
+    "familiar": ["YPF", "TGS", "MELI", "GLOB"],
+    "watchlist": ["VIST", "BMA", "GGAL", "CEPU"]
+  },
+  "categorias": {
+    "acciones_ar_adr": [
+      "YPF", "PAM", "TGS", "BMA", "GGAL", "TX", "TEO",
+      "EDN", "CEPU", "TS", "SUPV", "BBAR", "CRESY", "IRS",
+      "LOMA", "PAGS", "VIST"
+    ],
+    "acciones_us": [
+      "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA",
+      "JPM", "BAC", "WMT", "KO", "PEP", "JNJ", "PG", "XOM"
+    ],
+    "acciones_latam": [
+      "MELI", "GLOB", "NU", "VALE", "PBR", "ITUB", "BBD"
+    ],
+    "etfs_indices": [
+      "SPY", "QQQ", "DIA", "IWM", "VTI", "VOO"
+    ],
+    "etfs_paises": [
+      "EWZ", "EWW", "EWA", "EWJ", "EEM", "VWO", "ARGT"
+    ],
+    "etfs_sectores": [
+      "XLE", "XLF", "XLK", "XLV", "XLY", "XLP", "XLI", "XLU"
+    ],
+    "commodities": [
+      "GLD", "SLV", "USO", "UNG", "DBA"
+    ],
+    "cripto": [
+      "BTC-USD", "ETH-USD", "SOL-USD"
+    ]
+  },
+  "sectores": {
+    "energia_ar": ["YPF", "PAM", "TGS", "VIST", "CEPU", "EDN"],
+    "bancos_ar": ["BMA", "GGAL", "SUPV", "BBAR"],
+    "tech_us": ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA"],
+    "tech_latam": ["MELI", "GLOB", "NU"],
+    "energia_us": ["XOM", "CVX", "COP", "EOG", "SLB"]
+  },
+  "benchmarks": {
+    "global": "SPY",
+    "argentina": "ARGT",
+    "latam": "ILF",
+    "tech": "QQQ",
+    "energia": "XLE"
+  }
+}
