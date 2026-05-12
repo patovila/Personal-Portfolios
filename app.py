@@ -12,10 +12,359 @@ st.set_page_config(
     layout="wide"
 )
 
+# ============== ESTILO INVESTING / TRADINGVIEW ==============
+st.markdown("""
+<style>
+/* === IMPORT INTER === */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* === TIPOGRAFIA GLOBAL === */
+html, body, [class*="css"], .stApp, .main, [data-testid="stSidebar"],
+.stMarkdown, p, span, div, label, button, input, select, textarea {
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+    font-feature-settings: "tnum", "cv02", "cv11";
+}
+[data-testid="stMetricValue"],
+[data-testid="stDataFrame"] td {
+    font-variant-numeric: tabular-nums;
+}
+
+/* === FONDO === */
+.stApp { background: #FAFBFC; }
+.main .block-container {
+    background: #FAFBFC;
+    padding-top: 1.5rem;
+    max-width: 1400px;
+}
+
+/* === HEADER === */
+.bloomberg-header {
+    background: #FFFFFF;
+    border: 1px solid #E1E4E8;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    padding: 24px 28px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+.bloomberg-header .title-block h1 {
+    color: #1E40AF;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0;
+    line-height: 1.15;
+}
+.bloomberg-header .subtitle {
+    color: #6B7280;
+    font-size: 14px;
+    margin-top: 4px;
+    letter-spacing: 0;
+}
+.live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #16A34A;
+    font-weight: 600;
+    font-size: 13px;
+    background: #DCFCE7;
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+.live-dot {
+    width: 8px;
+    height: 8px;
+    background: #16A34A;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 1.6s infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* === METRIC CARDS === */
+[data-testid="stMetric"] {
+    background: #FFFFFF;
+    border: 1px solid #E1E4E8;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: all 0.15s ease;
+}
+[data-testid="stMetric"]:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-color: #CBD5E1;
+}
+[data-testid="stMetricLabel"],
+[data-testid="stMetricLabel"] p {
+    color: #6B7280 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0;
+    text-transform: none;
+}
+[data-testid="stMetricValue"] {
+    color: #111827 !important;
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em;
+}
+
+/* === TABS === */
+.stTabs [data-baseweb="tab-list"] {
+    background: #FFFFFF;
+    border-bottom: 1px solid #E1E4E8;
+    border-radius: 8px 8px 0 0;
+    gap: 4px;
+    padding: 0 8px;
+}
+.stTabs [data-baseweb="tab"] {
+    color: #6B7280;
+    font-weight: 500;
+    font-size: 15px;
+    padding: 14px 22px;
+    background: transparent !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important;
+    text-transform: none !important;
+    letter-spacing: 0;
+}
+.stTabs [data-baseweb="tab"]:hover {
+    color: #2563EB !important;
+}
+.stTabs [aria-selected="true"] {
+    color: #2563EB !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid #2563EB !important;
+    background: transparent !important;
+}
+
+/* === SIDEBAR === */
+[data-testid="stSidebar"] {
+    background: #F0F2F5;
+    border-right: 1px solid #E1E4E8;
+}
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2 {
+    color: #1E40AF !important;
+    font-weight: 600;
+    font-size: 18px !important;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.8rem;
+    text-transform: none;
+    border: none;
+}
+[data-testid="stSidebar"] h3 {
+    color: #374151 !important;
+    font-weight: 600;
+    font-size: 14px !important;
+    margin-top: 1.2rem;
+    text-transform: none;
+    letter-spacing: 0;
+}
+[data-testid="stSidebar"] label {
+    color: #374151 !important;
+    font-weight: 500 !important;
+    font-size: 13px !important;
+    text-transform: none;
+    letter-spacing: 0;
+}
+[data-testid="stSidebar"] input,
+[data-testid="stSidebar"] [data-baseweb="select"] > div {
+    background: #FFFFFF !important;
+    color: #111827 !important;
+    border: 1px solid #E1E4E8 !important;
+    border-radius: 6px !important;
+}
+[data-testid="stSidebar"] input:focus,
+[data-testid="stSidebar"] [data-baseweb="select"] > div:focus-within {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15) !important;
+}
+[data-testid="stSidebar"] [data-testid="stExpander"] {
+    background: #FFFFFF;
+    border: 1px solid #E1E4E8;
+    border-radius: 6px;
+}
+[data-testid="stSidebar"] [data-testid="stExpander"]:hover {
+    background: #F9FAFB;
+}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary {
+    color: #1F2937 !important;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 14px;
+}
+[data-testid="stSidebar"] hr {
+    border-color: #E1E4E8 !important;
+}
+
+/* === ENCABEZADOS MAIN === */
+.main h1 {
+    color: #1E40AF !important;
+    font-weight: 700;
+    font-size: 28px !important;
+    letter-spacing: -0.02em;
+    text-transform: none;
+}
+.main h2 {
+    color: #111827 !important;
+    font-weight: 600;
+    font-size: 22px !important;
+    letter-spacing: -0.02em;
+    text-transform: none;
+}
+.main h3, [data-testid="stMarkdownContainer"] h3 {
+    color: #374151 !important;
+    font-weight: 600;
+    font-size: 16px !important;
+    margin-top: 1.6rem;
+    margin-bottom: 0.8rem;
+    text-transform: none;
+    border: none;
+    letter-spacing: 0;
+    padding-bottom: 0;
+}
+
+/* === CAPTION === */
+[data-testid="stCaptionContainer"],
+.main [data-testid="stCaptionContainer"] p {
+    color: #6B7280 !important;
+    font-size: 13px !important;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* === ALERTAS === */
+[data-testid="stAlert"] {
+    border-radius: 6px !important;
+    padding: 12px 16px !important;
+    border-left: 4px solid !important;
+    border-top: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+}
+[data-testid="stAlert"] p,
+[data-testid="stAlert"] div {
+    letter-spacing: 0;
+}
+div[data-baseweb="notification"][kind="positive"],
+[data-testid="stAlert"][data-baseweb="notification"][kind="positive"] {
+    background: #DCFCE7 !important;
+    border-left-color: #16A34A !important;
+    color: #166534 !important;
+}
+div[data-baseweb="notification"][kind="warning"],
+[data-testid="stAlert"][data-baseweb="notification"][kind="warning"] {
+    background: #FEF3C7 !important;
+    border-left-color: #F59E0B !important;
+    color: #92400E !important;
+}
+div[data-baseweb="notification"][kind="negative"],
+[data-testid="stAlert"][data-baseweb="notification"][kind="negative"] {
+    background: #FEE2E2 !important;
+    border-left-color: #DC2626 !important;
+    color: #991B1B !important;
+}
+div[data-baseweb="notification"][kind="info"],
+[data-testid="stAlert"][data-baseweb="notification"][kind="info"] {
+    background: #DBEAFE !important;
+    border-left-color: #2563EB !important;
+    color: #1E40AF !important;
+}
+
+/* === DIVIDERS === */
+hr {
+    border-color: #E1E4E8 !important;
+    margin: 1.8rem 0 !important;
+}
+
+/* === PROGRESS BAR === */
+[data-testid="stProgress"] > div > div {
+    background: #E5E7EB !important;
+    border-radius: 4px;
+    height: 8px;
+}
+[data-testid="stProgress"] > div > div > div {
+    background: linear-gradient(90deg, #4ADE80 0%, #16A34A 100%) !important;
+    border-radius: 4px;
+}
+
+/* === DATAFRAMES === */
+[data-testid="stDataFrame"] thead th,
+[data-testid="stTable"] thead th {
+    background: #F3F4F6 !important;
+    color: #374151 !important;
+    font-weight: 600 !important;
+    text-transform: none;
+    letter-spacing: 0;
+    border-color: #E5E7EB !important;
+}
+[data-testid="stDataFrame"] tbody tr:nth-child(even),
+[data-testid="stTable"] tbody tr:nth-child(even) {
+    background: #FAFBFC !important;
+}
+[data-testid="stDataFrame"] tbody tr:nth-child(odd),
+[data-testid="stTable"] tbody tr:nth-child(odd) {
+    background: #FFFFFF !important;
+}
+[data-testid="stDataFrame"] td,
+[data-testid="stTable"] td {
+    border-color: #E5E7EB !important;
+    color: #1F2937 !important;
+    padding: 10px 12px;
+}
+
+/* === LINKS === */
+a, a:visited {
+    color: #2563EB !important;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-track {
+    background: #F0F2F5;
+}
+::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+}
+</style>
+""", unsafe_allow_html=True)
+# =================================================
+
 universo = cargar_universo()
 
-st.title("📊 Mi Bloomberg Personal")
-st.caption("Sistema de analisis financiero | Python + Streamlit")
+st.markdown("""
+<div class="bloomberg-header">
+    <div class="title-block">
+        <h1>Mi Bloomberg Personal</h1>
+        <div class="subtitle">Sistema de analisis financiero &middot; Educacion Financiera AR</div>
+    </div>
+    <div class="live-indicator">
+        <span class="live-dot"></span>
+        <span>LIVE</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # SIDEBAR
 with st.sidebar:
