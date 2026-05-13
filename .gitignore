@@ -22,3 +22,6 @@ Thumbs.db
 # Variables de entorno (si mas adelante tenes API keys)
 .env
 .env.local
+# Portfolios personales (datos sensibles)
+data/portfolios/*.json
+!data/portfolios/_template.json
