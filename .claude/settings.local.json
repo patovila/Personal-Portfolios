@@ -12,7 +12,12 @@
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8501\" -TimeoutSec 5 -UseBasicParsing; \"Streamlit: HTTP $\\($r.StatusCode\\)\" } catch { \"Streamlit caido - reiniciando...\" })",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(python -c \"import ast; ast.parse\\(open\\('src/portfolio.py', encoding='utf-8'\\).read\\(\\)\\); print\\('portfolio.py OK'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('src/portfolio.py', encoding='utf-8'\\).read\\(\\)\\); print\\('portfolio.py OK'\\)\")",
+      "Bash(Write-Output \"python-3.12\")",
+      "Bash(Out-File -FilePath \"C:\\\\Users\\\\PC\\\\Documents\\\\Proyecto_mi bloomberg\\\\runtime.txt\" -Encoding utf8 -NoNewline)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('app.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(git remote *)",
+      "Bash(git push *)"
     ]
   }
 }
