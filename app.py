@@ -1184,6 +1184,11 @@ with tab4:
             import json as _json
             from datetime import date as _date
 
+            st.info(
+                "En Streamlit Cloud los cambios al portfolio **no persisten** al reiniciar la app. "
+                "Para uso personal con datos permanentes, clona el repositorio y ejecutalo localmente."
+            )
+
             _pos_list = portfolio.get("posiciones", [])
 
             # ── SECCIÓN 1: TABLA + ELIMINAR ──────────────────────────────────
