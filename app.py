@@ -391,6 +391,58 @@ with st.sidebar:
                 st.write(f"{len(tickers)} tickers")
                 st.write(", ".join(tickers))
 
+    st.divider()
+    st.subheader("💵 Dólar en vivo")
+    try:
+        from src.dolar import get_cotizaciones, format_cotizacion
+        _cots = get_cotizaciones()
+        if _cots is None:
+            st.caption("Sin conexión")
+        else:
+            _por_casa = {item["casa"]: item for item in _cots}
+            _casas_sb = [
+                ("oficial",        "Oficial", True),
+                ("blue",           "Blue",    True),
+                ("bolsa",          "MEP",     False),
+                ("contadoconliqui","CCL",     False),
+                ("tarjeta",        "Tarjeta", False),
+            ]
+            for _casa, _nombre, _mostrar_compra in _casas_sb:
+                _item = _por_casa.get(_casa)
+                if not _item:
+                    continue
+                _compra = _item.get("compra")
+                _venta  = _item.get("venta")
+                _sb1, _sb2 = st.columns([2, 3])
+                with _sb1:
+                    st.markdown(
+                        f"<span style='color:#6B7280;font-size:12px;'>{_nombre}</span>",
+                        unsafe_allow_html=True,
+                    )
+                with _sb2:
+                    if _mostrar_compra and _compra:
+                        _precio_txt = f"{format_cotizacion(_compra)} / {format_cotizacion(_venta)}"
+                    else:
+                        _precio_txt = format_cotizacion(_venta)
+                    st.markdown(
+                        f"<span style='font-weight:700;font-size:12px;'>{_precio_txt}</span>",
+                        unsafe_allow_html=True,
+                    )
+            # Timestamp
+            _ts = next(
+                (i["fechaActualizacion"] for i in _cots if i.get("fechaActualizacion")),
+                None,
+            )
+            if _ts:
+                try:
+                    from datetime import datetime
+                    _dt = datetime.fromisoformat(_ts.replace("Z", "+00:00"))
+                    st.caption(f"Act: {_dt.strftime('%H:%M')} UTC")
+                except Exception:
+                    st.caption(f"Act: {_ts[:16]}")
+    except Exception:
+        st.caption("Sin conexión")
+
 # CONTENIDO PRINCIPAL
 # Cargamos el ticker del sidebar pero NO abortamos si falla:
 # el tab Mi Portfolio funciona aunque el ticker sea invalido.
@@ -1009,6 +1061,114 @@ with tab4:
                 )
         except Exception as e:
             st.error(f"Error en analisis detallado: {e}")
+
+        st.divider()
+
+        # ========== C6: TIPOS DE CAMBIO ==========
+        st.markdown("### 💵 Tipos de Cambio")
+        try:
+            import pandas as pd
+            from src.dolar import (
+                get_cotizaciones, format_cotizacion,
+                NOMBRES_DISPLAY, CASAS_ORDEN,
+            )
+
+            _dolar_data = get_cotizaciones()
+
+            if _dolar_data is None:
+                st.warning("⚠️ No se pudo conectar con dolarapi.com. Verificá tu conexión a internet.")
+            else:
+                _d_por_casa = {item["casa"]: item for item in _dolar_data}
+
+                # Construir tabla
+                _filas = []
+                for _casa in CASAS_ORDEN:
+                    _it = _d_por_casa.get(_casa)
+                    if not _it:
+                        continue
+                    _compra = _it.get("compra") or 0
+                    _venta  = _it.get("venta") or 0
+                    _spread = _venta - _compra if _compra and _venta else 0
+                    _spread_pct = (_spread / _compra * 100) if _compra else 0
+                    _filas.append({
+                        "Tipo":     NOMBRES_DISPLAY.get(_casa, _casa.capitalize()),
+                        "Compra":   _compra,
+                        "Venta":    _venta,
+                        "Spread":   _spread,
+                        "Spread %": _spread_pct,
+                        "_casa":    _casa,
+                    })
+
+                _df_d = pd.DataFrame(_filas)
+                _blue_idx = next(
+                    (i for i, f in enumerate(_filas) if f["_casa"] == "blue"), None
+                )
+
+                def _hl_blue(row):
+                    if row.name == _blue_idx and _filas[row.name]["Spread %"] > 2:
+                        return ["background-color: #FEF3C7;"] * len(row)
+                    return [""] * len(row)
+
+                _df_display = _df_d.drop(columns=["_casa"])
+                _styled_d = (
+                    _df_display.style
+                    .apply(_hl_blue, axis=1)
+                    .format({
+                        "Compra":   lambda v: format_cotizacion(v) if v else "—",
+                        "Venta":    lambda v: format_cotizacion(v) if v else "—",
+                        "Spread":   lambda v: format_cotizacion(v) if v else "—",
+                        "Spread %": "{:.2f}%",
+                    })
+                )
+                st.dataframe(_styled_d, use_container_width=True, hide_index=True)
+
+                # Métricas comparativas
+                _oficial = _d_por_casa.get("oficial", {})
+                _blue    = _d_por_casa.get("blue", {})
+                _mep     = _d_por_casa.get("bolsa", {})
+                _ccl     = _d_por_casa.get("contadoconliqui", {})
+
+                _dm1, _dm2 = st.columns(2)
+
+                _ofic_v = _oficial.get("venta")
+                _blue_v = _blue.get("venta")
+                if _ofic_v and _blue_v:
+                    _diff_bo = (_blue_v / _ofic_v - 1) * 100
+                    _dm1.metric(
+                        "Blue vs Oficial",
+                        f"{_diff_bo:+.1f}%",
+                        delta=f"Blue {format_cotizacion(_blue_v)} | Ofic {format_cotizacion(_ofic_v)}",
+                        delta_color="off",
+                        help="Brecha entre el dolar blue y el oficial. Refleja la restriccion cambiaria.",
+                    )
+
+                _mep_v = _mep.get("venta")
+                _ccl_v = _ccl.get("venta")
+                if _mep_v and _ccl_v:
+                    _diff_cm = (_ccl_v / _mep_v - 1) * 100
+                    _dm2.metric(
+                        "CCL vs MEP",
+                        f"{_diff_cm:+.1f}%",
+                        delta=f"CCL {format_cotizacion(_ccl_v)} | MEP {format_cotizacion(_mep_v)}",
+                        delta_color="off",
+                        help="Diferencia entre CCL y MEP. Cuando divergen puede haber oportunidad de arbitraje.",
+                    )
+
+                # Timestamp API
+                _ts_d = next(
+                    (i["fechaActualizacion"] for i in _dolar_data if i.get("fechaActualizacion")),
+                    None,
+                )
+                if _ts_d:
+                    try:
+                        from datetime import datetime
+                        _dt_d = datetime.fromisoformat(_ts_d.replace("Z", "+00:00"))
+                        st.caption(f"Fuente: dolarapi.com · Ultima actualizacion: {_dt_d.strftime('%d/%m/%Y %H:%M')} UTC · Cache: 5 min")
+                    except Exception:
+                        st.caption(f"Fuente: dolarapi.com · Actualizacion: {_ts_d[:16]}")
+
+        except Exception as _e_dolar:
+            st.warning(f"No se pudo cargar tipos de cambio: {_e_dolar}")
 
 # TAB 5: CALCULADORAS
 with tab5:
