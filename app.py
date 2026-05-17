@@ -20,7 +20,7 @@ st.markdown("""
 
 /* === TIPOGRAFIA GLOBAL === */
 html, body, [class*="css"], .stApp, .main, [data-testid="stSidebar"],
-.stMarkdown, p, span, div, label, button, input, select, textarea {
+.stMarkdown, p, label, button, input, select, textarea {
     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
     font-feature-settings: "tnum", "cv02", "cv11";
 }
@@ -368,7 +368,7 @@ st.markdown("""
 
 # SIDEBAR
 with st.sidebar:
-    st.header("🔍 Buscador")
+    st.header("Buscador")
     
     ticker = st.text_input(
         "Escribe un ticker:",
@@ -383,11 +383,11 @@ with st.sidebar:
     )
     
     st.divider()
-    st.subheader("📂 Atajos")
+    st.subheader("Atajos")
     
     if universo and "portfolios" in universo:
         for nombre, tickers in universo["portfolios"].items():
-            with st.expander(f"📁 {nombre.capitalize()}"):
+            with st.expander(nombre.capitalize()):
                 st.write(f"{len(tickers)} tickers")
                 st.write(", ".join(tickers))
 
@@ -412,11 +412,12 @@ else:
     st.header("Mi Bloomberg Personal")
     st.caption(ticker_error or "")
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🏢 Ficha",
     "📊 Fundamental",
     "📈 Tecnico",
     "🗂️ Mi Portfolio",
+    "🧮 Calculadoras",
 ])
 
 # TAB 1: FICHA
@@ -744,6 +745,10 @@ with tab4:
                 return f"US$ {valor_ars / tipo_cambio:,.2f}"
             return f"$ {valor_ars:,.0f}"
 
+        from datetime import datetime
+        ahora = datetime.now()
+        st.caption(f"🕐 Ultima actualizacion: {ahora.strftime('%H:%M:%S')} - {ahora.strftime('%d/%m/%Y')}")
+
         # ========== C1: RESUMEN EJECUTIVO ==========
         st.markdown("### 📊 Resumen ejecutivo")
         try:
@@ -811,9 +816,9 @@ with tab4:
                 peso = mp["valor_actual_ars"] / valor_total * 100
 
                 if moneda == "USD":
-                    costo = mp["costo_total_ars"] / tipo_cambio
-                    valor = mp["valor_actual_ars"] / tipo_cambio
-                    pnl = mp["pnl_ars"] / tipo_cambio
+                    costo = mp["costo_total_usd"]
+                    valor = mp["valor_actual_usd"]
+                    pnl = mp["pnl_usd"]
                 else:
                     costo = mp["costo_total_ars"]
                     valor = mp["valor_actual_ars"]
@@ -1004,3 +1009,391 @@ with tab4:
                 )
         except Exception as e:
             st.error(f"Error en analisis detallado: {e}")
+
+# TAB 5: CALCULADORAS
+with tab5:
+    import plotly.graph_objects as go
+    from src.calculadoras import (
+        calc_billetera, calc_plazo_fijo, calc_fci, calc_bono,
+        comparar_todas, evolucion_diaria,
+    )
+
+    csub1, csub2, csub3, csub4 = st.tabs([
+        "💵 Billetera Virtual",
+        "📅 Plazo Fijo / FCI",
+        "📊 Bono / TIR",
+        "⚖️ Comparador",
+    ])
+
+    # ── SUB-TAB 1: BILLETERA VIRTUAL ──────────────────────────────────────────
+    with csub1:
+        st.info(
+            "💡 Las billeteras virtuales pagan intereses **todos los dias** sobre tu saldo "
+            "(capitalizacion diaria). Esto significa que cada dia ganas intereses sobre los "
+            "intereses del dia anterior — el efecto del interes compuesto."
+        )
+
+        bv_c1, bv_c2 = st.columns(2)
+        with bv_c1:
+            bv_monto = st.number_input(
+                "Monto inicial (ARS)", min_value=1_000.0, value=100_000.0,
+                step=1_000.0, format="%.0f", key="bv_monto",
+            )
+            bv_tna = st.number_input(
+                "TNA %", min_value=0.0, max_value=200.0, value=32.0,
+                step=0.5, key="bv_tna",
+            )
+        with bv_c2:
+            bv_dias = st.number_input(
+                "Dias a invertir", min_value=1, max_value=365, value=30,
+                step=1, key="bv_dias",
+            )
+            bv_inflacion = st.number_input(
+                "Inflacion mensual esperada %", min_value=0.0, max_value=20.0,
+                value=2.5, step=0.1, key="bv_inflacion",
+            )
+
+        res_bv = calc_billetera(bv_monto, bv_tna, int(bv_dias), bv_inflacion)
+
+        st.divider()
+        bv_m1, bv_m2, bv_m3, bv_m4 = st.columns(4)
+        bv_m1.metric("Monto final", f"$ {res_bv['monto_final']:,.0f}")
+        bv_m2.metric("Intereses ganados", f"$ {res_bv['intereses']:,.0f}")
+        bv_m3.metric(
+            "TEA",
+            f"{res_bv['tea_pct']:.2f}%",
+            help="Tasa Efectiva Anual: lo que ganas en un año completo con capitalizacion diaria. "
+                 "Siempre es MAYOR que la TNA porque incluye el efecto del interes compuesto.",
+        )
+        bv_rr = res_bv["rendimiento_real_pct"]
+        bv_m4.metric(
+            "Rendimiento real",
+            f"{bv_rr:+.2f}%",
+            delta=f"{bv_rr:+.2f}%",
+            delta_color="normal" if bv_rr >= 0 else "inverse",
+            help="Tu ganancia despues de descontar la inflacion estimada del periodo. "
+                 "Si es negativo, perdiste poder adquisitivo aunque el saldo en ARS aumento.",
+        )
+
+        st.caption(
+            f"TNA {bv_tna}% → TEA equivalente: **{res_bv['tea_pct']:.2f}%** | "
+            f"Inflacion estimada del periodo: {res_bv['inflacion_periodo_pct']:.2f}%"
+        )
+
+        st.markdown("#### Evolucion dia a dia del saldo")
+        ev_bv = evolucion_diaria(bv_monto, bv_tna, int(bv_dias), tipo="diaria")
+        fig_bv = go.Figure()
+        fig_bv.add_trace(go.Scatter(
+            x=ev_bv["dia"], y=ev_bv["monto"],
+            line=dict(color="#16A34A", width=2.5),
+            fill="tozeroy", fillcolor="rgba(22,163,74,0.08)",
+            name="Saldo",
+            hovertemplate="Dia %{x}: $ %{y:,.0f}<extra></extra>",
+        ))
+        fig_bv.add_hline(
+            y=bv_monto, line_dash="dash", line_color="#6B7280",
+            annotation_text="Monto inicial", annotation_position="bottom right",
+        )
+        fig_bv.update_layout(
+            template="plotly_white", height=320,
+            xaxis_title="Dias", yaxis_title="Saldo (ARS)",
+            margin=dict(l=20, r=20, t=20, b=20),
+        )
+        st.plotly_chart(fig_bv, use_container_width=True)
+
+    # ── SUB-TAB 2: PLAZO FIJO / FCI ───────────────────────────────────────────
+    with csub2:
+        pf_tipo = st.radio(
+            "Tipo de instrumento",
+            ["Plazo Fijo", "FCI Money Market"],
+            horizontal=True,
+            key="pf_tipo",
+        )
+
+        if pf_tipo == "Plazo Fijo":
+            st.info(
+                "📅 El plazo fijo paga **al vencimiento**. No podes retirar antes sin penalidad. "
+                "La tasa es fija y garantizada por el banco. Capitalizacion simple (no diaria)."
+            )
+        else:
+            st.info(
+                "📊 **Fondos Money Market**: capitalizan diario como una billetera virtual pero con "
+                "tasas tipicamente mas altas. Podes retirar cuando quieras (liquidez inmediata o 24hs). "
+                "Ideal para capital de trabajo."
+            )
+
+        pf_c1, pf_c2 = st.columns(2)
+        with pf_c1:
+            pf_monto = st.number_input(
+                "Monto inicial (ARS)", min_value=1_000.0, value=100_000.0,
+                step=1_000.0, format="%.0f", key="pf_monto",
+            )
+            pf_tna = st.number_input(
+                "TNA %", min_value=0.0, max_value=200.0, value=38.0,
+                step=0.5, key="pf_tna",
+            )
+        with pf_c2:
+            pf_dias = st.selectbox(
+                "Plazo (dias)", [30, 60, 90, 180, 365], index=0, key="pf_dias",
+            )
+            pf_inflacion = st.number_input(
+                "Inflacion mensual esperada %", min_value=0.0, max_value=20.0,
+                value=2.5, step=0.1, key="pf_inflacion",
+            )
+
+        if pf_tipo == "Plazo Fijo":
+            res_sel = calc_plazo_fijo(pf_monto, pf_tna, pf_dias, pf_inflacion)
+            res_alt = calc_fci(pf_monto, pf_tna, pf_dias, pf_inflacion)
+            nombre_sel, nombre_alt = "Plazo Fijo", "FCI (misma TNA)"
+            tipo_ev_sel, tipo_ev_alt = "vencimiento", "diaria"
+        else:
+            res_sel = calc_fci(pf_monto, pf_tna, pf_dias, pf_inflacion)
+            res_alt = calc_plazo_fijo(pf_monto, pf_tna, pf_dias, pf_inflacion)
+            nombre_sel, nombre_alt = "FCI Money Market", "Plazo Fijo (misma TNA)"
+            tipo_ev_sel, tipo_ev_alt = "diaria", "vencimiento"
+
+        diferencia = res_sel["monto_final"] - res_alt["monto_final"]
+
+        st.divider()
+        pf_m1, pf_m2, pf_m3, pf_m4 = st.columns(4)
+        pf_m1.metric("Monto final", f"$ {res_sel['monto_final']:,.0f}")
+        pf_m2.metric("Intereses", f"$ {res_sel['intereses']:,.0f}")
+        pf_m3.metric("TEA", f"{res_sel['tea_pct']:.2f}%")
+        pf_rr = res_sel["rendimiento_real_pct"]
+        pf_m4.metric(
+            "Rend. real", f"{pf_rr:+.2f}%",
+            delta=f"{pf_rr:+.2f}%",
+            delta_color="normal" if pf_rr >= 0 else "inverse",
+        )
+
+        if diferencia > 0:
+            st.success(
+                f"✅ **{nombre_sel}** rinde **$ {diferencia:,.0f} mas** que {nombre_alt} "
+                f"en {pf_dias} dias (con la misma TNA). La diferencia es el efecto del interes compuesto."
+            )
+        elif diferencia < 0:
+            st.warning(
+                f"⚠️ **{nombre_sel}** rinde **$ {abs(diferencia):,.0f} menos** que {nombre_alt} "
+                f"en {pf_dias} dias (con la misma TNA)."
+            )
+
+        st.markdown("#### Comparativo: tu eleccion vs la alternativa (misma TNA)")
+        ev_sel = evolucion_diaria(pf_monto, pf_tna, pf_dias, tipo=tipo_ev_sel)
+        ev_alt = evolucion_diaria(pf_monto, pf_tna, pf_dias, tipo=tipo_ev_alt)
+
+        fig_pf = go.Figure()
+        fig_pf.add_trace(go.Scatter(
+            x=ev_sel["dia"], y=ev_sel["monto"],
+            line=dict(color="#2563EB", width=2.5),
+            name=nombre_sel,
+            hovertemplate="Dia %{x}: $ %{y:,.0f}<extra></extra>",
+        ))
+        fig_pf.add_trace(go.Scatter(
+            x=ev_alt["dia"], y=ev_alt["monto"],
+            line=dict(color="#6B7280", width=2, dash="dash"),
+            name=nombre_alt,
+            hovertemplate="Dia %{x}: $ %{y:,.0f}<extra></extra>",
+        ))
+        fig_pf.update_layout(
+            template="plotly_white", height=320,
+            xaxis_title="Dias", yaxis_title="Saldo (ARS)",
+            hovermode="x unified",
+            margin=dict(l=20, r=20, t=20, b=20),
+        )
+        st.plotly_chart(fig_pf, use_container_width=True)
+
+    # ── SUB-TAB 3: BONO / TIR ─────────────────────────────────────────────────
+    with csub3:
+        st.info(
+            "📈 Comprar un bono es **prestarle plata** al Estado o a una empresa. "
+            "La **TIR** (Tasa Interna de Retorno) es tu rendimiento anualizado considerando "
+            "el precio que pagas hoy y lo que cobras al vencimiento."
+        )
+
+        bono_moneda = st.radio("Moneda del bono", ["ARS", "USD"], horizontal=True, key="bono_moneda")
+
+        bono_c1, bono_c2 = st.columns(2)
+        with bono_c1:
+            bono_precio = st.number_input(
+                f"Precio de compra ({bono_moneda})",
+                min_value=0.01, value=100.0, step=1.0, format="%.2f",
+                key="bono_precio",
+            )
+            bono_valor = st.number_input(
+                f"Valor de cobro al vencimiento ({bono_moneda})",
+                min_value=0.01, value=115.0, step=1.0, format="%.2f",
+                key="bono_valor",
+            )
+        with bono_c2:
+            bono_dias = st.number_input(
+                "Dias hasta vencimiento",
+                min_value=1, max_value=3_650, value=365, step=1,
+                key="bono_dias",
+            )
+            st.markdown("")
+            st.caption(
+                "Pista para bonos argentinos: el precio suele cotizarse cada 100 de VN. "
+                "Ejemplo: AL30 a 65 significa que pagas $65 por cada $100 de valor nominal."
+            )
+
+        res_bono = calc_bono(bono_precio, bono_valor, int(bono_dias))
+
+        st.divider()
+        bn_m1, bn_m2, bn_m3 = st.columns(3)
+        bn_m1.metric("Rendimiento total", f"{res_bono['rendimiento_total_pct']:.2f}%")
+        bn_m2.metric(
+            "TIR anualizada",
+            f"{res_bono['tir_anualizada_pct']:.2f}%",
+            help="Lo que ganas por año si mantenes el bono hasta el vencimiento. "
+                 "Equivalente a la TEA de un plazo fijo.",
+        )
+        simbolo = "US$" if bono_moneda == "USD" else "$"
+        bn_m3.metric("Ganancia absoluta", f"{simbolo} {res_bono['ganancia']:,.2f}")
+
+        st.markdown("#### Diagrama de flujo del bono")
+        fig_bono = go.Figure()
+        fig_bono.add_trace(go.Scatter(
+            x=[0, int(bono_dias)], y=[0, 0],
+            mode="lines",
+            line=dict(color="#E1E4E8", width=4),
+            showlegend=False,
+        ))
+        fig_bono.add_trace(go.Scatter(
+            x=[0], y=[0],
+            mode="markers+text",
+            marker=dict(color="#DC2626", size=20),
+            text=[f"HOY\n-{simbolo} {bono_precio:,.2f}"],
+            textposition="top center",
+            name="Compra",
+            textfont=dict(color="#DC2626", size=13),
+        ))
+        fig_bono.add_trace(go.Scatter(
+            x=[int(bono_dias)], y=[0],
+            mode="markers+text",
+            marker=dict(color="#16A34A", size=20),
+            text=[f"DIA {int(bono_dias)}\n+{simbolo} {bono_valor:,.2f}"],
+            textposition="top center",
+            name="Cobro",
+            textfont=dict(color="#16A34A", size=13),
+        ))
+        fig_bono.update_layout(
+            template="plotly_white", height=220,
+            xaxis_title="Dias",
+            yaxis=dict(visible=False, range=[-0.5, 1]),
+            margin=dict(l=20, r=20, t=30, b=20),
+        )
+        st.plotly_chart(fig_bono, use_container_width=True)
+        st.caption(
+            f"Precio de compra: {simbolo} {bono_precio:,.2f} → "
+            f"Cobro al vencimiento: {simbolo} {bono_valor:,.2f} en {int(bono_dias)} dias. "
+            f"Rendimiento diario implicito: {res_bono['rendimiento_diario_pct']:.4f}%"
+        )
+
+    # ── SUB-TAB 4: COMPARADOR ─────────────────────────────────────────────────
+    with csub4:
+        st.info(
+            "⚖️ Compara cuanto rinde tu plata en **cada opcion disponible** con el mismo monto y plazo. "
+            "Considera el rendimiento **real** (ajustado por inflacion) para tomar la mejor decision."
+        )
+
+        cmp_c1, cmp_c2 = st.columns(2)
+        with cmp_c1:
+            cmp_monto = st.number_input(
+                "Monto inicial (ARS)", min_value=1_000.0, value=100_000.0,
+                step=1_000.0, format="%.0f", key="cmp_monto",
+            )
+            cmp_dias = st.number_input(
+                "Plazo (dias)", min_value=1, max_value=365, value=30,
+                step=1, key="cmp_dias",
+            )
+            cmp_inflacion = st.number_input(
+                "Inflacion mensual esperada %", min_value=0.0, max_value=20.0,
+                value=2.5, step=0.1, key="cmp_inflacion",
+            )
+        with cmp_c2:
+            st.markdown("**Tasas asumidas (editables)**")
+            cmp_billet = st.number_input(
+                "Billetera virtual TNA %", min_value=0.0, max_value=200.0,
+                value=32.0, step=0.5, key="cmp_billet",
+            )
+            cmp_pf = st.number_input(
+                "Plazo fijo TNA %", min_value=0.0, max_value=200.0,
+                value=38.0, step=0.5, key="cmp_pf",
+            )
+            cmp_fci = st.number_input(
+                "FCI Money Market TNA %", min_value=0.0, max_value=200.0,
+                value=40.0, step=0.5, key="cmp_fci",
+            )
+            cmp_bono = st.number_input(
+                "Bono (rendimiento total del periodo %)", min_value=0.0, max_value=200.0,
+                value=8.0, step=0.5, key="cmp_bono",
+            )
+
+        tasas = {
+            "billetera": cmp_billet,
+            "plazo_fijo": cmp_pf,
+            "fci": cmp_fci,
+            "bono": cmp_bono,
+        }
+
+        df_cmp = comparar_todas(cmp_monto, int(cmp_dias), tasas, cmp_inflacion)
+        mejor_opcion = df_cmp.iloc[0]["Instrumento"]
+
+        st.divider()
+        st.markdown("#### Tabla comparativa")
+
+        def _color_instrumento(val):
+            if val == mejor_opcion:
+                return "background-color: #DCFCE7; color: #166534; font-weight: 600;"
+            return ""
+
+        def _color_real(val):
+            if isinstance(val, (int, float)):
+                if val > 0:
+                    return "color: #166534; font-weight: 600;"
+                if val < 0:
+                    return "color: #991B1B; font-weight: 600;"
+            return ""
+
+        styled_cmp = (
+            df_cmp.style
+            .map(_color_instrumento, subset=["Instrumento"])
+            .map(_color_real, subset=["Rend. real %"])
+            .format({
+                "Monto final": "$ {:,.0f}",
+                "Intereses": "$ {:,.0f}",
+                "TEA %": "{:.2f}%",
+                "Rend. real %": "{:+.2f}%",
+            })
+        )
+        st.dataframe(styled_cmp, use_container_width=True, hide_index=True)
+
+        st.success(f"🏆 **Mejor opcion con estas tasas:** {mejor_opcion}")
+
+        st.markdown("#### Rendimiento nominal por instrumento")
+
+        instrumentos = df_cmp["Instrumento"].tolist()
+        rendimientos = [(row["Monto final"] / cmp_monto - 1) * 100 for _, row in df_cmp.iterrows()]
+        colores = ["#16A34A"] + ["#2563EB"] * (len(instrumentos) - 1)
+
+        fig_cmp = go.Figure(go.Bar(
+            x=rendimientos,
+            y=instrumentos,
+            orientation="h",
+            marker=dict(color=colores),
+            text=[f"{r:.2f}%" for r in rendimientos],
+            textposition="outside",
+            hovertemplate="%{y}: %{x:.2f}%<extra></extra>",
+        ))
+        fig_cmp.update_layout(
+            template="plotly_white",
+            height=280,
+            xaxis_title="Rendimiento nominal %",
+            margin=dict(l=20, r=80, t=10, b=20),
+        )
+        st.plotly_chart(fig_cmp, use_container_width=True)
+
+        st.caption(
+            "Rendimiento real negativo = perdiste poder adquisitivo aunque el monto en ARS aumento. "
+            "Siempre compara contra la inflacion esperada del periodo."
+        )

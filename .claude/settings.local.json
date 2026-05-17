@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import ast; ast.parse\\(open\\('app.py'\\).read\\(\\)\\); print\\('app.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('src/calculadoras.py'\\).read\\(\\)\\); print\\('calculadoras.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('app.py', encoding='utf-8'\\).read\\(\\)\\); print\\('app.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('src/calculadoras.py', encoding='utf-8'\\).read\\(\\)\\); print\\('calculadoras.py OK'\\)\")",
+      "Bash(venv\\\\Scripts\\\\streamlit.exe run *)",
+      "Bash(timeout 5)",
+      "PowerShell(Start-Process -FilePath \"venv\\\\Scripts\\\\streamlit.exe\" -ArgumentList \"run\",\"app.py\",\"--server.port\",\"8501\" -WorkingDirectory \"C:\\\\Users\\\\PC\\\\Documents\\\\Proyecto_mi bloomberg\" -WindowStyle Normal)"
+    ]
+  }
+}

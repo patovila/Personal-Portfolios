@@ -51,9 +51,14 @@ def _precio_actual_ars(posicion: dict, tipo_cambio: float) -> float | None:
         return None
 
     if tipo == "LOCAL":
-        # .BA viene en ARS, ADRs (YPF, PAM, TGS) vienen en USD.
         if ticker.upper().endswith(".BA"):
             return precio
+        # ADR en NYSE: solo convertir si el JSON confirma precio USD.
+        # Si precio_actual_usd es null (PAMPA, TGN, TGS local), el precio
+        # yfinance del ADR no es comparable con precio_promedio_compra_ars
+        # que viene de BYMA → devolver None para usar el fallback del JSON.
+        if posicion.get("precio_actual_usd") is None:
+            return None
         return precio * tipo_cambio
 
     if tipo in ("CEDEAR", "ETF"):
@@ -94,14 +99,18 @@ def calcular_metricas_posicion(posicion: dict, tipo_cambio: float) -> dict:
     valor_actual_ars = cant * precio_actual
     pnl_ars = valor_actual_ars - costo_total_ars
     pnl_pct = (pnl_ars / costo_total_ars) if costo_total_ars else 0.0
+    costo_total_usd = (costo_total_ars / tipo_cambio) if tipo_cambio else 0.0
     valor_actual_usd = (valor_actual_ars / tipo_cambio) if tipo_cambio else 0.0
+    pnl_usd = valor_actual_usd - costo_total_usd
 
     return {
         "costo_total_ars": costo_total_ars,
         "valor_actual_ars": valor_actual_ars,
         "pnl_ars": pnl_ars,
         "pnl_pct": pnl_pct,
+        "costo_total_usd": costo_total_usd,
         "valor_actual_usd": valor_actual_usd,
+        "pnl_usd": pnl_usd,
     }
 
 
