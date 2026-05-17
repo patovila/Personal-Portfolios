@@ -744,6 +744,11 @@ with tab4:
         calcular_composicion_por_sector,
         calcular_composicion_por_tipo,
         comparar_vs_benchmark,
+        guardar_portfolio,
+        agregar_posicion,
+        agregar_cantidad_a_posicion,
+        eliminar_posicion,
+        editar_posicion,
     )
 
     PALETA_INVESTING = [
@@ -801,246 +806,250 @@ with tab4:
         ahora = datetime.now()
         st.caption(f"🕐 Ultima actualizacion: {ahora.strftime('%H:%M:%S')} - {ahora.strftime('%d/%m/%Y')}")
 
-        # ========== C1: RESUMEN EJECUTIVO ==========
-        st.markdown("### 📊 Resumen ejecutivo")
-        try:
-            m = calcular_metricas_portfolio(portfolio_live)
+        psub1, psub2 = st.tabs(["📊 Resumen", "✏️ Gestionar Portfolio"])
 
-            k1, k2, k3, k4 = st.columns(4)
-            k1.metric(
-                f"Valor total ({moneda})",
-                _fmt_money(m["valor_total_ars"], moneda),
-            )
-            pnl_str = _fmt_money(m["pnl_total_ars"], moneda)
-            k2.metric(
-                "P&L total",
-                pnl_str,
-                delta=f"{m['pnl_total_pct']*100:+.2f}%",
-            )
-            k3.metric(
-                "Retorno",
-                f"{m['pnl_total_pct']*100:+.2f}%",
-                delta=f"{m['pnl_total_pct']*100:+.2f}%",
-                delta_color="normal",
-            )
-            k4.metric("# Posiciones", f"{m['num_posiciones']}")
-
-            k5, k6, k7, k8 = st.columns(4)
-            k5.metric("Beta ponderada", f"{m['beta_ponderada']:.2f}")
-
-            top = m["top_performer"] or {}
-            k6.metric(
-                "Top performer",
-                top.get("ticker", "—"),
-                delta=f"{top.get('pnl_pct',0)*100:+.2f}%" if top else None,
-            )
-
-            worst = m["worst_performer"] or {}
-            k7.metric(
-                "Worst performer",
-                worst.get("ticker", "—"),
-                delta=f"{worst.get('pnl_pct',0)*100:+.2f}%" if worst else None,
-            )
-
-            mayor = m["mayor_posicion"] or {}
-            peso_mayor = (
-                mayor.get("valor_ars", 0) / m["valor_total_ars"] * 100
-                if m["valor_total_ars"] else 0
-            )
-            k8.metric(
-                "Mayor posicion",
-                mayor.get("ticker", "—"),
-                delta=f"{peso_mayor:.1f}% del total" if mayor else None,
-                delta_color="off",
-            )
-        except Exception as e:
-            st.error(f"Error calculando metricas globales: {e}")
-
-        st.divider()
-
-        # ========== C2: POSICIONES DETALLE ==========
-        st.markdown("### 📋 Posiciones")
-        try:
-            filas = []
-            for pos in portfolio_live.get("posiciones", []):
-                mp = calcular_metricas_posicion(pos, tipo_cambio)
-                valor_total = m["valor_total_ars"] if m["valor_total_ars"] else 1
-                peso = mp["valor_actual_ars"] / valor_total * 100
-
-                if moneda == "USD":
-                    costo = mp["costo_total_usd"]
-                    valor = mp["valor_actual_usd"]
-                    pnl = mp["pnl_usd"]
-                else:
-                    costo = mp["costo_total_ars"]
-                    valor = mp["valor_actual_ars"]
-                    pnl = mp["pnl_ars"]
-
-                filas.append({
-                    "Activo": pos.get("activo", ""),
-                    "Ticker": pos.get("ticker", ""),
-                    "Tipo": pos.get("tipo", ""),
-                    "Cantidad": pos.get("cantidad", 0),
-                    f"Costo ({moneda})": costo,
-                    f"Valor ({moneda})": valor,
-                    f"P&L ({moneda})": pnl,
-                    "P&L %": mp["pnl_pct"] * 100,
-                    "Peso %": peso,
-                    "Senal": pos.get("senal", ""),
-                })
-
-            df = pd.DataFrame(filas)
-
-            def _color_pnl(val):
-                if isinstance(val, (int, float)):
-                    if val > 0:
-                        return "background-color: #DCFCE7; color: #166534;"
-                    if val < 0:
-                        return "background-color: #FEE2E2; color: #991B1B;"
-                return ""
-
-            styled = (
-                df.style
-                .map(_color_pnl, subset=["P&L %", f"P&L ({moneda})"])
-                .format({
-                    f"Costo ({moneda})": "{:,.2f}",
-                    f"Valor ({moneda})": "{:,.2f}",
-                    f"P&L ({moneda})": "{:,.2f}",
-                    "P&L %": "{:+.2f}%",
-                    "Peso %": "{:.1f}%",
-                    "Cantidad": "{:,.0f}",
-                })
-            )
-            st.dataframe(styled, use_container_width=True, hide_index=True)
-        except Exception as e:
-            st.error(f"Error armando la tabla de posiciones: {e}")
-
-        st.divider()
-
-        # ========== C3: COMPOSICION ==========
-        st.markdown("### 📈 Composicion")
-        comp_l, comp_r = st.columns(2)
-
-        def _donut(titulo, datos_comp):
-            labels = list(datos_comp.keys())
-            valores = [v["valor_ars"] for v in datos_comp.values()]
-            fig = go.Figure(data=[go.Pie(
-                labels=labels,
-                values=valores,
-                hole=0.55,
-                marker=dict(colors=PALETA_INVESTING[:len(labels)]),
-                textinfo="label+percent",
-                hovertemplate="<b>%{label}</b><br>$%{value:,.0f}<br>%{percent}<extra></extra>",
-            )])
-            fig.update_layout(
-                title=titulo,
-                template="plotly_white",
-                height=380,
-                showlegend=True,
-                legend=dict(orientation="v", x=1.05, y=0.5),
-                margin=dict(l=20, r=20, t=50, b=20),
-            )
-            return fig
-
-        with comp_l:
+        # ── SUB-TAB 1: RESUMEN (contenido existente sin cambios) ──────────────
+        with psub1:
+            # ========== C1: RESUMEN EJECUTIVO ==========
+            st.markdown("### 📊 Resumen ejecutivo")
             try:
-                sectores = calcular_composicion_por_sector(portfolio_live)
-                st.plotly_chart(_donut("Por sector", sectores), use_container_width=True)
-            except Exception as e:
-                st.error(f"Error composicion por sector: {e}")
+                m = calcular_metricas_portfolio(portfolio_live)
 
-        with comp_r:
+                k1, k2, k3, k4 = st.columns(4)
+                k1.metric(
+                    f"Valor total ({moneda})",
+                    _fmt_money(m["valor_total_ars"], moneda),
+                )
+                pnl_str = _fmt_money(m["pnl_total_ars"], moneda)
+                k2.metric(
+                    "P&L total",
+                    pnl_str,
+                    delta=f"{m['pnl_total_pct']*100:+.2f}%",
+                )
+                k3.metric(
+                    "Retorno",
+                    f"{m['pnl_total_pct']*100:+.2f}%",
+                    delta=f"{m['pnl_total_pct']*100:+.2f}%",
+                    delta_color="normal",
+                )
+                k4.metric("# Posiciones", f"{m['num_posiciones']}")
+
+                k5, k6, k7, k8 = st.columns(4)
+                k5.metric("Beta ponderada", f"{m['beta_ponderada']:.2f}")
+
+                top = m["top_performer"] or {}
+                k6.metric(
+                    "Top performer",
+                    top.get("ticker", "—"),
+                    delta=f"{top.get('pnl_pct',0)*100:+.2f}%" if top else None,
+                )
+
+                worst = m["worst_performer"] or {}
+                k7.metric(
+                    "Worst performer",
+                    worst.get("ticker", "—"),
+                    delta=f"{worst.get('pnl_pct',0)*100:+.2f}%" if worst else None,
+                )
+
+                mayor = m["mayor_posicion"] or {}
+                peso_mayor = (
+                    mayor.get("valor_ars", 0) / m["valor_total_ars"] * 100
+                    if m["valor_total_ars"] else 0
+                )
+                k8.metric(
+                    "Mayor posicion",
+                    mayor.get("ticker", "—"),
+                    delta=f"{peso_mayor:.1f}% del total" if mayor else None,
+                    delta_color="off",
+                )
+            except Exception as e:
+                st.error(f"Error calculando metricas globales: {e}")
+
+            st.divider()
+
+            # ========== C2: POSICIONES DETALLE ==========
+            st.markdown("### 📋 Posiciones")
             try:
-                tipos = calcular_composicion_por_tipo(portfolio_live)
-                st.plotly_chart(_donut("Por tipo de activo", tipos), use_container_width=True)
+                filas = []
+                for pos in portfolio_live.get("posiciones", []):
+                    mp = calcular_metricas_posicion(pos, tipo_cambio)
+                    valor_total = m["valor_total_ars"] if m["valor_total_ars"] else 1
+                    peso = mp["valor_actual_ars"] / valor_total * 100
+
+                    if moneda == "USD":
+                        costo = mp["costo_total_usd"]
+                        valor = mp["valor_actual_usd"]
+                        pnl = mp["pnl_usd"]
+                    else:
+                        costo = mp["costo_total_ars"]
+                        valor = mp["valor_actual_ars"]
+                        pnl = mp["pnl_ars"]
+
+                    filas.append({
+                        "Activo": pos.get("activo", ""),
+                        "Ticker": pos.get("ticker", ""),
+                        "Tipo": pos.get("tipo", ""),
+                        "Cantidad": pos.get("cantidad", 0),
+                        f"Costo ({moneda})": costo,
+                        f"Valor ({moneda})": valor,
+                        f"P&L ({moneda})": pnl,
+                        "P&L %": mp["pnl_pct"] * 100,
+                        "Peso %": peso,
+                        "Senal": pos.get("senal", ""),
+                    })
+
+                df = pd.DataFrame(filas)
+
+                def _color_pnl(val):
+                    if isinstance(val, (int, float)):
+                        if val > 0:
+                            return "background-color: #DCFCE7; color: #166534;"
+                        if val < 0:
+                            return "background-color: #FEE2E2; color: #991B1B;"
+                    return ""
+
+                styled = (
+                    df.style
+                    .map(_color_pnl, subset=["P&L %", f"P&L ({moneda})"])
+                    .format({
+                        f"Costo ({moneda})": "{:,.2f}",
+                        f"Valor ({moneda})": "{:,.2f}",
+                        f"P&L ({moneda})": "{:,.2f}",
+                        "P&L %": "{:+.2f}%",
+                        "Peso %": "{:.1f}%",
+                        "Cantidad": "{:,.0f}",
+                    })
+                )
+                st.dataframe(styled, use_container_width=True, hide_index=True)
             except Exception as e:
-                st.error(f"Error composicion por tipo: {e}")
+                st.error(f"Error armando la tabla de posiciones: {e}")
 
-        st.divider()
+            st.divider()
 
-        # ========== C4: PERFORMANCE vs BENCHMARK ==========
-        st.markdown("### 📉 Performance vs Benchmark")
-        bench_l, bench_r = st.columns(2)
-        with bench_l:
-            periodo_bench = st.selectbox(
-                "Periodo",
-                ["1mo", "3mo", "6mo", "1y"],
-                index=2,
-                key="portfolio_periodo_bench",
-            )
-        with bench_r:
-            benchmark_sel = st.selectbox(
-                "Benchmark",
-                ["SPY", "QQQ", "^MERV"],
-                index=0,
-                key="portfolio_benchmark",
-            )
+            # ========== C3: COMPOSICION ==========
+            st.markdown("### 📈 Composicion")
+            comp_l, comp_r = st.columns(2)
 
-        try:
-            with st.spinner("Descargando series historicas..."):
-                comp = comparar_vs_benchmark(portfolio_live, benchmark_sel, periodo_bench)
-
-            if "error" in comp:
-                st.warning(f"⚠ {comp['error']}")
-            else:
-                fig_b = go.Figure()
-                fig_b.add_trace(go.Scatter(
-                    x=comp["fechas"], y=comp["portfolio"],
-                    line=dict(color="#16A34A", width=2.5),
-                    name="Mi Portfolio",
-                ))
-                fig_b.add_trace(go.Scatter(
-                    x=comp["fechas"], y=comp["benchmark"],
-                    line=dict(color="#6B7280", width=2, dash="dash"),
-                    name=comp["ticker_benchmark"],
-                ))
-                fig_b.update_layout(
+            def _donut(titulo, datos_comp):
+                labels = list(datos_comp.keys())
+                valores = [v["valor_ars"] for v in datos_comp.values()]
+                fig = go.Figure(data=[go.Pie(
+                    labels=labels,
+                    values=valores,
+                    hole=0.55,
+                    marker=dict(colors=PALETA_INVESTING[:len(labels)]),
+                    textinfo="label+percent",
+                    hovertemplate="<b>%{label}</b><br>$%{value:,.0f}<br>%{percent}<extra></extra>",
+                )])
+                fig.update_layout(
+                    title=titulo,
                     template="plotly_white",
-                    height=420,
-                    hovermode="x unified",
-                    xaxis_title="Fecha",
-                    yaxis_title="Indice (base 100)",
-                    margin=dict(l=20, r=20, t=30, b=20),
+                    height=380,
+                    showlegend=True,
+                    legend=dict(orientation="v", x=1.05, y=0.5),
+                    margin=dict(l=20, r=20, t=50, b=20),
                 )
-                st.plotly_chart(fig_b, use_container_width=True)
+                return fig
 
-                rb1, rb2, rb3 = st.columns(3)
-                rb1.metric("Retorno portfolio", f"{comp['retorno_portfolio_pct']:+.2f}%")
-                rb2.metric(
-                    f"Retorno {benchmark_sel}",
-                    f"{comp['retorno_benchmark_pct']:+.2f}%",
+            with comp_l:
+                try:
+                    sectores = calcular_composicion_por_sector(portfolio_live)
+                    st.plotly_chart(_donut("Por sector", sectores), use_container_width=True)
+                except Exception as e:
+                    st.error(f"Error composicion por sector: {e}")
+
+            with comp_r:
+                try:
+                    tipos = calcular_composicion_por_tipo(portfolio_live)
+                    st.plotly_chart(_donut("Por tipo de activo", tipos), use_container_width=True)
+                except Exception as e:
+                    st.error(f"Error composicion por tipo: {e}")
+
+            st.divider()
+
+            # ========== C4: PERFORMANCE vs BENCHMARK ==========
+            st.markdown("### 📉 Performance vs Benchmark")
+            bench_l, bench_r = st.columns(2)
+            with bench_l:
+                periodo_bench = st.selectbox(
+                    "Periodo",
+                    ["1mo", "3mo", "6mo", "1y"],
+                    index=2,
+                    key="portfolio_periodo_bench",
                 )
-                rb3.metric(
-                    "Alpha",
-                    f"{comp['alpha_pct']:+.2f}%",
-                    delta=f"{comp['alpha_pct']:+.2f}%",
+            with bench_r:
+                benchmark_sel = st.selectbox(
+                    "Benchmark",
+                    ["SPY", "QQQ", "^MERV"],
+                    index=0,
+                    key="portfolio_benchmark",
                 )
-        except Exception as e:
-            st.error(f"Error comparando vs benchmark: {e}")
 
-        st.divider()
+            try:
+                with st.spinner("Descargando series historicas..."):
+                    comp = comparar_vs_benchmark(portfolio_live, benchmark_sel, periodo_bench)
 
-        # ========== C5: ANALISIS DETALLADO ==========
-        st.markdown("### 🎯 Analisis detallado por posicion")
-        try:
-            for pos in portfolio_live.get("posiciones", []):
-                senal = pos.get("senal", "")
-                # Color del badge segun emoji presente en la senal
-                if "🟢" in senal or "✅" in senal:
-                    bg, fg = "#DCFCE7", "#166534"
-                elif "⚠" in senal or "🟠" in senal or "🟡" in senal:
-                    bg, fg = "#FEF3C7", "#92400E"
-                elif "🔴" in senal:
-                    bg, fg = "#FEE2E2", "#991B1B"
+                if "error" in comp:
+                    st.warning(f"⚠ {comp['error']}")
                 else:
-                    bg, fg = "#DBEAFE", "#1E40AF"
+                    fig_b = go.Figure()
+                    fig_b.add_trace(go.Scatter(
+                        x=comp["fechas"], y=comp["portfolio"],
+                        line=dict(color="#16A34A", width=2.5),
+                        name="Mi Portfolio",
+                    ))
+                    fig_b.add_trace(go.Scatter(
+                        x=comp["fechas"], y=comp["benchmark"],
+                        line=dict(color="#6B7280", width=2, dash="dash"),
+                        name=comp["ticker_benchmark"],
+                    ))
+                    fig_b.update_layout(
+                        template="plotly_white",
+                        height=420,
+                        hovermode="x unified",
+                        xaxis_title="Fecha",
+                        yaxis_title="Indice (base 100)",
+                        margin=dict(l=20, r=20, t=30, b=20),
+                    )
+                    st.plotly_chart(fig_b, use_container_width=True)
 
-                tesis = pos.get("tesis", "—")
-                activo = pos.get("activo", "")
-                ticker_pos = pos.get("ticker", "")
+                    rb1, rb2, rb3 = st.columns(3)
+                    rb1.metric("Retorno portfolio", f"{comp['retorno_portfolio_pct']:+.2f}%")
+                    rb2.metric(
+                        f"Retorno {benchmark_sel}",
+                        f"{comp['retorno_benchmark_pct']:+.2f}%",
+                    )
+                    rb3.metric(
+                        "Alpha",
+                        f"{comp['alpha_pct']:+.2f}%",
+                        delta=f"{comp['alpha_pct']:+.2f}%",
+                    )
+            except Exception as e:
+                st.error(f"Error comparando vs benchmark: {e}")
 
-                st.markdown(
-                    f"""
+            st.divider()
+
+            # ========== C5: ANALISIS DETALLADO ==========
+            st.markdown("### 🎯 Analisis detallado por posicion")
+            try:
+                for pos in portfolio_live.get("posiciones", []):
+                    senal = pos.get("senal", "")
+                    # Color del badge segun emoji presente en la senal
+                    if "🟢" in senal or "✅" in senal:
+                        bg, fg = "#DCFCE7", "#166534"
+                    elif "⚠" in senal or "🟠" in senal or "🟡" in senal:
+                        bg, fg = "#FEF3C7", "#92400E"
+                    elif "🔴" in senal:
+                        bg, fg = "#FEE2E2", "#991B1B"
+                    else:
+                        bg, fg = "#DBEAFE", "#1E40AF"
+
+                    tesis = pos.get("tesis", "—")
+                    activo = pos.get("activo", "")
+                    ticker_pos = pos.get("ticker", "")
+
+                    st.markdown(
+                        f"""
 <div style="background:#FFFFFF; border:1px solid #E1E4E8; border-radius:8px;
             padding:14px 18px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
@@ -1057,118 +1066,309 @@ with tab4:
     </div>
 </div>
 """,
-                    unsafe_allow_html=True,
+                        unsafe_allow_html=True,
+                    )
+            except Exception as e:
+                st.error(f"Error en analisis detallado: {e}")
+
+            st.divider()
+
+            # ========== C6: TIPOS DE CAMBIO ==========
+            st.markdown("### 💵 Tipos de Cambio")
+            try:
+                import pandas as pd
+                from src.dolar import (
+                    get_cotizaciones, format_cotizacion,
+                    NOMBRES_DISPLAY, CASAS_ORDEN,
                 )
-        except Exception as e:
-            st.error(f"Error en analisis detallado: {e}")
 
-        st.divider()
+                _dolar_data = get_cotizaciones()
 
-        # ========== C6: TIPOS DE CAMBIO ==========
-        st.markdown("### 💵 Tipos de Cambio")
-        try:
-            import pandas as pd
-            from src.dolar import (
-                get_cotizaciones, format_cotizacion,
-                NOMBRES_DISPLAY, CASAS_ORDEN,
-            )
+                if _dolar_data is None:
+                    st.warning("⚠️ No se pudo conectar con dolarapi.com. Verificá tu conexión a internet.")
+                else:
+                    _d_por_casa = {item["casa"]: item for item in _dolar_data}
 
-            _dolar_data = get_cotizaciones()
+                    # Construir tabla
+                    _filas = []
+                    for _casa in CASAS_ORDEN:
+                        _it = _d_por_casa.get(_casa)
+                        if not _it:
+                            continue
+                        _compra = _it.get("compra") or 0
+                        _venta  = _it.get("venta") or 0
+                        _spread = _venta - _compra if _compra and _venta else 0
+                        _spread_pct = (_spread / _compra * 100) if _compra else 0
+                        _filas.append({
+                            "Tipo":     NOMBRES_DISPLAY.get(_casa, _casa.capitalize()),
+                            "Compra":   _compra,
+                            "Venta":    _venta,
+                            "Spread":   _spread,
+                            "Spread %": _spread_pct,
+                            "_casa":    _casa,
+                        })
 
-            if _dolar_data is None:
-                st.warning("⚠️ No se pudo conectar con dolarapi.com. Verificá tu conexión a internet.")
+                    _df_d = pd.DataFrame(_filas)
+                    _blue_idx = next(
+                        (i for i, f in enumerate(_filas) if f["_casa"] == "blue"), None
+                    )
+
+                    def _hl_blue(row):
+                        if row.name == _blue_idx and _filas[row.name]["Spread %"] > 2:
+                            return ["background-color: #FEF3C7;"] * len(row)
+                        return [""] * len(row)
+
+                    _df_display = _df_d.drop(columns=["_casa"])
+                    _styled_d = (
+                        _df_display.style
+                        .apply(_hl_blue, axis=1)
+                        .format({
+                            "Compra":   lambda v: format_cotizacion(v) if v else "—",
+                            "Venta":    lambda v: format_cotizacion(v) if v else "—",
+                            "Spread":   lambda v: format_cotizacion(v) if v else "—",
+                            "Spread %": "{:.2f}%",
+                        })
+                    )
+                    st.dataframe(_styled_d, use_container_width=True, hide_index=True)
+
+                    # Métricas comparativas
+                    _oficial = _d_por_casa.get("oficial", {})
+                    _blue    = _d_por_casa.get("blue", {})
+                    _mep     = _d_por_casa.get("bolsa", {})
+                    _ccl     = _d_por_casa.get("contadoconliqui", {})
+
+                    _dm1, _dm2 = st.columns(2)
+
+                    _ofic_v = _oficial.get("venta")
+                    _blue_v = _blue.get("venta")
+                    if _ofic_v and _blue_v:
+                        _diff_bo = (_blue_v / _ofic_v - 1) * 100
+                        _dm1.metric(
+                            "Blue vs Oficial",
+                            f"{_diff_bo:+.1f}%",
+                            delta=f"Blue {format_cotizacion(_blue_v)} | Ofic {format_cotizacion(_ofic_v)}",
+                            delta_color="off",
+                            help="Brecha entre el dolar blue y el oficial. Refleja la restriccion cambiaria.",
+                        )
+
+                    _mep_v = _mep.get("venta")
+                    _ccl_v = _ccl.get("venta")
+                    if _mep_v and _ccl_v:
+                        _diff_cm = (_ccl_v / _mep_v - 1) * 100
+                        _dm2.metric(
+                            "CCL vs MEP",
+                            f"{_diff_cm:+.1f}%",
+                            delta=f"CCL {format_cotizacion(_ccl_v)} | MEP {format_cotizacion(_mep_v)}",
+                            delta_color="off",
+                            help="Diferencia entre CCL y MEP. Cuando divergen puede haber oportunidad de arbitraje.",
+                        )
+
+                    # Timestamp API
+                    _ts_d = next(
+                        (i["fechaActualizacion"] for i in _dolar_data if i.get("fechaActualizacion")),
+                        None,
+                    )
+                    if _ts_d:
+                        try:
+                            from datetime import datetime
+                            _dt_d = datetime.fromisoformat(_ts_d.replace("Z", "+00:00"))
+                            st.caption(f"Fuente: dolarapi.com · Ultima actualizacion: {_dt_d.strftime('%d/%m/%Y %H:%M')} UTC · Cache: 5 min")
+                        except Exception:
+                            st.caption(f"Fuente: dolarapi.com · Actualizacion: {_ts_d[:16]}")
+
+            except Exception as _e_dolar:
+                st.warning(f"No se pudo cargar tipos de cambio: {_e_dolar}")
+
+        # ── SUB-TAB 2: GESTIONAR PORTFOLIO ───────────────────────────────────
+        with psub2:
+            import json as _json
+            from datetime import date as _date
+
+            _pos_list = portfolio.get("posiciones", [])
+
+            # ── SECCIÓN 1: TABLA + ELIMINAR ──────────────────────────────────
+            st.markdown("#### 📋 Posiciones actuales")
+
+            if not _pos_list:
+                st.info("No hay posiciones en el portfolio.")
             else:
-                _d_por_casa = {item["casa"]: item for item in _dolar_data}
+                _hc1, _hc2, _hc3, _hc4, _hc5 = st.columns([2, 1, 2, 2, 1])
+                _hc1.markdown("**Ticker**")
+                _hc2.markdown("**Cantidad**")
+                _hc3.markdown("**Precio compra (ARS)**")
+                _hc4.markdown("**Fecha compra**")
+                _hc5.markdown("**Accion**")
 
-                # Construir tabla
-                _filas = []
-                for _casa in CASAS_ORDEN:
-                    _it = _d_por_casa.get(_casa)
-                    if not _it:
-                        continue
-                    _compra = _it.get("compra") or 0
-                    _venta  = _it.get("venta") or 0
-                    _spread = _venta - _compra if _compra and _venta else 0
-                    _spread_pct = (_spread / _compra * 100) if _compra else 0
-                    _filas.append({
-                        "Tipo":     NOMBRES_DISPLAY.get(_casa, _casa.capitalize()),
-                        "Compra":   _compra,
-                        "Venta":    _venta,
-                        "Spread":   _spread,
-                        "Spread %": _spread_pct,
-                        "_casa":    _casa,
-                    })
+                for _gi, _gpos in enumerate(_pos_list):
+                    _gc1, _gc2, _gc3, _gc4, _gc5 = st.columns([2, 1, 2, 2, 1])
+                    _gc1.write(f"**{_gpos.get('ticker', '')}**")
+                    _gc2.write(f"{_gpos.get('cantidad', 0):,}")
+                    _gc3.write(f"$ {_gpos.get('precio_promedio_compra_ars', 0):,.0f}")
+                    _gc4.write(_gpos.get("fecha_primera_compra", "—"))
+                    if _gc5.button(
+                        "🗑️", key=f"del_btn_{_gi}",
+                        help=f"Eliminar {_gpos.get('ticker', '')}",
+                    ):
+                        st.session_state["pending_delete"] = _gpos.get("ticker", "")
 
-                _df_d = pd.DataFrame(_filas)
-                _blue_idx = next(
-                    (i for i, f in enumerate(_filas) if f["_casa"] == "blue"), None
+            # Confirmacion de eliminacion (fuera del loop para evitar re-renders)
+            if "pending_delete" in st.session_state:
+                _del_tk = st.session_state["pending_delete"]
+                st.warning(
+                    f"⚠️ ¿Confirmas eliminar **{_del_tk}** del portfolio? "
+                    "Esta accion no se puede deshacer."
+                )
+                _dc1, _dc2 = st.columns(2)
+                if _dc1.button("✅ Sí, eliminar", key="confirm_del"):
+                    _mut = _json.loads(_json.dumps(portfolio))
+                    eliminar_posicion(_mut, _del_tk)
+                    guardar_portfolio("pato", _mut)
+                    del st.session_state["pending_delete"]
+                    st.success(f"✅ {_del_tk} eliminado del portfolio.")
+                    st.rerun()
+                if _dc2.button("❌ Cancelar", key="cancel_del"):
+                    del st.session_state["pending_delete"]
+                    st.rerun()
+
+            st.divider()
+
+            # ── SECCIÓN 2: AGREGAR NUEVA POSICIÓN ────────────────────────────
+            st.markdown("#### ➕ Agregar nueva posición")
+            _ag_c1, _ag_c2 = st.columns(2)
+            with _ag_c1:
+                _ag_ticker = st.text_input(
+                    "Ticker", value="", placeholder="Ej: AAPL, MELI, TGNO4.BA",
+                    key="ag_ticker",
+                ).upper().strip()
+                _ag_cantidad = st.number_input(
+                    "Cantidad", min_value=1, value=1, step=1, key="ag_cantidad",
+                )
+            with _ag_c2:
+                _ag_precio = st.number_input(
+                    "Precio de compra (ARS)", min_value=0.0, value=0.0,
+                    step=100.0, format="%.0f", key="ag_precio",
+                )
+                _ag_fecha = st.date_input(
+                    "Fecha de compra", value=_date.today(), key="ag_fecha",
                 )
 
-                def _hl_blue(row):
-                    if row.name == _blue_idx and _filas[row.name]["Spread %"] > 2:
-                        return ["background-color: #FEF3C7;"] * len(row)
-                    return [""] * len(row)
-
-                _df_display = _df_d.drop(columns=["_casa"])
-                _styled_d = (
-                    _df_display.style
-                    .apply(_hl_blue, axis=1)
-                    .format({
-                        "Compra":   lambda v: format_cotizacion(v) if v else "—",
-                        "Venta":    lambda v: format_cotizacion(v) if v else "—",
-                        "Spread":   lambda v: format_cotizacion(v) if v else "—",
-                        "Spread %": "{:.2f}%",
-                    })
-                )
-                st.dataframe(_styled_d, use_container_width=True, hide_index=True)
-
-                # Métricas comparativas
-                _oficial = _d_por_casa.get("oficial", {})
-                _blue    = _d_por_casa.get("blue", {})
-                _mep     = _d_por_casa.get("bolsa", {})
-                _ccl     = _d_por_casa.get("contadoconliqui", {})
-
-                _dm1, _dm2 = st.columns(2)
-
-                _ofic_v = _oficial.get("venta")
-                _blue_v = _blue.get("venta")
-                if _ofic_v and _blue_v:
-                    _diff_bo = (_blue_v / _ofic_v - 1) * 100
-                    _dm1.metric(
-                        "Blue vs Oficial",
-                        f"{_diff_bo:+.1f}%",
-                        delta=f"Blue {format_cotizacion(_blue_v)} | Ofic {format_cotizacion(_ofic_v)}",
-                        delta_color="off",
-                        help="Brecha entre el dolar blue y el oficial. Refleja la restriccion cambiaria.",
+            if st.button("➕ Agregar posición", key="btn_agregar", use_container_width=True):
+                if not _ag_ticker:
+                    st.error("❌ El ticker no puede estar vacío.")
+                elif _ag_cantidad <= 0:
+                    st.error("❌ La cantidad debe ser mayor a 0.")
+                elif _ag_precio <= 0:
+                    st.error("❌ El precio de compra debe ser mayor a 0.")
+                else:
+                    _mut = _json.loads(_json.dumps(portfolio))
+                    _res = agregar_posicion(
+                        _mut, _ag_ticker, _ag_cantidad,
+                        _ag_precio, _ag_fecha.isoformat(),
                     )
+                    if _res["accion"] == "existente":
+                        _pe = _res["posicion_existente"]
+                        st.session_state["agregar_duplicado"] = {
+                            "ticker": _ag_ticker,
+                            "cantidad_nueva": _ag_cantidad,
+                            "cantidad_existente": _pe.get("cantidad", 0),
+                        }
+                    else:
+                        guardar_portfolio("pato", _mut)
+                        st.success(
+                            f"✅ {_ag_ticker} agregado con {int(_ag_cantidad):,} unidades "
+                            f"a $ {_ag_precio:,.0f}."
+                        )
+                        st.rerun()
 
-                _mep_v = _mep.get("venta")
-                _ccl_v = _ccl.get("venta")
-                if _mep_v and _ccl_v:
-                    _diff_cm = (_ccl_v / _mep_v - 1) * 100
-                    _dm2.metric(
-                        "CCL vs MEP",
-                        f"{_diff_cm:+.1f}%",
-                        delta=f"CCL {format_cotizacion(_ccl_v)} | MEP {format_cotizacion(_mep_v)}",
-                        delta_color="off",
-                        help="Diferencia entre CCL y MEP. Cuando divergen puede haber oportunidad de arbitraje.",
-                    )
-
-                # Timestamp API
-                _ts_d = next(
-                    (i["fechaActualizacion"] for i in _dolar_data if i.get("fechaActualizacion")),
-                    None,
+            # Manejo de ticker duplicado
+            if "agregar_duplicado" in st.session_state:
+                _dup = st.session_state["agregar_duplicado"]
+                st.warning(
+                    f"⚠️ Ya tenés **{_dup['cantidad_existente']:,} acciones** de "
+                    f"**{_dup['ticker']}**. "
+                    f"¿Querés agregar {int(_dup['cantidad_nueva']):,} más?"
                 )
-                if _ts_d:
-                    try:
-                        from datetime import datetime
-                        _dt_d = datetime.fromisoformat(_ts_d.replace("Z", "+00:00"))
-                        st.caption(f"Fuente: dolarapi.com · Ultima actualizacion: {_dt_d.strftime('%d/%m/%Y %H:%M')} UTC · Cache: 5 min")
-                    except Exception:
-                        st.caption(f"Fuente: dolarapi.com · Actualizacion: {_ts_d[:16]}")
+                _dup_c1, _dup_c2 = st.columns(2)
+                if _dup_c1.button("✅ Sí, agregar más", key="dup_confirmar"):
+                    _mut = _json.loads(_json.dumps(portfolio))
+                    agregar_cantidad_a_posicion(_mut, _dup["ticker"], _dup["cantidad_nueva"])
+                    guardar_portfolio("pato", _mut)
+                    _total = int(_dup["cantidad_existente"] + _dup["cantidad_nueva"])
+                    del st.session_state["agregar_duplicado"]
+                    st.success(
+                        f"✅ {int(_dup['cantidad_nueva']):,} unidades sumadas a "
+                        f"{_dup['ticker']}. Total ahora: {_total:,}."
+                    )
+                    st.rerun()
+                if _dup_c2.button("❌ Cancelar", key="dup_cancelar"):
+                    del st.session_state["agregar_duplicado"]
+                    st.rerun()
 
-        except Exception as _e_dolar:
-            st.warning(f"No se pudo cargar tipos de cambio: {_e_dolar}")
+            st.divider()
+
+            # ── SECCIÓN 3: EDITAR POSICIÓN EXISTENTE ─────────────────────────
+            st.markdown("#### ✏️ Editar posición existente")
+            _tickers_ed = [p.get("ticker", "") for p in _pos_list if p.get("ticker")]
+
+            if not _tickers_ed:
+                st.info("No hay posiciones para editar.")
+            else:
+                _ed_ticker = st.selectbox(
+                    "Seleccioná la posición a editar", _tickers_ed, key="ed_ticker",
+                )
+                _pos_sel = next(
+                    (p for p in _pos_list if p.get("ticker") == _ed_ticker), None,
+                )
+                if _pos_sel:
+                    _ed_c1, _ed_c2 = st.columns(2)
+                    with _ed_c1:
+                        _ed_cantidad = st.number_input(
+                            "Cantidad",
+                            min_value=1,
+                            value=max(1, int(_pos_sel.get("cantidad", 1))),
+                            step=1,
+                            key="ed_cantidad",
+                        )
+                        _ed_precio = st.number_input(
+                            "Precio promedio compra (ARS)",
+                            min_value=0.0,
+                            value=float(_pos_sel.get("precio_promedio_compra_ars", 0)),
+                            step=100.0,
+                            format="%.0f",
+                            key="ed_precio",
+                        )
+                    with _ed_c2:
+                        _fecha_str = _pos_sel.get(
+                            "fecha_primera_compra", _date.today().isoformat()
+                        )
+                        try:
+                            _fecha_dt = _date.fromisoformat(_fecha_str)
+                        except Exception:
+                            _fecha_dt = _date.today()
+                        _ed_fecha = st.date_input(
+                            "Fecha de compra", value=_fecha_dt, key="ed_fecha",
+                        )
+                        st.caption(
+                            f"Activo: {_pos_sel.get('activo', '—')} · "
+                            f"Tipo: {_pos_sel.get('tipo', '—')} · "
+                            f"Sector: {_pos_sel.get('sector', '—')}"
+                        )
+
+                    if st.button(
+                        "💾 Guardar cambios", key="btn_editar", use_container_width=True,
+                    ):
+                        _mut = _json.loads(_json.dumps(portfolio))
+                        editar_posicion(_mut, _ed_ticker, {
+                            "cantidad": _ed_cantidad,
+                            "precio_promedio_compra_ars": _ed_precio,
+                            "fecha_primera_compra": _ed_fecha.isoformat(),
+                        })
+                        guardar_portfolio("pato", _mut)
+                        st.success(
+                            f"✅ {_ed_ticker} actualizado: "
+                            f"{int(_ed_cantidad):,} unidades a $ {_ed_precio:,.0f}."
+                        )
+                        st.rerun()
 
 # TAB 5: CALCULADORAS
 with tab5:

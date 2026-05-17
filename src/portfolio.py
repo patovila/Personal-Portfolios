@@ -305,3 +305,98 @@ def comparar_vs_benchmark(
         "alpha_pct": retorno_p - retorno_b,
         "ticker_benchmark": benchmark,
     }
+
+
+# ---------- CRUD del portfolio ----------
+
+def guardar_portfolio(nombre: str, portfolio: dict) -> None:
+    """Guarda el portfolio en disco y limpia el cache de carga."""
+    from datetime import date
+    ruta = Path("data/portfolio") / f"{nombre}.json"
+    portfolio.setdefault("metadata", {})
+    portfolio["metadata"]["fecha_actualizacion"] = date.today().isoformat()
+    with open(ruta, "w", encoding="utf-8") as f:
+        json.dump(portfolio, f, ensure_ascii=False, indent=2)
+    cargar_portfolio.clear()
+
+
+def agregar_posicion(
+    portfolio: dict,
+    ticker: str,
+    cantidad: float,
+    precio_compra_ars: float,
+    fecha_compra: str,
+) -> dict:
+    """Agrega una posicion nueva. Si el ticker ya existe no modifica nada.
+
+    Retorna {"accion": "agregado"|"existente", "posicion_existente": dict|None}.
+    """
+    ticker = ticker.upper().strip()
+    posiciones = portfolio.get("posiciones", [])
+
+    for pos in posiciones:
+        if pos.get("ticker", "").upper() == ticker:
+            return {"accion": "existente", "posicion_existente": pos}
+
+    # Generar id correlativo
+    nums = []
+    for p in posiciones:
+        try:
+            nums.append(int(p.get("id", "pos_0").replace("pos_", "")))
+        except ValueError:
+            pass
+    nuevo_id = f"pos_{max(nums, default=0) + 1:03d}"
+
+    portfolio.setdefault("posiciones", []).append({
+        "id": nuevo_id,
+        "activo": ticker,
+        "ticker": ticker,
+        "ticker_local": ticker,
+        "tipo": "LOCAL",
+        "ratio_cedear": None,
+        "cantidad": cantidad,
+        "precio_promedio_compra_ars": precio_compra_ars,
+        "precio_actual_ars": precio_compra_ars,
+        "precio_actual_usd": None,
+        "sector": "Sin clasificar",
+        "beta": 1.0,
+        "frecuencia_dividendo": "—",
+        "senal": "—",
+        "tesis": "—",
+        "fecha_primera_compra": fecha_compra,
+        "objetivo_precio_ars": None,
+        "stop_loss_ars": None,
+    })
+    return {"accion": "agregado", "posicion_existente": None}
+
+
+def agregar_cantidad_a_posicion(
+    portfolio: dict, ticker: str, cantidad_extra: float
+) -> None:
+    """Suma cantidad_extra a una posicion existente (promedia el precio si se pasa)."""
+    ticker = ticker.upper().strip()
+    for pos in portfolio.get("posiciones", []):
+        if pos.get("ticker", "").upper() == ticker:
+            pos["cantidad"] = (pos.get("cantidad") or 0) + cantidad_extra
+            return
+
+
+def eliminar_posicion(portfolio: dict, ticker: str) -> bool:
+    """Elimina la posicion con el ticker dado. Retorna True si existia."""
+    ticker = ticker.upper().strip()
+    posiciones = portfolio.get("posiciones", [])
+    nueva = [p for p in posiciones if p.get("ticker", "").upper() != ticker]
+    if len(nueva) == len(posiciones):
+        return False
+    portfolio["posiciones"] = nueva
+    return True
+
+
+def editar_posicion(portfolio: dict, ticker: str, campos: dict) -> bool:
+    """Actualiza campos de una posicion existente. Retorna True si la encontro."""
+    ticker = ticker.upper().strip()
+    for pos in portfolio.get("posiciones", []):
+        if pos.get("ticker", "").upper() == ticker:
+            pos.update(campos)
+            return True
+    return False
