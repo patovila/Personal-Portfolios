@@ -11,7 +11,8 @@
       "Bash(python -c \"import ast; ast.parse\\(open\\('src/dolar.py', encoding='utf-8'\\).read\\(\\)\\); print\\('dolar.py OK'\\)\")",
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8501\" -TimeoutSec 5 -UseBasicParsing; \"Streamlit: HTTP $\\($r.StatusCode\\)\" } catch { \"Streamlit caido - reiniciando...\" })",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('src/portfolio.py', encoding='utf-8'\\).read\\(\\)\\); print\\('portfolio.py OK'\\)\")"
     ]
   }
 }
