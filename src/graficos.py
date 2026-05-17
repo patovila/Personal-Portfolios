@@ -129,7 +129,8 @@ def heatmap_correlacion(tickers, periodo="2y"):
     fig.update_layout(template="plotly_dark", height=500, width=600)
     fig.show()
 
-    def graficar_revenue_eps(ticker):
+
+def graficar_revenue_eps(ticker):
     """Revenue y Net Income en barras a través de los años."""
     t = yf.Ticker(ticker)
     pl = t.financials

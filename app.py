@@ -537,78 +537,389 @@ with tab2:
     else:
         st.subheader(f"📊 Analisis Fundamental - {ticker}")
 
-        try:
-            from src.fundamentals import ratios_avanzados
-            ratios = ratios_avanzados(ticker)
+        fsub1, fsub2, fsub3, fsub4 = st.tabs([
+            "📊 Ratios",
+            "📈 Crecimiento",
+            "💰 Estados Financieros",
+            "🔍 Comparar Peers",
+        ])
 
-            st.markdown("### 💰 Valuacion")
-            c1, c2, c3, c4 = st.columns(4)
+        # ── FSUB 1: RATIOS (existente, sin cambios) ──────────────────────────
+        with fsub1:
+            try:
+                from src.fundamentals import ratios_avanzados
+                ratios = ratios_avanzados(ticker)
 
-            pe_t = ratios.get('PE_trailing')
-            c1.metric("PE Trailing", f"{pe_t:.2f}" if pe_t else "N/A")
+                st.markdown("### 💰 Valuacion")
+                c1, c2, c3, c4 = st.columns(4)
 
-            pe_f = ratios.get('PE_forward')
-            c2.metric("PE Forward", f"{pe_f:.2f}" if pe_f else "N/A")
+                pe_t = ratios.get('PE_trailing')
+                c1.metric("PE Trailing", f"{pe_t:.2f}" if pe_t else "N/A")
 
-            pb = ratios.get('PB')
-            c3.metric("P/B", f"{pb:.2f}" if pb else "N/A")
+                pe_f = ratios.get('PE_forward')
+                c2.metric("PE Forward", f"{pe_f:.2f}" if pe_f else "N/A")
 
-            ev = ratios.get('EV_EBITDA')
-            c4.metric("EV/EBITDA", f"{ev:.2f}" if ev else "N/A")
+                pb = ratios.get('PB')
+                c3.metric("P/B", f"{pb:.2f}" if pb else "N/A")
 
-            c5, c6, c7, c8 = st.columns(4)
+                ev = ratios.get('EV_EBITDA')
+                c4.metric("EV/EBITDA", f"{ev:.2f}" if ev else "N/A")
 
-            ps = ratios.get('PS')
-            c5.metric("P/S", f"{ps:.2f}" if ps else "N/A")
+                c5, c6, c7, c8 = st.columns(4)
 
-            peg = ratios.get('PEG')
-            c6.metric("PEG", f"{peg:.2f}" if peg else "N/A")
+                ps = ratios.get('PS')
+                c5.metric("P/S", f"{ps:.2f}" if ps else "N/A")
 
-            evr = ratios.get('EV_Revenue')
-            c7.metric("EV/Revenue", f"{evr:.2f}" if evr else "N/A")
+                peg = ratios.get('PEG')
+                c6.metric("PEG", f"{peg:.2f}" if peg else "N/A")
 
-            dy = ratios.get('Dividend_Yield_%')
-            c8.metric("Div Yield", f"{dy:.2f}%" if dy else "N/A")
+                evr = ratios.get('EV_Revenue')
+                c7.metric("EV/Revenue", f"{evr:.2f}" if evr else "N/A")
 
-            st.divider()
+                dy = ratios.get('Dividend_Yield_%')
+                c8.metric("Div Yield", f"{dy:.2f}%" if dy else "N/A")
 
-            st.markdown("### 📈 Rentabilidad")
-            r1, r2, r3, r4, r5 = st.columns(5)
+                st.divider()
 
-            roe_val = ratios.get('ROE_%')
-            r1.metric("ROE", f"{roe_val:.1f}%" if roe_val else "N/A")
+                st.markdown("### 📈 Rentabilidad")
+                r1, r2, r3, r4, r5 = st.columns(5)
 
-            roa_val = ratios.get('ROA_%')
-            r2.metric("ROA", f"{roa_val:.1f}%" if roa_val else "N/A")
+                roe_val = ratios.get('ROE_%')
+                r1.metric("ROE", f"{roe_val:.1f}%" if roe_val else "N/A")
 
-            mb = ratios.get('Margen_Bruto_%')
-            r3.metric("Mg Bruto", f"{mb:.1f}%" if mb else "N/A")
+                roa_val = ratios.get('ROA_%')
+                r2.metric("ROA", f"{roa_val:.1f}%" if roa_val else "N/A")
 
-            mo = ratios.get('Margen_Operativo_%')
-            r4.metric("Mg Operativo", f"{mo:.1f}%" if mo else "N/A")
+                mb = ratios.get('Margen_Bruto_%')
+                r3.metric("Mg Bruto", f"{mb:.1f}%" if mb else "N/A")
 
-            mn = ratios.get('Margen_Neto_%')
-            r5.metric("Mg Neto", f"{mn:.1f}%" if mn else "N/A")
+                mo = ratios.get('Margen_Operativo_%')
+                r4.metric("Mg Operativo", f"{mo:.1f}%" if mo else "N/A")
 
-            st.divider()
+                mn = ratios.get('Margen_Neto_%')
+                r5.metric("Mg Neto", f"{mn:.1f}%" if mn else "N/A")
 
-            st.markdown("### 🏛️ Solvencia")
-            s1, s2, s3, s4 = st.columns(4)
+                st.divider()
 
-            de = ratios.get('Debt_Equity')
-            s1.metric("Debt/Equity", f"{de:.2f}" if de else "N/A")
+                st.markdown("### 🏛️ Solvencia")
+                s1, s2, s3, s4 = st.columns(4)
 
-            cr = ratios.get('Current_Ratio')
-            s2.metric("Current Ratio", f"{cr:.2f}" if cr else "N/A")
+                de = ratios.get('Debt_Equity')
+                s1.metric("Debt/Equity", f"{de:.2f}" if de else "N/A")
 
-            qr = ratios.get('Quick_Ratio')
-            s3.metric("Quick Ratio", f"{qr:.2f}" if qr else "N/A")
+                cr = ratios.get('Current_Ratio')
+                s2.metric("Current Ratio", f"{cr:.2f}" if cr else "N/A")
 
-            beta = ratios.get('Beta')
-            s4.metric("Beta", f"{beta:.2f}" if beta else "N/A")
+                qr = ratios.get('Quick_Ratio')
+                s3.metric("Quick Ratio", f"{qr:.2f}" if qr else "N/A")
 
-        except Exception as e:
-            st.error(f"❌ Error cargando fundamentals: {e}")
+                beta_r = ratios.get('Beta')
+                s4.metric("Beta", f"{beta_r:.2f}" if beta_r else "N/A")
+
+            except Exception as e:
+                st.error(f"❌ Error cargando fundamentals: {e}")
+
+        # ── FSUB 2: CRECIMIENTO ───────────────────────────────────────────────
+        with fsub2:
+            try:
+                import plotly.graph_objects as _go2
+                from src.fundamentals import (
+                    crecimiento_historico,
+                    fcf_historico,
+                    estados_financieros,
+                )
+
+                # -- CAGRs --
+                st.markdown("### 📊 CAGRs históricos")
+                with st.spinner(f"Calculando crecimiento de {ticker}..."):
+                    _crec = crecimiento_historico(ticker)
+
+                if not _crec:
+                    st.info("No hay datos de crecimiento disponibles para este ticker.")
+                else:
+                    def _fmt_cagr(v):
+                        return f"{v:+.1f}%" if v is not None else "N/D"
+
+                    _cg1, _cg2, _cg3, _cg4 = st.columns(4)
+
+                    _rv = _crec.get("revenue_cagr_%")
+                    _cg1.metric(
+                        "CAGR Revenue", _fmt_cagr(_rv),
+                        delta=_fmt_cagr(_rv) if _rv is not None else None,
+                        delta_color="normal" if _rv is not None else "off",
+                    )
+
+                    _ni = _crec.get("net_income_cagr_%")
+                    _cg2.metric(
+                        "CAGR Net Income", _fmt_cagr(_ni),
+                        delta=_fmt_cagr(_ni) if _ni is not None else None,
+                        delta_color="normal" if _ni is not None else "off",
+                    )
+
+                    _fc = _crec.get("fcf_cagr_%")
+                    _cg3.metric(
+                        "CAGR FCF", _fmt_cagr(_fc),
+                        delta=_fmt_cagr(_fc) if _fc is not None else None,
+                        delta_color="normal" if _fc is not None else "off",
+                    )
+
+                    _em = _crec.get("expansion_margen_pp")
+                    _em_str = f"{_em:+.1f} pp" if _em is not None else "N/D"
+                    _cg4.metric(
+                        "Expansión margen", _em_str,
+                        delta=_em_str if _em is not None else None,
+                        delta_color="normal" if _em is not None else "off",
+                    )
+
+                    _años_rv = _crec.get("revenue_años")
+                    if _años_rv:
+                        st.caption(f"CAGRs calculados sobre {_años_rv} años de historia disponible en yfinance.")
+
+                st.divider()
+
+                # -- FCF histórico --
+                st.markdown("### 💵 Free Cash Flow histórico")
+                try:
+                    _fcf_df = fcf_historico(ticker)
+                    if _fcf_df is None or _fcf_df.empty:
+                        st.info("No hay datos de FCF disponibles para este ticker.")
+                    else:
+                        _fcf_cols = ["#16A34A" if v >= 0 else "#EF4444" for v in _fcf_df["FCF_USD_B"]]
+                        _fig_fcf = _go2.Figure(_go2.Bar(
+                            x=_fcf_df["año"],
+                            y=_fcf_df["FCF_USD_B"],
+                            marker_color=_fcf_cols,
+                            text=[f"${v:.1f}B" for v in _fcf_df["FCF_USD_B"]],
+                            textposition="outside",
+                            hovertemplate="<b>%{x}</b><br>FCF: $%{y:.2f}B<extra></extra>",
+                        ))
+                        _fig_fcf.update_layout(
+                            title="Free Cash Flow histórico (USD Billones)",
+                            xaxis_title="Año",
+                            yaxis_title="FCF (USD B)",
+                            template="plotly_white",
+                            height=400,
+                            margin=dict(l=20, r=20, t=50, b=20),
+                        )
+                        st.plotly_chart(_fig_fcf, use_container_width=True)
+                except Exception as _e_fcf:
+                    st.warning(f"No se pudo graficar FCF: {_e_fcf}")
+
+                st.divider()
+
+                # -- Revenue vs Net Income --
+                st.markdown("### 📊 Revenue vs Net Income")
+                try:
+                    _est2 = estados_financieros(ticker, "resumido")
+                    if not _est2:
+                        st.info("No hay datos de estados financieros disponibles.")
+                    else:
+                        _pl2 = _est2["pl"]
+                        _años2 = [c.year for c in _pl2.columns]
+                        _fig_rev = _go2.Figure()
+
+                        if "Total Revenue" in _pl2.index:
+                            _rev2 = (_pl2.loc["Total Revenue"] / 1e9).values
+                            _fig_rev.add_trace(_go2.Bar(
+                                x=_años2, y=_rev2,
+                                name="Revenue",
+                                marker_color="#2563EB",
+                                text=[f"${v:.1f}B" for v in _rev2],
+                                textposition="outside",
+                            ))
+
+                        if "Net Income" in _pl2.index:
+                            _ni2 = (_pl2.loc["Net Income"] / 1e9).values
+                            _fig_rev.add_trace(_go2.Bar(
+                                x=_años2, y=_ni2,
+                                name="Net Income",
+                                marker_color="#16A34A",
+                                text=[f"${v:.1f}B" for v in _ni2],
+                                textposition="outside",
+                            ))
+
+                        _fig_rev.update_layout(
+                            title="Revenue vs Net Income (USD Billones)",
+                            xaxis_title="Año",
+                            yaxis_title="USD B",
+                            template="plotly_white",
+                            height=400,
+                            barmode="group",
+                            margin=dict(l=20, r=20, t=50, b=20),
+                        )
+                        st.plotly_chart(_fig_rev, use_container_width=True)
+                except Exception as _e_rev:
+                    st.warning(f"No se pudo graficar Revenue/NI: {_e_rev}")
+
+            except Exception as e:
+                st.error(f"❌ Error en análisis de crecimiento: {e}")
+
+        # ── FSUB 3: ESTADOS FINANCIEROS ──────────────────────────────────────
+        with fsub3:
+            try:
+                from src.fundamentals import estados_financieros as _ef3
+
+                _fmt_sel = st.radio(
+                    "Formato",
+                    ["Resumido", "Completo"],
+                    horizontal=True,
+                    key="eeff_formato",
+                )
+
+                with st.spinner(f"Cargando estados financieros de {ticker}..."):
+                    _estados3 = _ef3(ticker, "resumido" if _fmt_sel == "Resumido" else "completo")
+
+                if not _estados3:
+                    st.info("No hay datos de estados financieros disponibles para este ticker.")
+                else:
+                    def _render_eeff(df, titulo, fila_hl=None):
+                        if df is None or df.empty:
+                            st.info(f"Sin datos: {titulo}")
+                            return
+                        st.markdown(f"#### {titulo}")
+                        _df3 = df.copy()
+                        try:
+                            _df3.columns = [
+                                c.strftime("%Y") if hasattr(c, "strftime") else str(c)
+                                for c in _df3.columns
+                            ]
+                        except Exception:
+                            pass
+                        _df3 = _df3 / 1e6
+
+                        def _hl3(row):
+                            if fila_hl and row.name == fila_hl:
+                                return ["background-color:#DBEAFE; font-weight:bold;"] * len(row)
+                            return [""] * len(row)
+
+                        st.dataframe(
+                            _df3.style.apply(_hl3, axis=1).format("{:,.0f}", na_rep="—"),
+                            use_container_width=True,
+                        )
+                        st.caption("Valores en millones USD")
+
+                    with st.expander("📋 Estado de Resultados (P&L)", expanded=True):
+                        _render_eeff(_estados3["pl"], "Estado de Resultados", "Net Income")
+
+                    with st.expander("🏛️ Balance General", expanded=False):
+                        _render_eeff(_estados3["balance"], "Balance General", "Total Assets")
+
+                    with st.expander("💵 Flujo de Efectivo", expanded=False):
+                        _render_eeff(_estados3["cashflow"], "Flujo de Efectivo", "Free Cash Flow")
+
+            except Exception as e:
+                st.error(f"❌ Error cargando estados financieros: {e}")
+
+        # ── FSUB 4: COMPARAR PEERS ────────────────────────────────────────────
+        with fsub4:
+            try:
+                import pandas as _pd4
+                from src.fundamentals import comparar_peers
+
+                _RATIOS_LABEL = {
+                    "PE_trailing":    "PE Trailing",
+                    "PB":             "P/B",
+                    "PS":             "P/S",
+                    "EV_EBITDA":      "EV/EBITDA",
+                    "ROE_%":          "ROE %",
+                    "ROA_%":          "ROA %",
+                    "Margen_Neto_%":  "Mg Neto %",
+                    "Debt_Equity":    "Debt/Equity",
+                    "Beta":           "Beta",
+                }
+                _MENOR_ES_MEJOR = {"PE_trailing", "PB", "PS", "EV_EBITDA", "Debt_Equity", "Beta"}
+
+                st.markdown(
+                    "Ingresá tickers adicionales para comparar con **{}**.".format(ticker)
+                )
+                _peers_raw = st.text_input(
+                    "Tickers (separados por coma)",
+                    value="",
+                    placeholder="Ej: AAPL, MSFT, GOOGL",
+                    key="peers_input",
+                )
+                _ratios_sel4 = st.multiselect(
+                    "Ratios a incluir",
+                    options=list(_RATIOS_LABEL.keys()),
+                    default=list(_RATIOS_LABEL.keys()),
+                    format_func=lambda x: _RATIOS_LABEL[x],
+                    key="peers_ratios",
+                )
+
+                if st.button("🔍 Comparar", key="peers_btn"):
+                    _extra = [tk.strip().upper() for tk in _peers_raw.split(",") if tk.strip()]
+                    _all_tk = [ticker.upper()] + [tk for tk in _extra if tk != ticker.upper()]
+
+                    if len(_all_tk) < 2:
+                        st.warning("Ingresá al menos un ticker adicional para comparar.")
+                    elif not _ratios_sel4:
+                        st.warning("Seleccioná al menos un ratio.")
+                    else:
+                        with st.spinner(f"Descargando datos de {', '.join(_all_tk)}..."):
+                            _df_peers = comparar_peers(_all_tk, _ratios_sel4)
+
+                        if _df_peers is None or _df_peers.empty:
+                            st.warning("No se pudieron obtener datos de los peers.")
+                        else:
+                            def _hl_peers(df):
+                                styles = _pd4.DataFrame("", index=df.index, columns=df.columns)
+                                for _col in df.columns:
+                                    if _col == "Ticker":
+                                        continue
+                                    _s = _pd4.to_numeric(df[_col], errors="coerce")
+                                    if _s.isna().all():
+                                        continue
+                                    _valid = _s.dropna()
+                                    if _valid.empty:
+                                        continue
+                                    if _col in _MENOR_ES_MEJOR:
+                                        _bi = _valid.idxmin()
+                                        _wi = _valid.idxmax()
+                                    else:
+                                        _bi = _valid.idxmax()
+                                        _wi = _valid.idxmin()
+                                    styles.loc[_bi, _col] = "background-color:#DCFCE7;color:#166534;font-weight:bold;"
+                                    styles.loc[_wi, _col] = "background-color:#FEE2E2;color:#991B1B;"
+                                return styles
+
+                            _fmt_peers = {
+                                col: "{:.2f}"
+                                for col in _df_peers.columns if col != "Ticker"
+                            }
+                            st.dataframe(
+                                _df_peers.style
+                                .apply(_hl_peers, axis=None)
+                                .format(_fmt_peers, na_rep="—"),
+                                use_container_width=True,
+                                hide_index=True,
+                            )
+
+                            # Resumen automático
+                            st.markdown("---")
+                            st.markdown("**Resumen vs peers:**")
+                            for _r4 in _ratios_sel4:
+                                if _r4 not in _df_peers.columns:
+                                    continue
+                                _s4 = _pd4.to_numeric(_df_peers[_r4], errors="coerce")
+                                if _s4.isna().all():
+                                    continue
+                                _vld = _s4.dropna()
+                                if _vld.empty:
+                                    continue
+                                if _r4 in _MENOR_ES_MEJOR:
+                                    _bi4, _wi4 = _vld.idxmin(), _vld.idxmax()
+                                else:
+                                    _bi4, _wi4 = _vld.idxmax(), _vld.idxmin()
+                                _bt4 = _df_peers.loc[_bi4, "Ticker"]
+                                _wt4 = _df_peers.loc[_wi4, "Ticker"]
+                                _lbl4 = _RATIOS_LABEL.get(_r4, _r4)
+                                st.caption(
+                                    f"**{_lbl4}**: mejor → {_bt4} ({_s4[_bi4]:.2f}) | "
+                                    f"peor → {_wt4} ({_s4[_wi4]:.2f})"
+                                )
+
+            except Exception as e:
+                st.error(f"❌ Error en comparación de peers: {e}")
 
 # TAB 3: TECNICO
 with tab3:
