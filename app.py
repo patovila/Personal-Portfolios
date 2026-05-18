@@ -464,12 +464,13 @@ else:
     st.header("Mi Bloomberg Personal")
     st.caption(ticker_error or "")
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🏢 Ficha",
     "📊 Fundamental",
     "📈 Tecnico",
     "🗂️ Mi Portfolio",
     "🧮 Calculadoras",
+    "🇦🇷 Macro Argentina",
 ])
 
 # TAB 1: FICHA
@@ -2073,3 +2074,275 @@ with tab5:
             "Rendimiento real negativo = perdiste poder adquisitivo aunque el monto en ARS aumento. "
             "Siempre compara contra la inflacion esperada del periodo."
         )
+
+# TAB 6: MACRO ARGENTINA
+with tab6:
+    import plotly.graph_objects as _go6
+    import pandas as _pd6
+    from datetime import datetime as _dt6, timedelta as _td6
+    from src.macro import get_riesgo_pais, get_dolar_historico
+    from src.dolar import get_cotizaciones as _get_cots6, format_cotizacion as _fmt_cot6
+
+    st.subheader("🇦🇷 Indicadores macro Argentina")
+
+    # ── SECCIÓN 1: MÉTRICAS DEL DÍA ──────────────────────────────────────────
+    st.markdown("### 📊 Indicadores del día")
+
+    _m6c1, _m6c2, _m6c3, _m6c4 = st.columns(4)
+
+    # Riesgo País
+    _rp_all = get_riesgo_pais()
+    with _m6c1:
+        if _rp_all is not None and not _rp_all.empty:
+            _rp_actual = int(_rp_all["valor"].iloc[-1])
+            _rp_fecha = _rp_all["fecha"].iloc[-1].strftime("%d/%m")
+            _rp_delta = None
+            if len(_rp_all) >= 2:
+                _rp_delta = _rp_actual - int(_rp_all["valor"].iloc[-2])
+            st.metric(
+                f"Riesgo País — {_rp_fecha}",
+                f"{_rp_actual:,} bps",
+                delta=f"{_rp_delta:+d}" if _rp_delta is not None else None,
+                delta_color="inverse",
+                help="EMBI+. Verde = baja (mejora), Rojo = sube (empeora). Dato: argentinadatos.com",
+            )
+        else:
+            st.metric("Riesgo País (EMBI)", "—")
+            st.caption("No disponible")
+
+    # Tasa política monetaria
+    with _m6c2:
+        st.metric(
+            "Tasa Política BCRA",
+            "—",
+            help="API BCRA actualmente fuera de servicio",
+        )
+        st.caption("API BCRA no disponible")
+
+    # Tasa plazo fijo 30d
+    with _m6c3:
+        st.metric(
+            "Tasa Plazo Fijo 30d",
+            "—",
+            help="API BCRA actualmente fuera de servicio",
+        )
+        st.caption("API BCRA no disponible")
+
+    # Brecha cambiaria blue/oficial
+    with _m6c4:
+        try:
+            _cots6 = _get_cots6()
+            if _cots6:
+                _d6 = {item["casa"]: item for item in _cots6}
+                _ofic6 = _d6.get("oficial", {}).get("venta")
+                _blue6 = _d6.get("blue", {}).get("venta")
+                if _ofic6 and _blue6:
+                    _brecha6 = ((_blue6 - _ofic6) / _ofic6) * 100
+                    st.metric(
+                        "Brecha Blue/Oficial",
+                        f"{_brecha6:.1f}%",
+                        delta=f"Blue {_fmt_cot6(_blue6)} | Ofic {_fmt_cot6(_ofic6)}",
+                        delta_color="off",
+                        help="((Blue - Oficial) / Oficial) * 100. Fuente: dolarapi.com",
+                    )
+                else:
+                    st.metric("Brecha Blue/Oficial", "—")
+            else:
+                st.metric("Brecha Blue/Oficial", "—")
+                st.caption("Sin conexión")
+        except Exception:
+            st.metric("Brecha Blue/Oficial", "—")
+
+    st.divider()
+
+    # ── SECCIÓN 2: RIESGO PAÍS HISTÓRICO ─────────────────────────────────────
+    st.markdown("### 📈 Riesgo País histórico (EMBI)")
+
+    _periodo_rp = st.radio(
+        "Período",
+        ["1M", "3M", "6M", "1Y"],
+        horizontal=True,
+        index=3,
+        key="macro_periodo_rp",
+    )
+    _dias_rp = {"1M": 30, "3M": 90, "6M": 180, "1Y": 365}[_periodo_rp]
+
+    if _rp_all is None or _rp_all.empty:
+        st.warning("Datos de riesgo país no disponibles temporalmente.")
+    else:
+        _desde_rp = _dt6.now() - _td6(days=_dias_rp)
+        _rp_hist = _rp_all[_rp_all["fecha"] >= _desde_rp].copy()
+
+        if _rp_hist.empty:
+            st.warning("Sin datos para el período seleccionado.")
+        else:
+            _fig_rp = _go6.Figure()
+            _fig_rp.add_trace(_go6.Scatter(
+                x=_rp_hist["fecha"],
+                y=_rp_hist["valor"],
+                line=dict(color="#2563EB", width=2),
+                fill="tozeroy",
+                fillcolor="rgba(37,99,235,0.08)",
+                name="EMBI",
+                hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Riesgo País: %{y:,.0f} bps<extra></extra>",
+            ))
+            _fig_rp.add_hline(
+                y=2000,
+                line_dash="dot",
+                line_color="#EF4444",
+                annotation_text="Zona stress (2000 bps)",
+                annotation_position="top right",
+                annotation_font_color="#EF4444",
+                annotation_font_size=11,
+            )
+            _fig_rp.update_layout(
+                title=f"Riesgo País (EMBI) — Últimos {_dias_rp} días",
+                xaxis_title="Fecha",
+                yaxis_title="Puntos básicos (bps)",
+                template="plotly_white",
+                height=420,
+                hovermode="x unified",
+                margin=dict(l=20, r=20, t=50, b=20),
+            )
+            st.plotly_chart(_fig_rp, use_container_width=True)
+            _rp_ult_fecha = _rp_all["fecha"].iloc[-1].strftime("%d/%m/%Y")
+            _rp_ult_val = int(_rp_all["valor"].iloc[-1])
+            st.caption(
+                f"Fuente: argentinadatos.com · Último dato disponible: "
+                f"{_rp_ult_fecha} ({_rp_ult_val:,} bps) · Cache: 1 hora"
+            )
+
+    st.divider()
+
+    # ── SECCIÓN 3: DÓLAR HISTÓRICO COMPARATIVO ────────────────────────────────
+    st.markdown("### 💵 Evolución tipos de cambio")
+
+    _periodo_dol = st.radio(
+        "Período",
+        ["1M", "3M", "6M", "1Y"],
+        horizontal=True,
+        index=2,
+        key="macro_periodo_dol",
+    )
+    _dias_dol = {"1M": 30, "3M": 90, "6M": 180, "1Y": 365}[_periodo_dol]
+
+    _chk1, _chk2, _chk3, _chk4 = st.columns(4)
+    _show_oficial = _chk1.checkbox("Oficial", value=True, key="dol_oficial")
+    _show_blue    = _chk2.checkbox("Blue",    value=True, key="dol_blue")
+    _show_mep     = _chk3.checkbox("MEP",     value=True, key="dol_mep")
+    _show_ccl     = _chk4.checkbox("CCL",     value=True, key="dol_ccl")
+
+    _casas_config6 = [
+        ("oficial",         "Oficial", "#6B7280", _show_oficial),
+        ("blue",            "Blue",    "#2563EB", _show_blue),
+        ("bolsa",           "MEP",     "#16A34A", _show_mep),
+        ("contadoconliqui", "CCL",     "#F59E0B", _show_ccl),
+    ]
+
+    _fig_dol = _go6.Figure()
+    _hay_datos_dol = False
+    _desde_dol = _dt6.now() - _td6(days=_dias_dol)
+
+    for _casa6, _nombre6, _color6, _mostrar6 in _casas_config6:
+        if not _mostrar6:
+            continue
+        try:
+            _df6 = get_dolar_historico(casa=_casa6)
+            if _df6 is None or _df6.empty:
+                continue
+            _df6_f = _df6[_df6["fecha"] >= _desde_dol]
+            if _df6_f.empty:
+                continue
+            _hay_datos_dol = True
+            _fig_dol.add_trace(_go6.Scatter(
+                x=_df6_f["fecha"],
+                y=_df6_f["venta"],
+                line=dict(color=_color6, width=2),
+                name=_nombre6,
+                hovertemplate=(
+                    f"<b>{_nombre6}</b><br>"
+                    "%{x|%d/%m/%Y}<br>"
+                    "Venta: $%{y:,.0f}<extra></extra>"
+                ),
+            ))
+        except Exception:
+            continue
+
+    if not _hay_datos_dol:
+        st.warning("Datos de tipos de cambio no disponibles temporalmente.")
+    else:
+        _fig_dol.update_layout(
+            title="Evolución tipos de cambio (precio venta, ARS/USD)",
+            xaxis_title="Fecha",
+            yaxis_title="ARS / USD",
+            template="plotly_white",
+            height=450,
+            hovermode="x unified",
+            margin=dict(l=20, r=20, t=50, b=20),
+        )
+        st.plotly_chart(_fig_dol, use_container_width=True)
+        st.caption("Fuente: argentinadatos.com · Precio de venta · Cache: 1 hora")
+
+    st.divider()
+
+    # ── SECCIÓN 4: TASAS ──────────────────────────────────────────────────────
+    st.markdown("### 📋 Tasas de referencia")
+
+    st.info(
+        "La API del BCRA (v3) fue deprecada y no hay alternativa pública disponible actualmente. "
+        "Cuando el servicio se restaure, las tasas se actualizarán automáticamente.",
+        icon="ℹ️",
+    )
+
+    _tasas_data = [
+        {
+            "Instrumento":    "Tasa Política Monetaria (BCRA)",
+            "TNA actual":     "—",
+            "TEA equivalente": "—",
+            "Periodicidad":   "Anual",
+            "Fuente":         "BCRA API (no disponible)",
+        },
+        {
+            "Instrumento":    "Plazo Fijo 30d (TNA promedio)",
+            "TNA actual":     "—",
+            "TEA equivalente": "—",
+            "Periodicidad":   "30 días",
+            "Fuente":         "BCRA API (no disponible)",
+        },
+        {
+            "Instrumento":    "FCI Money Market",
+            "TNA actual":     "—",
+            "TEA equivalente": "—",
+            "Periodicidad":   "Diaria",
+            "Fuente":         "BCRA API (no disponible)",
+        },
+    ]
+    st.dataframe(
+        _pd6.DataFrame(_tasas_data),
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.caption("TEA = (1 + TNA/365)^365 − 1 para capitalización diaria | (1 + TNA/12)^12 − 1 para mensual")
+
+    st.markdown("#### Calculadora rápida TNA → TEA")
+    st.caption("Ingresá una tasa manualmente para calcular el equivalente anual efectivo.")
+
+    _calc_c1, _calc_c2, _calc_c3 = st.columns(3)
+    with _calc_c1:
+        _tna_input = st.number_input(
+            "TNA %", min_value=0.0, max_value=500.0, value=38.0,
+            step=0.5, key="macro_tna_calc",
+        )
+    with _calc_c2:
+        _cap_tipo = st.selectbox(
+            "Capitalización",
+            ["Diaria (billetera/FCI)", "Mensual (plazo fijo)"],
+            key="macro_cap_tipo",
+        )
+    with _calc_c3:
+        st.write("")
+        if "Diaria" in _cap_tipo:
+            _tea_calc = ((1 + _tna_input / 100 / 365) ** 365 - 1) * 100
+        else:
+            _tea_calc = ((1 + _tna_input / 100 / 12) ** 12 - 1) * 100
+        st.metric("TEA resultante", f"{_tea_calc:.2f}%")
