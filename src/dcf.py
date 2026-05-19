@@ -2,18 +2,24 @@
 import yfinance as yf
 import pandas as pd
 import streamlit as st
+from src.datos import get_ticker_adr, get_ticker_local, is_ticker_argentino
 
 
 @st.cache_data(ttl=3600)
 def get_datos_base_dcf(ticker):
     """Obtiene datos base para el DCF desde yfinance. Cache 1 hora.
 
-    FCF: del cashflow statement (más confiable que info['freeCashflow']).
-    Deuda/cash: del balance sheet.
+    Para tickers argentinos:
+    - FCF, deuda, cash, shares → ADR en NYSE (USD)
+    - Precio actual → .BA (ARS) con fallback al ADR (USD)
     Retorna dict o None si falla por completo.
     """
     try:
-        t = yf.Ticker(ticker)
+        es_ar   = is_ticker_argentino(ticker)
+        tk_fund = get_ticker_adr(ticker)     # ADR para fundamentals
+        tk_px   = get_ticker_local(ticker)   # .BA para precio local
+
+        t    = yf.Ticker(tk_fund)
         info = t.info
 
         # FCF desde cashflow statement
@@ -50,16 +56,34 @@ def get_datos_base_dcf(ticker):
         if cash is None:
             cash = info.get("totalCash")
 
+        # Precio: .BA en ARS (si existe) o ADR en USD
+        precio_actual  = None
+        precio_moneda  = None
+        if es_ar:
+            try:
+                hist_local = yf.Ticker(tk_px).history(period="2d")
+                if not hist_local.empty:
+                    precio_actual = float(hist_local["Close"].iloc[-1])
+                    precio_moneda = "ARS"
+            except Exception:
+                pass
+        if precio_actual is None:
+            precio_actual = info.get("currentPrice") or info.get("regularMarketPrice")
+            precio_moneda = info.get("currency", "USD")
+
         return {
-            "fcf_base": fcf_base,
-            "fcf_anio": fcf_anio,
-            "fcf_serie": fcf_serie,       # {año: valor} para mostrar historial
+            "fcf_base":     fcf_base,
+            "fcf_anio":     fcf_anio,
+            "fcf_serie":    fcf_serie,
             "fcf_negativo": fcf_base is not None and fcf_base <= 0,
-            "shares": info.get("sharesOutstanding"),
-            "precio_actual": info.get("currentPrice") or info.get("regularMarketPrice"),
-            "beta": info.get("beta"),
-            "deuda": deuda,
-            "cash": cash,
+            "shares":       info.get("sharesOutstanding"),
+            "precio_actual":  precio_actual,
+            "precio_moneda":  precio_moneda,
+            "es_argentino":   es_ar,
+            "ticker_adr":     tk_fund,
+            "beta":   info.get("beta"),
+            "deuda":  deuda,
+            "cash":   cash,
             "currency": info.get("currency", "USD"),
             "nombre": info.get("longName", ticker),
         }

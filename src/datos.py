@@ -3,6 +3,50 @@ import json
 from pathlib import Path
 import yfinance as yf
 
+# ---------------------------------------------------------------------------
+# Mapa de tickers argentinos: ADR NYSE ↔ local BYMA (.BA)
+# ---------------------------------------------------------------------------
+TICKERS_AR = {
+    "YPF":     {"adr": "YPF",  "local": "YPF.BA",  "nombre": "YPF"},
+    "YPF.BA":  {"adr": "YPF",  "local": "YPF.BA",  "nombre": "YPF"},
+    "PAMP":    {"adr": "PAM",  "local": "PAMP.BA", "nombre": "Pampa Energía"},
+    "PAMP.BA": {"adr": "PAM",  "local": "PAMP.BA", "nombre": "Pampa Energía"},
+    "PAM":     {"adr": "PAM",  "local": "PAMP.BA", "nombre": "Pampa Energía"},
+    "TGS":     {"adr": "TGS",  "local": "TGS.BA",  "nombre": "TGS"},
+    "TGS.BA":  {"adr": "TGS",  "local": "TGS.BA",  "nombre": "TGS"},
+    "TGN":     {"adr": None,   "local": "TGN.BA",  "nombre": "TGN"},
+    "TGN.BA":  {"adr": None,   "local": "TGN.BA",  "nombre": "TGN"},
+    "GGAL":    {"adr": "GGAL", "local": "GGAL.BA", "nombre": "Galicia"},
+    "GGAL.BA": {"adr": "GGAL", "local": "GGAL.BA", "nombre": "Galicia"},
+    "BMA":     {"adr": "BMA",  "local": "BMA.BA",  "nombre": "Macro"},
+    "BMA.BA":  {"adr": "BMA",  "local": "BMA.BA",  "nombre": "Macro"},
+    "CEPU":    {"adr": "CEPU", "local": "CEPU.BA", "nombre": "CEPU"},
+    "CEPU.BA": {"adr": "CEPU", "local": "CEPU.BA", "nombre": "CEPU"},
+}
+
+
+def get_ticker_adr(ticker: str) -> str:
+    """Retorna el ticker ADR si existe en el mapa, sino el ticker original."""
+    entry = TICKERS_AR.get(ticker.upper())
+    if entry and entry["adr"]:
+        return entry["adr"]
+    return ticker
+
+
+def get_ticker_local(ticker: str) -> str:
+    """Retorna el ticker local .BA si existe en el mapa, sino el ticker original."""
+    entry = TICKERS_AR.get(ticker.upper())
+    if entry:
+        return entry["local"]
+    return ticker
+
+
+def is_ticker_argentino(ticker: str) -> bool:
+    """True si el ticker está en el mapa de tickers argentinos."""
+    return ticker.upper() in TICKERS_AR
+
+
+# ---------------------------------------------------------------------------
 
 def formatear(valor, decimales=2, prefijo="", sufijo=""):
     """Formatea un número o devuelve N/A si es None."""
@@ -15,26 +59,86 @@ def formatear(valor, decimales=2, prefijo="", sufijo=""):
 
 
 def cargar_ticker(ticker):
-    """Carga datos básicos de un ticker."""
+    """Carga datos básicos de un ticker.
+
+    Para tickers argentinos:
+    - Fundamentals (PE, ROE, etc.) y nombre → ADR en NYSE (datos en USD)
+    - Precio actual → intenta .BA (ARS) vía history(); fallback al ADR (USD)
+    """
+    t_upper = ticker.upper()
+    es_ar = is_ticker_argentino(t_upper)
+
+    if es_ar:
+        _entry   = TICKERS_AR[t_upper]
+        _real_adr = _entry["adr"]              # None si no tiene ADR (TGN)
+        tk_local  = _entry["local"]            # p.ej. "PAMP.BA"
+        tk_adr    = _real_adr or tk_local      # lo que usamos para fundamentals
+
+        # Fundamentals y metadatos desde el ADR si existe, si no desde local
+        t_fund = yf.Ticker(tk_adr)
+        info   = t_fund.info
+
+        # Precio local en ARS vía history() — más robusto que info para .BA
+        precio_local = None
+        precio_moneda = None
+        try:
+            hist_local = yf.Ticker(tk_local).history(period="2d")
+            if not hist_local.empty:
+                precio_local  = float(hist_local["Close"].iloc[-1])
+                precio_moneda = "ARS"
+        except Exception:
+            pass
+
+        # Fallback: precio del ADR en USD
+        if precio_local is None:
+            precio_local  = info.get("currentPrice") or info.get("regularMarketPrice")
+            precio_moneda = info.get("currency", "USD") if precio_local else None
+
+        return {
+            "ticker":        ticker,
+            "ticker_adr":    _real_adr,
+            "ticker_local":  tk_local,
+            "es_argentino":  True,
+            "precio_moneda": precio_moneda,
+            "nombre":        info.get("longName") or TICKERS_AR[t_upper]["nombre"],
+            "sector":        info.get("sector",   "N/A"),
+            "industria":     info.get("industry", "N/A"),
+            "pais":          info.get("country",  "Argentina"),
+            "moneda":        info.get("currency", "USD"),
+            "precio_actual": precio_local,
+            "market_cap_b":  (info.get("marketCap") or 0) / 1e9,
+            "max_52w":       info.get("fiftyTwoWeekHigh"),
+            "min_52w":       info.get("fiftyTwoWeekLow"),
+            "pe":            info.get("trailingPE"),
+            "pb":            info.get("priceToBook"),
+            "roe":           info.get("returnOnEquity"),
+            "margen_op":     info.get("operatingMargins"),
+            "empleados":     info.get("fullTimeEmployees"),
+        }
+
+    # Ticker internacional — comportamiento original sin cambios
     t = yf.Ticker(ticker)
     info = t.info
-    
     return {
-        "ticker": ticker,
-        "nombre": info.get("longName", "N/A"),
-        "sector": info.get("sector", "N/A"),
-        "industria": info.get("industry", "N/A"),
-        "pais": info.get("country", "N/A"),
-        "moneda": info.get("currency", "N/A"),
+        "ticker":        ticker,
+        "ticker_adr":    None,
+        "ticker_local":  None,
+        "es_argentino":  False,
+        "precio_moneda": info.get("currency", "USD"),
+        "nombre":        info.get("longName", "N/A"),
+        "sector":        info.get("sector",   "N/A"),
+        "industria":     info.get("industry", "N/A"),
+        "pais":          info.get("country",  "N/A"),
+        "moneda":        info.get("currency", "N/A"),
         "precio_actual": info.get("currentPrice"),
-        "market_cap_b": (info.get("marketCap") or 0) / 1e9,
-        "max_52w": info.get("fiftyTwoWeekHigh"),
-        "min_52w": info.get("fiftyTwoWeekLow"),
-        "pe": info.get("trailingPE"),
-        "pb": info.get("priceToBook"),
-        "roe": info.get("returnOnEquity"),
-        "margen_op": info.get("operatingMargins"),
-        "empleados": info.get("fullTimeEmployees"),
+        "market_cap_b":  (info.get("marketCap") or 0) / 1e9,
+        "max_52w":       info.get("fiftyTwoWeekHigh"),
+        "min_52w":       info.get("fiftyTwoWeekLow"),
+        "pe":            info.get("trailingPE"),
+        "pb":            info.get("priceToBook"),
+        "roe":           info.get("returnOnEquity"),
+        "margen_op":     info.get("operatingMargins"),
+        "empleados":     info.get("fullTimeEmployees"),
     }
 
 

@@ -2,7 +2,7 @@
 import yfinance as yf
 import pandas as pd
 
-from src.datos import formatear
+from src.datos import formatear, get_ticker_adr
 
 
 def _pct(info, key):
@@ -13,7 +13,7 @@ def _pct(info, key):
 
 def estados_financieros(ticker, formato="resumido"):
     """Devuelve los 3 estados financieros principales."""
-    t = yf.Ticker(ticker)
+    t = yf.Ticker(get_ticker_adr(ticker))
     
     pl = t.financials
     balance = t.balance_sheet
@@ -110,7 +110,7 @@ def _cagr_de_serie(serie):
 
 def crecimiento_historico(ticker):
     """Calcula crecimiento de revenue, net income y FCF."""
-    t = yf.Ticker(ticker)
+    t = yf.Ticker(get_ticker_adr(ticker))
 
     pl = t.financials
     cf = t.cashflow
@@ -154,7 +154,7 @@ def crecimiento_historico(ticker):
 
 def ratios_avanzados(ticker):
     """15+ ratios organizados en 4 categorías."""
-    t = yf.Ticker(ticker)
+    t = yf.Ticker(get_ticker_adr(ticker))
     info = t.info
     
     return {
@@ -229,8 +229,8 @@ def comparar_peers(tickers, ratios_seleccionados=None):
     
     resultados = []
     for t in tickers:
-        r = ratios_avanzados(t)
-        fila = {"Ticker": t}
+        r = ratios_avanzados(t)   # internamente ya usa get_ticker_adr
+        fila = {"Ticker": t}      # label original (PAMP.BA, no PAM)
         for ratio in ratios_seleccionados:
             fila[ratio] = r.get(ratio)
         resultados.append(fila)
@@ -241,7 +241,7 @@ def comparar_peers(tickers, ratios_seleccionados=None):
 
 def fcf_historico(ticker):
     """Devuelve el Free Cash Flow histórico."""
-    t = yf.Ticker(ticker)
+    t = yf.Ticker(get_ticker_adr(ticker))
     cf = t.cashflow
     
     if cf.empty or "Free Cash Flow" not in cf.index:

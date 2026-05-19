@@ -479,10 +479,29 @@ with tab1:
     if not datos:
         st.info(f"👈 {ticker_error}")
     else:
+        # Badge Argentina: muestra relación ADR ↔ local si aplica
+        if datos.get('es_argentino'):
+            _adr_lbl   = datos.get('ticker_adr')   or "—"
+            _local_lbl = datos.get('ticker_local')  or "—"
+            _px_mon    = datos.get('precio_moneda') or "USD"
+            st.markdown(
+                f"<span style='background:#DBEAFE;color:#1E40AF;padding:4px 10px;"
+                f"border-radius:14px;font-size:12px;font-weight:600;'>"
+                f"🇦🇷 ADR: {_adr_lbl} · Local: {_local_lbl} · "
+                f"Precio {_px_mon} · Fundamentals USD</span>",
+                unsafe_allow_html=True,
+            )
+            st.write("")
+
         col1, col2, col3, col4 = st.columns(4)
 
         precio = datos.get('precio_actual')
-        col1.metric("Precio", f"${precio:.2f}" if precio else "N/A")
+        _px_mon_label = datos.get('precio_moneda', 'USD')
+        _px_sym = "$" if _px_mon_label in ("USD", "ARS") else _px_mon_label + " "
+        col1.metric(
+            f"Precio ({_px_mon_label})",
+            f"{_px_sym}{precio:.2f}" if precio else "N/A",
+        )
 
         mcap = datos.get('market_cap_b', 0)
         col2.metric("Mkt Cap", f"${mcap:.1f}B" if mcap else "N/A")
@@ -499,7 +518,10 @@ with tab1:
 
         with col_a:
             st.subheader("📋 Detalles")
-            st.write(f"**Moneda:** {datos.get('moneda', 'N/A')}")
+            _moneda_display = datos.get('moneda', 'N/A')
+            if datos.get('es_argentino') and datos.get('precio_moneda') == 'ARS':
+                _moneda_display = f"ARS (precio local) · USD (fundamentals)"
+            st.write(f"**Moneda:** {_moneda_display}")
 
             empleados = datos.get('empleados')
             if empleados:
