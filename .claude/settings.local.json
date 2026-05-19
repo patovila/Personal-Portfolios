@@ -26,7 +26,8 @@
       "Bash(python -m py_compile src/datos.py)",
       "Bash(python -m py_compile src/fundamentals.py)",
       "Bash(findstr /V \"HTTP 404\")",
-      "Bash(python -m py_compile src/datos.py src/fundamentals.py src/dcf.py app.py)"
+      "Bash(python -m py_compile src/datos.py src/fundamentals.py src/dcf.py app.py)",
+      "Bash(python -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\)\\) or print\\(f'OK: {f}'\\) for f in ['src/datos.py','src/fundamentals.py','app.py']]\")"
     ]
   }
 }
