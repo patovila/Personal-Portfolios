@@ -2080,7 +2080,7 @@ with tab6:
     import plotly.graph_objects as _go6
     import pandas as _pd6
     from datetime import datetime as _dt6, timedelta as _td6
-    from src.macro import get_riesgo_pais, get_dolar_historico
+    from src.macro import get_riesgo_pais, get_dolar_historico, get_tasas_bcra
     from src.dolar import get_cotizaciones as _get_cots6, format_cotizacion as _fmt_cot6
 
     st.subheader("🇦🇷 Indicadores macro Argentina")
@@ -2089,6 +2089,9 @@ with tab6:
     st.markdown("### 📊 Indicadores del día")
 
     _m6c1, _m6c2, _m6c3, _m6c4 = st.columns(4)
+
+    # Cargar tasas una vez para usar en métricas y en la tabla de la sección 4
+    _tasas6 = get_tasas_bcra()
 
     # Riesgo País
     _rp_all = get_riesgo_pais()
@@ -2110,23 +2113,32 @@ with tab6:
             st.metric("Riesgo País (EMBI)", "—")
             st.caption("No disponible")
 
-    # Tasa política monetaria
+    # Tasa de referencia depósitos 30d (proxy tasa política monetaria)
     with _m6c2:
-        st.metric(
-            "Tasa Política BCRA",
-            "—",
-            help="API BCRA actualmente fuera de servicio",
+        _tp = _tasas6["tasa_politica"]
+        _tp_fecha = _tasas6.get("tasa_politica_fecha")
+        _tp_label = f"Dep. 30d BCRA — {_tp_fecha[5:] if _tp_fecha else 'fallback'}"
+        _tp_help = (
+            "Tasa de depósitos a 30 días del BCRA (proxy de tasa de referencia). "
+            "Fuente: argentinadatos.com"
+            if not _tasas6["fallback"] else
+            "Dato hardcodeado (API no disponible). Actualizar manualmente si cambia mucho."
         )
-        st.caption("API BCRA no disponible")
+        st.metric(_tp_label, f"{_tp:.1f}% TNA", help=_tp_help)
+        if _tasas6["fallback"] and _tasas6.get("tasa_politica_fecha") is None:
+            st.caption("⚠ Valor de referencia")
 
-    # Tasa plazo fijo 30d
+    # Tasa plazo fijo 30d (promedio entidades privadas)
     with _m6c3:
-        st.metric(
-            "Tasa Plazo Fijo 30d",
-            "—",
-            help="API BCRA actualmente fuera de servicio",
+        _tpf = _tasas6["tasa_plazo_fijo"]
+        _tpf_help = (
+            "Promedio TNA clientes de 30 entidades (argentinadatos.com/v1/finanzas/tasas/plazoFijo)."
+            if not _tasas6["fallback"] else
+            "Dato hardcodeado (API no disponible). Actualizar manualmente si cambia mucho."
         )
-        st.caption("API BCRA no disponible")
+        st.metric("Plazo Fijo 30d (prom.)", f"{_tpf:.1f}% TNA", help=_tpf_help)
+        if _tasas6["fallback"] and _tasas6.get("tasa_plazo_fijo") == 32.0:
+            st.caption("⚠ Valor de referencia")
 
     # Brecha cambiaria blue/oficial
     with _m6c4:
@@ -2288,33 +2300,45 @@ with tab6:
     # ── SECCIÓN 4: TASAS ──────────────────────────────────────────────────────
     st.markdown("### 📋 Tasas de referencia")
 
-    st.info(
-        "La API del BCRA (v3) fue deprecada y no hay alternativa pública disponible actualmente. "
-        "Cuando el servicio se restaure, las tasas se actualizarán automáticamente.",
-        icon="ℹ️",
-    )
+    if _tasas6["fallback"]:
+        st.warning(
+            "⚠ Algunos datos son valores de referencia hardcodeados "
+            "(API argentinadatos.com no disponible temporalmente). "
+            "Actualizá manualmente en src/macro.py si la tasa cambia mucho.",
+        )
+
+    def _tea_mensual(tna_pct):
+        return ((1 + tna_pct / 100 / 12) ** 12 - 1) * 100
+
+    def _tea_diaria(tna_pct):
+        return ((1 + tna_pct / 100 / 365) ** 365 - 1) * 100
+
+    _tp_val  = _tasas6["tasa_politica"]
+    _tpf_val = _tasas6["tasa_plazo_fijo"]
+    _tp_fecha_str = _tasas6.get("tasa_politica_fecha") or "referencia"
+    _es_fb = _tasas6["fallback"]
 
     _tasas_data = [
         {
-            "Instrumento":    "Tasa Política Monetaria (BCRA)",
-            "TNA actual":     "—",
-            "TEA equivalente": "—",
-            "Periodicidad":   "Anual",
-            "Fuente":         "BCRA API (no disponible)",
+            "Instrumento":     f"Depósitos 30d BCRA ({_tp_fecha_str})",
+            "TNA actual":      f"{_tp_val:.2f}%",
+            "TEA equivalente": f"{_tea_mensual(_tp_val):.2f}%",
+            "Capitalización":  "Mensual",
+            "Fuente":          "argentinadatos.com" if not _es_fb else "⚠ Hardcodeado",
         },
         {
-            "Instrumento":    "Plazo Fijo 30d (TNA promedio)",
-            "TNA actual":     "—",
-            "TEA equivalente": "—",
-            "Periodicidad":   "30 días",
-            "Fuente":         "BCRA API (no disponible)",
+            "Instrumento":     "Plazo Fijo 30d (prom. entidades)",
+            "TNA actual":      f"{_tpf_val:.2f}%",
+            "TEA equivalente": f"{_tea_mensual(_tpf_val):.2f}%",
+            "Capitalización":  "Mensual",
+            "Fuente":          "argentinadatos.com" if not _es_fb else "⚠ Hardcodeado",
         },
         {
-            "Instrumento":    "FCI Money Market",
-            "TNA actual":     "—",
-            "TEA equivalente": "—",
-            "Periodicidad":   "Diaria",
-            "Fuente":         "BCRA API (no disponible)",
+            "Instrumento":     "FCI Money Market (referencia)",
+            "TNA actual":      f"{_tpf_val:.2f}%",
+            "TEA equivalente": f"{_tea_diaria(_tpf_val):.2f}%",
+            "Capitalización":  "Diaria",
+            "Fuente":          "Estimado (misma TNA que plazo fijo)",
         },
     ]
     st.dataframe(
@@ -2322,7 +2346,9 @@ with tab6:
         use_container_width=True,
         hide_index=True,
     )
-    st.caption("TEA = (1 + TNA/365)^365 − 1 para capitalización diaria | (1 + TNA/12)^12 − 1 para mensual")
+    st.caption(
+        "TEA mensual = (1 + TNA/12)^12 − 1 | TEA diaria = (1 + TNA/365)^365 − 1"
+    )
 
     st.markdown("#### Calculadora rápida TNA → TEA")
     st.caption("Ingresá una tasa manualmente para calcular el equivalente anual efectivo.")
