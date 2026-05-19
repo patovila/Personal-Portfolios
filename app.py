@@ -2092,6 +2092,13 @@ with tab6:
 
     # Cargar tasas una vez para usar en métricas y en la tabla de la sección 4
     _tasas6 = get_tasas_bcra()
+    if _tasas6 is None:
+        _tasas6 = {
+            "tasa_politica": None,
+            "tasa_politica_fecha": None,
+            "tasa_plazo_fijo": None,
+            "fallback": True,
+        }
 
     # Riesgo País
     _rp_all = get_riesgo_pais()
@@ -2117,15 +2124,19 @@ with tab6:
     with _m6c2:
         _tp = _tasas6["tasa_politica"]
         _tp_fecha = _tasas6.get("tasa_politica_fecha")
-        _tp_label = f"Dep. 30d BCRA — {_tp_fecha[5:] if _tp_fecha else 'fallback'}"
+        _tp_label = f"Dep. 30d BCRA — {_tp_fecha[5:] if _tp_fecha else 'N/D'}"
         _tp_help = (
             "Tasa de depósitos a 30 días del BCRA (proxy de tasa de referencia). "
             "Fuente: argentinadatos.com"
             if not _tasas6["fallback"] else
             "Dato hardcodeado (API no disponible). Actualizar manualmente si cambia mucho."
         )
-        st.metric(_tp_label, f"{_tp:.1f}% TNA", help=_tp_help)
-        if _tasas6["fallback"] and _tasas6.get("tasa_politica_fecha") is None:
+        st.metric(
+            _tp_label,
+            f"{_tp:.1f}% TNA" if _tp is not None else "—",
+            help=_tp_help,
+        )
+        if _tasas6["fallback"]:
             st.caption("⚠ Valor de referencia")
 
     # Tasa plazo fijo 30d (promedio entidades privadas)
@@ -2136,8 +2147,12 @@ with tab6:
             if not _tasas6["fallback"] else
             "Dato hardcodeado (API no disponible). Actualizar manualmente si cambia mucho."
         )
-        st.metric("Plazo Fijo 30d (prom.)", f"{_tpf:.1f}% TNA", help=_tpf_help)
-        if _tasas6["fallback"] and _tasas6.get("tasa_plazo_fijo") == 32.0:
+        st.metric(
+            "Plazo Fijo 30d (prom.)",
+            f"{_tpf:.1f}% TNA" if _tpf is not None else "—",
+            help=_tpf_help,
+        )
+        if _tasas6["fallback"]:
             st.caption("⚠ Valor de referencia")
 
     # Brecha cambiaria blue/oficial
@@ -2318,25 +2333,34 @@ with tab6:
     _tp_fecha_str = _tasas6.get("tasa_politica_fecha") or "referencia"
     _es_fb = _tasas6["fallback"]
 
+    def _fmt_tna(v):
+        return f"{v:.2f}%" if v is not None else "—"
+
+    def _fmt_tea_m(v):
+        return f"{_tea_mensual(v):.2f}%" if v is not None else "—"
+
+    def _fmt_tea_d(v):
+        return f"{_tea_diaria(v):.2f}%" if v is not None else "—"
+
     _tasas_data = [
         {
             "Instrumento":     f"Depósitos 30d BCRA ({_tp_fecha_str})",
-            "TNA actual":      f"{_tp_val:.2f}%",
-            "TEA equivalente": f"{_tea_mensual(_tp_val):.2f}%",
+            "TNA actual":      _fmt_tna(_tp_val),
+            "TEA equivalente": _fmt_tea_m(_tp_val),
             "Capitalización":  "Mensual",
             "Fuente":          "argentinadatos.com" if not _es_fb else "⚠ Hardcodeado",
         },
         {
             "Instrumento":     "Plazo Fijo 30d (prom. entidades)",
-            "TNA actual":      f"{_tpf_val:.2f}%",
-            "TEA equivalente": f"{_tea_mensual(_tpf_val):.2f}%",
+            "TNA actual":      _fmt_tna(_tpf_val),
+            "TEA equivalente": _fmt_tea_m(_tpf_val),
             "Capitalización":  "Mensual",
             "Fuente":          "argentinadatos.com" if not _es_fb else "⚠ Hardcodeado",
         },
         {
             "Instrumento":     "FCI Money Market (referencia)",
-            "TNA actual":      f"{_tpf_val:.2f}%",
-            "TEA equivalente": f"{_tea_diaria(_tpf_val):.2f}%",
+            "TNA actual":      _fmt_tna(_tpf_val),
+            "TEA equivalente": _fmt_tea_d(_tpf_val),
             "Capitalización":  "Diaria",
             "Fuente":          "Estimado (misma TNA que plazo fijo)",
         },
