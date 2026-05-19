@@ -464,13 +464,14 @@ else:
     st.header("Mi Bloomberg Personal")
     st.caption(ticker_error or "")
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🏢 Ficha",
     "📊 Fundamental",
     "📈 Tecnico",
     "🗂️ Mi Portfolio",
     "🧮 Calculadoras",
     "🇦🇷 Macro Argentina",
+    "📐 DCF & Valuación",
 ])
 
 # TAB 1: FICHA
@@ -2396,3 +2397,436 @@ with tab6:
         else:
             _tea_calc = ((1 + _tna_input / 100 / 12) ** 12 - 1) * 100
         st.metric("TEA resultante", f"{_tea_calc:.2f}%")
+
+# TAB 7: DCF & VALUACIÓN
+with tab7:
+    if not datos:
+        st.info("👈 Escribí un ticker en el buscador para iniciar el DCF.")
+    else:
+        import plotly.graph_objects as _go7
+        import pandas as _pd7
+        from src.dcf import (
+            get_datos_base_dcf, calcular_dcf as _calc_dcf,
+            tabla_sensibilidad as _tabla_sens,
+            calcular_escenarios as _calc_esc,
+        )
+
+        st.subheader(f"📐 DCF & Valuación — {ticker}")
+        st.caption(
+            "Descuento de Flujos de Caja (DCF). Valores en USD salvo indicación. "
+            "Los sliders actualizan los resultados en tiempo real."
+        )
+
+        # ── SECCIÓN 1: DATOS BASE ─────────────────────────────────────────────
+        st.markdown("### 📋 Datos base")
+
+        if st.button("🔄 Recargar datos", key="dcf_reload_btn"):
+            get_datos_base_dcf.clear()
+
+        _db7 = get_datos_base_dcf(ticker)
+
+        if _db7 is None:
+            st.error(
+                "No se pudieron cargar los datos base desde yfinance. "
+                "Verificá el ticker o tu conexión."
+            )
+        else:
+            _cur7 = _db7.get("currency", "USD")
+            _sym7 = "$"
+
+            _db_c1, _db_c2, _db_c3, _db_c4, _db_c5 = st.columns(5)
+
+            _fcf7_raw = _db7.get("fcf_base")
+            _fcf7_anio = _db7.get("fcf_anio", "")
+            _fcf7_neg  = _db7.get("fcf_negativo", False) or _fcf7_raw is None
+            _fcf7_fmt  = f"{_sym7}{_fcf7_raw/1e9:.3f}B" if _fcf7_raw is not None else "N/D"
+
+            _db_c1.metric(
+                f"FCF {_fcf7_anio} ({_cur7})",
+                _fcf7_fmt,
+                help="Free Cash Flow del estado de flujos. Si es negativo, ingresalo manualmente abajo.",
+            )
+            if _fcf7_neg:
+                _db_c1.caption("⚠ FCF ≤ 0")
+
+            _sh7_raw = _db7.get("shares")
+            _db_c2.metric(
+                "Shares outstanding",
+                f"{_sh7_raw/1e6:.1f}M" if _sh7_raw else "N/D",
+            )
+
+            _px7 = _db7.get("precio_actual")
+            _db_c3.metric("Precio actual", f"${_px7:.2f}" if _px7 else "N/D")
+
+            _deu7_raw = _db7.get("deuda") or 0
+            _csh7_raw = _db7.get("cash") or 0
+            _dn7 = _deu7_raw - _csh7_raw
+            _db_c4.metric(
+                f"Deuda neta ({_cur7})",
+                f"{_sym7}{_dn7/1e9:.2f}B",
+                delta="Deuda − Cash",
+                delta_color="off",
+            )
+
+            _beta7 = _db7.get("beta")
+            _db_c5.metric("Beta", f"{_beta7:.2f}" if _beta7 else "N/D")
+
+            # Historial FCF si hay más de un año
+            _fcf7_serie = _db7.get("fcf_serie", {})
+            if len(_fcf7_serie) > 1:
+                _hist_str = " | ".join(
+                    f"{yr}: ${v/1e9:.2f}B" for yr, v in sorted(_fcf7_serie.items(), reverse=True)
+                )
+                st.caption(f"Historial FCF: {_hist_str} ({_cur7})")
+
+            st.caption(
+                "Datos auto-cargados desde yfinance. "
+                "Podés editarlos manualmente en los supuestos de abajo."
+            )
+
+            st.divider()
+
+            # ── SECCIÓN 2: SUPUESTOS ──────────────────────────────────────────
+            st.markdown("### ⚙️ Supuestos")
+
+            # Años de proyección antes de los sliders (determina si mostrar g2)
+            _años7 = st.radio(
+                "Años de proyección",
+                [5, 10],
+                index=1,
+                horizontal=True,
+                key="dcf_años",
+            )
+
+            _s2c1, _s2c2, _s2c3 = st.columns(3)
+
+            with _s2c1:
+                st.markdown("**Crecimiento FCF**")
+
+                if _fcf7_neg:
+                    st.warning(
+                        "FCF negativo o no disponible. "
+                        f"Último registrado: {_fcf7_fmt}. "
+                        "Ingresá un valor base normalizado:"
+                    )
+                    _fcf7_manual = st.number_input(
+                        f"FCF base ({_cur7}, en millones)",
+                        min_value=1.0,
+                        value=max(abs(_fcf7_raw) / 1e6, 10.0) if _fcf7_raw else 100.0,
+                        step=10.0,
+                        format="%.1f",
+                        key="dcf_fcf_manual",
+                        help="Ingresá el FCF normalizado que usarás como punto de partida.",
+                    )
+                    _fcf7_usar = _fcf7_manual * 1e6
+                else:
+                    _fcf7_usar = _fcf7_raw
+
+                _g1_7 = st.slider(
+                    "Crecimiento años 1–5 (%)",
+                    min_value=0, max_value=50, value=15, step=1,
+                    key="dcf_g1",
+                ) / 100
+
+                if _años7 == 10:
+                    _g2_7 = st.slider(
+                        "Crecimiento años 6–10 (%)",
+                        min_value=0, max_value=30, value=8, step=1,
+                        key="dcf_g2",
+                    ) / 100
+                else:
+                    _g2_7 = _g1_7
+                    st.caption(f"Con 5 años se usa {_g1_7*100:.0f}% todo el período.")
+
+            with _s2c2:
+                st.markdown("**Tasas de descuento**")
+                _wacc7 = st.slider(
+                    "WACC / Tasa de descuento (%)",
+                    min_value=5, max_value=25, value=10, step=1,
+                    key="dcf_wacc",
+                ) / 100
+                _tg7 = st.slider(
+                    "Tasa terminal / perpetuidad (%)",
+                    min_value=1, max_value=6, value=3, step=1,
+                    key="dcf_tg",
+                ) / 100
+
+            with _s2c3:
+                st.markdown("**Otros**")
+                _margen7 = st.slider(
+                    "Margen de seguridad (%)",
+                    min_value=0, max_value=40, value=20, step=5,
+                    key="dcf_margen",
+                ) / 100
+
+                # Shares: manual si no viene de yfinance
+                if not _sh7_raw:
+                    st.warning("Shares no disponibles — ingresá manualmente:")
+                    _sh7_usar = st.number_input(
+                        "Shares (millones)",
+                        min_value=0.1, value=100.0, step=10.0,
+                        key="dcf_shares_manual",
+                    ) * 1e6
+                else:
+                    _sh7_usar = _sh7_raw
+
+            # Validación WACC > tg
+            if _wacc7 <= _tg7:
+                st.error(
+                    f"WACC ({_wacc7*100:.0f}%) debe ser mayor que la tasa terminal "
+                    f"({_tg7*100:.0f}%). Ajustá los sliders para continuar."
+                )
+            else:
+                st.divider()
+
+                # ── CÁLCULO CENTRAL ───────────────────────────────────────────
+                try:
+                    _res7 = _calc_dcf(
+                        _fcf7_usar, _g1_7, _g2_7, _wacc7, _tg7,
+                        _años7, _sh7_usar, _deu7_raw, _csh7_raw,
+                    )
+                    _vi7 = _res7["valor_intrinseco"]
+                    _vi7_ms = _vi7 * (1 - _margen7) if _vi7 is not None else None
+                    _up7 = ((_vi7 - _px7) / _px7 * 100) if (_vi7 and _px7) else None
+                except Exception as _e_dcf:
+                    st.error(f"Error en el cálculo DCF: {_e_dcf}")
+                    _res7 = None
+                    _vi7 = _vi7_ms = _up7 = None
+
+                # ── SECCIÓN 3: RESULTADO PRINCIPAL ───────────────────────────
+                st.markdown("### 🎯 Resultado")
+
+                _r1, _r2, _r3, _r4 = st.columns(4)
+
+                _r1.metric(
+                    "Valor intrínseco",
+                    f"${_vi7:.2f}" if _vi7 is not None else "—",
+                    help="DCF sin margen de seguridad.",
+                )
+                _r2.metric(
+                    f"Con margen {int(_margen7*100)}%",
+                    f"${_vi7_ms:.2f}" if _vi7_ms is not None else "—",
+                    help="Precio máximo de entrada con margen de seguridad aplicado.",
+                )
+                _r3.metric("Precio mercado", f"${_px7:.2f}" if _px7 else "—")
+
+                if _up7 is not None:
+                    _r4.metric(
+                        "Upside / Downside",
+                        f"{_up7:+.1f}%",
+                        delta=f"{_up7:+.1f}%",
+                        delta_color="normal" if _up7 >= 0 else "inverse",
+                    )
+                else:
+                    _r4.metric("Upside / Downside", "—")
+
+                # Veredicto
+                if _up7 is not None:
+                    if _up7 > _margen7 * 100:
+                        st.success(
+                            f"SUBVALUADA — Upside {_up7:.1f}% supera el margen de seguridad "
+                            f"({_margen7*100:.0f}%). Precio de entrada sugerido: "
+                            f"≤ ${_vi7_ms:.2f}."
+                        )
+                    elif _up7 > -10:
+                        st.info(
+                            f"EN PRECIO JUSTO — Upside {_up7:+.1f}%. "
+                            "El precio de mercado está cerca del valor intrínseco calculado."
+                        )
+                    else:
+                        st.error(
+                            f"SOBREVALUADA — Downside {abs(_up7):.1f}% según estos supuestos. "
+                            "Revisá si los supuestos de crecimiento son realistas."
+                        )
+
+                # Desglose
+                if _res7:
+                    with st.expander("Ver desglose del valor empresa"):
+                        _dx1, _dx2, _dx3, _dx4 = st.columns(4)
+                        _dx1.metric("VP flujos", f"${_res7['suma_vp_flujos']/1e9:.2f}B")
+                        _dx2.metric("VP valor terminal", f"${_res7['vp_terminal']/1e9:.2f}B")
+                        _dx3.metric("Deuda neta", f"${_res7['deuda_neta']/1e9:.2f}B")
+                        _vt_pct = _res7["vp_terminal"] / _res7["valor_empresa"] * 100 if _res7["valor_empresa"] else 0
+                        _dx4.metric("% Valor terminal / EV", f"{_vt_pct:.1f}%",
+                                    help="Un % muy alto (>80%) indica que el resultado depende mucho de supuestos lejanos.")
+
+                st.divider()
+
+                # ── SECCIÓN 4: ESCENARIOS ─────────────────────────────────────
+                st.markdown("### 🔭 Escenarios Bull / Base / Bear")
+
+                try:
+                    _esc7 = _calc_esc(
+                        _fcf7_usar, _g1_7, _g2_7, _wacc7, _tg7,
+                        _años7, _sh7_usar, _deu7_raw, _csh7_raw,
+                    )
+
+                    _esc_defs = [
+                        ("bull", "🐂 Bull",  "#DCFCE7", "#166534"),
+                        ("base", "📊 Base",  "#DBEAFE", "#1E40AF"),
+                        ("bear", "🐻 Bear",  "#FEE2E2", "#991B1B"),
+                    ]
+                    _esc_cols = st.columns(3)
+
+                    for (_key, _lbl, _bg, _fg), _col in zip(_esc_defs, _esc_cols):
+                        _e = _esc7[_key]
+                        _e_vi = _e.get("valor_intrinseco")
+                        _e_up = (
+                            (_e_vi - _px7) / _px7 * 100
+                            if (_e_vi is not None and _px7)
+                            else None
+                        )
+                        with _col:
+                            st.markdown(
+                                f"""<div style="background:{_bg};border-radius:8px;
+padding:16px 18px;border:1px solid {_fg}33;margin-bottom:6px;">
+<div style="font-size:17px;font-weight:700;color:{_fg};">{_lbl}</div>
+<div style="margin-top:10px;font-size:13px;color:#374151;line-height:1.7;">
+Crecimiento (1-5): <b>{_e['g1_usado']*100:.1f}%</b><br>
+WACC: <b>{_e['wacc_usado']*100:.1f}%</b><br>
+Valor intrínseco: <b>{'${:.2f}'.format(_e_vi) if _e_vi is not None else '—'}</b><br>
+Upside/Downside: <b>{'{:+.1f}%'.format(_e_up) if _e_up is not None else '—'}</b>
+</div></div>""",
+                                unsafe_allow_html=True,
+                            )
+                except Exception as _e_esc:
+                    st.warning(f"No se pudieron calcular escenarios: {_e_esc}")
+
+                st.divider()
+
+                # ── SECCIÓN 5: SENSIBILIDAD ───────────────────────────────────
+                st.markdown("### 📊 Sensibilidad: Valor intrínseco según WACC y Crecimiento")
+
+                try:
+                    _df_sens7 = _tabla_sens(
+                        _fcf7_usar, _g1_7, _g2_7, _wacc7, _tg7,
+                        _años7, _sh7_usar, _deu7_raw, _csh7_raw,
+                    )
+
+                    _z7   = _df_sens7.values.tolist()
+                    _x7   = list(_df_sens7.columns)
+                    _y7   = list(_df_sens7.index)
+
+                    # Texto para cada celda
+                    _txt7 = [
+                        [f"${v:.2f}" if v is not None else "N/D" for v in row]
+                        for row in _z7
+                    ]
+
+                    _fig_sens7 = _go7.Figure(_go7.Heatmap(
+                        z=_z7,
+                        x=_x7,
+                        y=_y7,
+                        colorscale="RdYlGn",
+                        text=_txt7,
+                        texttemplate="%{text}",
+                        showscale=True,
+                        colorbar=dict(title="USD/acc."),
+                        hovertemplate=(
+                            "Crecimiento: %{x}<br>WACC: %{y}<br>"
+                            "Valor intrínseco: %{text}<extra></extra>"
+                        ),
+                    ))
+
+                    # Celda actual = centro (índice 2, 2 en la matriz 5×5)
+                    _fig_sens7.add_shape(
+                        type="rect",
+                        xref="x", yref="y",
+                        x0=1.5, x1=2.5,   # columna índice 2 ± 0.5
+                        y0=1.5, y1=2.5,   # fila índice 2 ± 0.5
+                        line=dict(color="#2563EB", width=3),
+                        fillcolor="rgba(0,0,0,0)",
+                    )
+
+                    _fig_sens7.update_layout(
+                        xaxis_title="Tasa crecimiento años 1–5",
+                        yaxis_title="WACC",
+                        height=360,
+                        template="plotly_white",
+                        margin=dict(l=60, r=20, t=20, b=60),
+                    )
+                    st.plotly_chart(_fig_sens7, use_container_width=True)
+                    st.caption(
+                        "Celda enmarcada en azul = supuestos actuales. "
+                        "Verde = mayor valor intrínseco, Rojo = menor valor."
+                    )
+
+                except Exception as _e_sens:
+                    st.warning(f"No se pudo generar la tabla de sensibilidad: {_e_sens}")
+
+                st.divider()
+
+                # ── SECCIÓN 6: FLUJOS PROYECTADOS ────────────────────────────
+                st.markdown("### 📈 Flujos de caja proyectados y descontados")
+
+                if _res7:
+                    try:
+                        _fl7   = _res7["flujos"]
+                        _labs7 = [f"Año {f['año']}" for f in _fl7] + ["Val. Terminal"]
+                        _fcf7p = [f["fcf_proyectado"] / 1e9 for f in _fl7] + [_res7["valor_terminal"] / 1e9]
+                        _vp7p  = [f["valor_presente"] / 1e9 for f in _fl7] + [_res7["vp_terminal"] / 1e9]
+
+                        _fig_fl7 = _go7.Figure()
+
+                        # Barras FCF proyectado
+                        _cols_barras7 = ["#2563EB"] * len(_fl7) + ["#8B5CF6"]
+                        _fig_fl7.add_trace(_go7.Bar(
+                            x=_labs7,
+                            y=_fcf7p,
+                            name="FCF proyectado",
+                            marker_color=_cols_barras7,
+                            opacity=0.75,
+                            hovertemplate="%{x}<br>FCF: $%{y:.3f}B<extra></extra>",
+                        ))
+
+                        # Línea valor presente
+                        _fig_fl7.add_trace(_go7.Scatter(
+                            x=_labs7,
+                            y=_vp7p,
+                            mode="lines+markers",
+                            name="Valor presente (descontado)",
+                            line=dict(color="#16A34A", width=2.5),
+                            marker=dict(size=7),
+                            hovertemplate="%{x}<br>VP: $%{y:.3f}B<extra></extra>",
+                        ))
+
+                        _fig_fl7.update_layout(
+                            xaxis_title="Período",
+                            yaxis_title=f"USD Billones ({_cur7})",
+                            template="plotly_white",
+                            height=420,
+                            hovermode="x unified",
+                            margin=dict(l=20, r=20, t=20, b=20),
+                            legend=dict(
+                                orientation="h", yanchor="bottom",
+                                y=1.02, xanchor="right", x=1,
+                            ),
+                        )
+                        st.plotly_chart(_fig_fl7, use_container_width=True)
+
+                        # Tabla detalle
+                        with st.expander("Ver tabla de flujos"):
+                            _df_fl7 = _pd7.DataFrame(_fl7)
+                            _df_fl7["FCF proy. (B)"] = _df_fl7["fcf_proyectado"] / 1e9
+                            _df_fl7["VP (B)"]        = _df_fl7["valor_presente"]  / 1e9
+                            st.dataframe(
+                                _df_fl7[["año", "FCF proy. (B)", "VP (B)"]]
+                                .rename(columns={"año": "Año"})
+                                .style.format({
+                                    "FCF proy. (B)": "${:.3f}",
+                                    "VP (B)":        "${:.3f}",
+                                }),
+                                use_container_width=True,
+                                hide_index=True,
+                            )
+
+                    except Exception as _e_fl7:
+                        st.warning(f"No se pudo graficar flujos: {_e_fl7}")
+
+                st.caption(
+                    f"DCF | FCF base: {_sym7}{_fcf7_usar/1e9:.3f}B ({_cur7}) | "
+                    f"WACC: {_wacc7*100:.0f}% | "
+                    f"Crecimiento: {_g1_7*100:.0f}% / {_g2_7*100:.0f}% | "
+                    f"Tasa terminal: {_tg7*100:.0f}% | {_años7} años. "
+                    "Análisis educativo — no es recomendación de inversión."
+                )
