@@ -19,7 +19,9 @@
       "Bash(git remote *)",
       "Bash(git push *)",
       "Bash(python -c ' *)",
-      "Bash(python -c \"import src.graficos as g; print\\([x for x in dir\\(g\\) if not x.startswith\\('_'\\)]\\)\")"
+      "Bash(python -c \"import src.graficos as g; print\\([x for x in dir\\(g\\) if not x.startswith\\('_'\\)]\\)\")",
+      "Bash(python -m py_compile app.py)",
+      "Bash(python -m py_compile src/macro.py)"
     ]
   }
 }
