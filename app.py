@@ -496,21 +496,28 @@ with tab1:
         col1, col2, col3, col4 = st.columns(4)
 
         precio = datos.get('precio_actual')
-        _px_mon_label = datos.get('precio_moneda', 'USD')
-        _px_sym = "$" if _px_mon_label in ("USD", "ARS") else _px_mon_label + " "
-        col1.metric(
-            f"Precio ({_px_mon_label})",
-            f"{_px_sym}{precio:.2f}" if precio else "N/A",
-        )
+        mcap   = datos.get('market_cap_b', 0)
+        pe     = datos.get('pe')
+        roe    = datos.get('roe')
 
-        mcap = datos.get('market_cap_b', 0)
-        col2.metric("Mkt Cap", f"${mcap:.1f}B" if mcap else "N/A")
-
-        pe = datos.get('pe')
-        col3.metric("PE", f"{pe:.1f}" if pe else "N/A")
-
-        roe = datos.get('roe')
-        col4.metric("ROE", f"{roe*100:.1f}%" if roe else "N/A")
+        if datos.get('es_argentino'):
+            # col1: precio ARS (.BA)  col2: precio ADR USD  col3: Mkt Cap USD  col4: PE
+            col1.metric("Precio (ARS)", f"${precio:.2f}" if precio else "N/A")
+            _px_adr = datos.get('precio_adr_usd')
+            if _px_adr:
+                col2.metric("Precio ADR (USD)", f"${_px_adr:.2f}")
+            col3.metric("Mkt Cap (USD)", f"${mcap:.1f}B" if mcap else "N/A")
+            col4.metric("PE", f"{pe:.1f}" if pe else "N/A")
+        else:
+            _px_mon_label = datos.get('precio_moneda', 'USD')
+            _px_sym = "$" if _px_mon_label in ("USD", "ARS") else _px_mon_label + " "
+            col1.metric(
+                f"Precio ({_px_mon_label})",
+                f"{_px_sym}{precio:.2f}" if precio else "N/A",
+            )
+            col2.metric("Mkt Cap", f"${mcap:.1f}B" if mcap else "N/A")
+            col3.metric("PE", f"{pe:.1f}" if pe else "N/A")
+            col4.metric("ROE", f"{roe*100:.1f}%" if roe else "N/A")
 
         st.divider()
 

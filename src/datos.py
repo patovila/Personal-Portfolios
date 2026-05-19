@@ -94,19 +94,25 @@ def cargar_ticker(ticker):
             precio_local  = info.get("currentPrice") or info.get("regularMarketPrice")
             precio_moneda = info.get("currency", "USD") if precio_local else None
 
+        # Precio ADR en USD y Mkt Cap calculado price×shares (evita mezcla ARS/USD de Yahoo)
+        _px_usd     = info.get("currentPrice") or info.get("regularMarketPrice")
+        _shares_out = info.get("sharesOutstanding")
+        _mcap_b     = (_shares_out * _px_usd / 1e9) if (_shares_out and _px_usd) else (info.get("marketCap") or 0) / 1e9
+
         return {
-            "ticker":        ticker,
-            "ticker_adr":    _real_adr,
-            "ticker_local":  tk_local,
-            "es_argentino":  True,
-            "precio_moneda": precio_moneda,
-            "nombre":        info.get("longName") or TICKERS_AR[t_upper]["nombre"],
-            "sector":        info.get("sector",   "N/A"),
-            "industria":     info.get("industry", "N/A"),
-            "pais":          info.get("country",  "Argentina"),
-            "moneda":        info.get("currency", "USD"),
-            "precio_actual": precio_local,
-            "market_cap_b":  (info.get("marketCap") or 0) / 1e9,
+            "ticker":         ticker,
+            "ticker_adr":     _real_adr,
+            "ticker_local":   tk_local,
+            "es_argentino":   True,
+            "precio_moneda":  precio_moneda,
+            "precio_adr_usd": _px_usd if _real_adr else None,
+            "nombre":         info.get("longName") or TICKERS_AR[t_upper]["nombre"],
+            "sector":         info.get("sector",   "N/A"),
+            "industria":      info.get("industry", "N/A"),
+            "pais":           info.get("country",  "Argentina"),
+            "moneda":         info.get("currency", "USD"),
+            "precio_actual":  precio_local,
+            "market_cap_b":   _mcap_b,
             "max_52w":       info.get("fiftyTwoWeekHigh"),
             "min_52w":       info.get("fiftyTwoWeekLow"),
             "pe":            info.get("trailingPE"),

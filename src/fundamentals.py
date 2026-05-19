@@ -2,7 +2,7 @@
 import yfinance as yf
 import pandas as pd
 
-from src.datos import formatear, get_ticker_adr
+from src.datos import formatear, get_ticker_adr, is_ticker_argentino
 
 
 def _pct(info, key):
@@ -157,15 +157,34 @@ def ratios_avanzados(ticker):
     t = yf.Ticker(get_ticker_adr(ticker))
     info = t.info
     
+    # P/S y EV/Revenue: Yahoo Finance mezcla precio ARS con revenue USD para tickers AR
+    # → calcular manualmente usando precio del ADR (USD) × shares / revenue
+    if is_ticker_argentino(ticker):
+        _px   = info.get("currentPrice") or info.get("regularMarketPrice")
+        _sh   = info.get("sharesOutstanding")
+        _rev  = info.get("totalRevenue")
+        _debt = info.get("totalDebt") or 0
+        _cash = info.get("totalCash") or 0
+        if _px and _sh and _rev and _rev > 0:
+            _mc  = _px * _sh
+            _ps  = round(_mc / _rev, 4)
+            _evr = round((_mc + _debt - _cash) / _rev, 4)
+        else:
+            _ps  = info.get("priceToSalesTrailing12Months")
+            _evr = info.get("enterpriseToRevenue")
+    else:
+        _ps  = info.get("priceToSalesTrailing12Months")
+        _evr = info.get("enterpriseToRevenue")
+
     return {
         "ticker": ticker,
         "PE_trailing": info.get("trailingPE"),
         "PE_forward": info.get("forwardPE"),
         "PEG": info.get("pegRatio"),
         "PB": info.get("priceToBook"),
-        "PS": info.get("priceToSalesTrailing12Months"),
+        "PS": _ps,
         "EV_EBITDA": info.get("enterpriseToEbitda"),
-        "EV_Revenue": info.get("enterpriseToRevenue"),
+        "EV_Revenue": _evr,
         "Dividend_Yield_%": _pct(info, "dividendYield"),
         "ROE_%": _pct(info, "returnOnEquity"),
         "ROA_%": _pct(info, "returnOnAssets"),
