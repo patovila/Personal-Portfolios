@@ -22,7 +22,11 @@
       "Bash(python -c \"import src.graficos as g; print\\([x for x in dir\\(g\\) if not x.startswith\\('_'\\)]\\)\")",
       "Bash(python -m py_compile app.py)",
       "Bash(python -m py_compile src/macro.py)",
-      "Bash(python -m py_compile src/dcf.py)"
+      "Bash(python -m py_compile src/dcf.py)",
+      "Bash(python -m py_compile src/datos.py)",
+      "Bash(python -m py_compile src/fundamentals.py)",
+      "Bash(findstr /V \"HTTP 404\")",
+      "Bash(python -m py_compile src/datos.py src/fundamentals.py src/dcf.py app.py)"
     ]
   }
 }
