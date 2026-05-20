@@ -464,6 +464,54 @@ else:
     st.header("Mi Bloomberg Personal")
     st.caption(ticker_error or "")
 
+# ── BANNER: ALERTAS DISPARADAS ────────────────────────────────────
+try:
+    from src.alertas import (
+        cargar_alertas as _cal_b, guardar_alertas as _gal_b,
+        get_precios_para_alertas as _gppa_b,
+        verificar_alertas as _val_b,
+        formatear_alerta_disparada as _fad_b,
+    )
+    from datetime import datetime as _dt_b
+    _alertas_b = _cal_b("pato")
+    if _alertas_b:
+        _tks_b = tuple(set(a["ticker"] for a in _alertas_b if a.get("activa")))
+        _precios_b = _gppa_b(_tks_b) if _tks_b else {}
+        # Detectar y persistir nuevas disparadas
+        _pend_b = [a for a in _alertas_b if a.get("activa") and not a.get("disparada")]
+        _nuevas_b = _val_b(_pend_b, _precios_b)
+        if _nuevas_b:
+            _ids_b = {a["id"] for a in _nuevas_b}
+            for _a_b in _alertas_b:
+                if _a_b["id"] in _ids_b:
+                    _a_b["disparada"] = True
+                    _a_b["fecha_disparo"] = _dt_b.now().isoformat()
+            _gal_b("pato", _alertas_b)
+        # Mostrar banner si hay disparadas activas
+        _banner_b = [a for a in _alertas_b if a.get("activa") and a.get("disparada")]
+        if _banner_b:
+            st.warning(
+                f"🔔 **{len(_banner_b)} alerta(s) disparada(s)** — "
+                "revisá la sección Mis Alertas en Mi Portfolio"
+            )
+            for _ab in _banner_b:
+                _d_b = _precios_b.get(_ab["ticker"], {})
+                _v_b = (
+                    _d_b.get("variacion_dia", 0.0)
+                    if _ab["tipo"] == "variacion_dia"
+                    else _d_b.get("precio", 0.0)
+                )
+                st.markdown(f"- {_fad_b(_ab, _v_b)}")
+            if st.button("✓ Marcar como vistas", key="btn_vistas_banner"):
+                for _ab2 in _alertas_b:
+                    if _ab2.get("activa") and _ab2.get("disparada"):
+                        _ab2["activa"] = False
+                _gal_b("pato", _alertas_b)
+                st.rerun()
+except Exception:
+    pass  # El banner nunca debe crashear la app
+# ──────────────────────────────────────────────────────────────────
+
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "🏢 Ficha",
     "📊 Fundamental",
@@ -1717,6 +1765,122 @@ with tab4:
                             f"{int(_ed_cantidad):,} unidades a $ {_ed_precio:,.0f}."
                         )
                         st.rerun()
+
+# ── SECCIÓN: MIS ALERTAS (al final de Mi Portfolio) ───────────────
+with tab4:
+    from src.alertas import (
+        cargar_alertas as _cal4, guardar_alertas as _gal4,
+        get_precios_para_alertas as _gppa4, nueva_alerta as _na4,
+    )
+
+    st.divider()
+    st.subheader("🔔 Mis Alertas")
+
+    _alertas4 = _cal4("pato")
+
+    # ── Sub-sección A: tabla de alertas ──────────────────────────
+    st.markdown("**Alertas configuradas**")
+
+    if not _alertas4:
+        st.info("No tenés alertas configuradas. Creá una abajo.")
+    else:
+        _tipo_lbl = {
+            "take_profit":   "Take Profit 🎯",
+            "stop_loss":     "Stop Loss 🛑",
+            "variacion_dia": "Variación día ⚡",
+        }
+        # Encabezado de tabla
+        _h1, _h2, _h3, _h4, _h5 = st.columns([2, 3, 2, 3, 1])
+        _h1.markdown("**Ticker**")
+        _h2.markdown("**Tipo**")
+        _h3.markdown("**Valor**")
+        _h4.markdown("**Estado**")
+        _h5.markdown("**Del.**")
+
+        for _a4 in _alertas4:
+            _c1, _c2, _c3, _c4, _c5 = st.columns([2, 3, 2, 3, 1])
+            _c1.markdown(_a4["ticker"])
+            _c2.markdown(_tipo_lbl.get(_a4["tipo"], _a4["tipo"]))
+            _unidad4 = "%" if _a4["tipo"] == "variacion_dia" else "$"
+            _c3.markdown(f"{_unidad4}{_a4['valor']:,.2f}")
+            if not _a4.get("activa"):
+                _c4.markdown("💤 Inactiva")
+            elif _a4.get("disparada"):
+                _c4.markdown("✅ Disparada")
+            else:
+                _c4.markdown("⏳ Pendiente")
+            if _c5.button("🗑️", key=f"del4_{_a4['id']}"):
+                _gal4("pato", [x for x in _alertas4 if x["id"] != _a4["id"]])
+                st.rerun()
+
+    st.markdown("")
+
+    # ── Sub-sección B: nueva alerta ───────────────────────────────
+    st.markdown("**➕ Nueva alerta**")
+
+    try:
+        _port4_al = cargar_portfolio("pato")
+        _tks_port4 = [p["ticker"] for p in _port4_al.get("posiciones", [])]
+    except Exception:
+        _tks_port4 = []
+
+    if not _tks_port4:
+        st.warning("No hay tickers en el portfolio para configurar alertas.")
+    else:
+        _nf_c1, _nf_c2 = st.columns(2)
+        with _nf_c1:
+            _nf_ticker4 = st.selectbox("Ticker", _tks_port4, key="nf_tk4")
+        with _nf_c2:
+            _nf_tipo_disp4 = st.radio(
+                "Tipo",
+                ["Take Profit 🎯", "Stop Loss 🛑", "Variación día ⚡"],
+                horizontal=True,
+                key="nf_tipo4",
+            )
+        _nf_tipo4 = {
+            "Take Profit 🎯":   "take_profit",
+            "Stop Loss 🛑":     "stop_loss",
+            "Variación día ⚡": "variacion_dia",
+        }[_nf_tipo_disp4]
+
+        if _nf_tipo4 == "variacion_dia":
+            _nf_val4 = st.number_input(
+                "Umbral %",
+                min_value=0.1, max_value=50.0,
+                value=5.0, step=0.5,
+                help="Alerta si el precio varía más de este % en el día (sube o baja)",
+                key="nf_val_var4",
+            )
+        else:
+            _pp4 = _gppa4((_nf_ticker4,)).get(_nf_ticker4, {})
+            _pa4 = _pp4.get("precio")
+            _nf_val4 = st.number_input(
+                "Precio objetivo ($)",
+                min_value=0.01,
+                value=round(float(_pa4), 2) if _pa4 else 1.0,
+                step=1.0,
+                help=f"Precio actual: ${_pa4:,.2f}" if _pa4 else "Precio no disponible",
+                key="nf_val_precio4",
+            )
+
+        if st.button("➕ Crear alerta", key="btn_crear4", use_container_width=True):
+            _dup4 = any(
+                a["ticker"] == _nf_ticker4 and a["tipo"] == _nf_tipo4 and a.get("activa")
+                for a in _alertas4
+            )
+            if _dup4:
+                st.error(
+                    f"Ya existe una alerta activa '{_nf_tipo_disp4}' para {_nf_ticker4}. "
+                    "Eliminá la anterior antes de crear una nueva."
+                )
+            else:
+                _alertas4.append(_na4(_nf_ticker4, _nf_tipo4, _nf_val4))
+                _gal4("pato", _alertas4)
+                st.success(
+                    f"✅ Alerta creada: **{_nf_ticker4}** | {_nf_tipo_disp4} | "
+                    f"{'%' if _nf_tipo4 == 'variacion_dia' else '$'}{_nf_val4:,.2f}"
+                )
+                st.rerun()
 
 # TAB 5: CALCULADORAS
 with tab5:
