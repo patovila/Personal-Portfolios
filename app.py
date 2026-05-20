@@ -464,7 +464,7 @@ else:
     st.header("Mi Bloomberg Personal")
     st.caption(ticker_error or "")
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "🏢 Ficha",
     "📊 Fundamental",
     "📈 Tecnico",
@@ -472,6 +472,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🧮 Calculadoras",
     "🇦🇷 Macro Argentina",
     "📐 DCF & Valuación",
+    "📰 Noticias",
 ])
 
 # TAB 1: FICHA
@@ -2859,3 +2860,194 @@ Upside/Downside: <b>{'{:+.1f}%'.format(_e_up) if _e_up is not None else '—'}</
                     f"Tasa terminal: {_tg7*100:.0f}% | {_años7} años. "
                     "Análisis educativo — no es recomendación de inversión."
                 )
+
+# ══════════════════════════════════════════════════════════════════
+# TAB 8: NOTICIAS & SENTIMIENTO
+# ══════════════════════════════════════════════════════════════════
+with tab8:
+    import pandas as _pd8
+    from src.noticias import (
+        get_noticias_ticker as _get_noticias_tk,
+        get_noticias_portfolio as _get_noticias_port,
+        analizar_sentimiento as _analizar_sent,
+        sentimiento_portfolio as _sent_portfolio,
+    )
+    from src.portfolio import cargar_portfolio as _cargar_port8
+
+    # ── helpers UI ─────────────────────────────────────────────────
+    def _badge8(label: str) -> str:
+        _colores = {
+            "Positivo":  ("#DCFCE7", "#16A34A"),
+            "Negativo":  ("#FEE2E2", "#DC2626"),
+            "Neutro":    ("#F3F4F6", "#6B7280"),
+            "Sin datos": ("#F3F4F6", "#9CA3AF"),
+        }
+        _bg, _fg = _colores.get(label, ("#F3F4F6", "#6B7280"))
+        return (
+            f"<span style='background:{_bg};color:{_fg};padding:3px 10px;"
+            f"border-radius:12px;font-size:12px;font-weight:600;'>{label}</span>"
+        )
+
+    def _color_sent_col(s):
+        _mapa = {
+            "Positivo": "background-color:#DCFCE7;color:#16A34A;font-weight:600",
+            "Negativo": "background-color:#FEE2E2;color:#DC2626;font-weight:600",
+            "Neutro":   "background-color:#F3F4F6;color:#6B7280",
+            "Sin datos":"background-color:#F9FAFB;color:#9CA3AF",
+        }
+        return [_mapa.get(v, "") for v in s]
+
+    # ── SECCIÓN 1: NOTICIAS DEL TICKER SELECCIONADO ────────────────
+    st.markdown("### Noticias recientes")
+
+    if not ticker:
+        st.info("Escribe un ticker en el buscador del sidebar para ver noticias.")
+    else:
+        with st.spinner(f"Cargando noticias de {ticker}..."):
+            _noticias_tk8 = _get_noticias_tk(ticker, max_noticias=5)
+
+        if not _noticias_tk8:
+            st.warning(f"No se encontraron noticias para **{ticker}** en Yahoo Finance.")
+        else:
+            st.caption(
+                f"{len(_noticias_tk8)} noticias · cache 30 min · fuente: Yahoo Finance"
+            )
+            for _n8 in _noticias_tk8:
+                _sent8 = _analizar_sent(f"{_n8['titulo']} {_n8['resumen']}")
+                _c_txt, _c_badge = st.columns([5, 1])
+                with _c_txt:
+                    _tit_link = (
+                        f"[{_n8['titulo']}]({_n8['url']})"
+                        if _n8["url"] else _n8["titulo"]
+                    )
+                    st.markdown(f"**{_tit_link}**")
+                    st.caption(f"{_n8['fecha']} · {_n8['fuente']}")
+                    if _n8["resumen"]:
+                        _res = (
+                            _n8["resumen"][:220] + "…"
+                            if len(_n8["resumen"]) > 220
+                            else _n8["resumen"]
+                        )
+                        st.markdown(
+                            f"<span style='color:#6B7280;font-size:13px;'>{_res}</span>",
+                            unsafe_allow_html=True,
+                        )
+                with _c_badge:
+                    st.markdown(_badge8(_sent8["label"]), unsafe_allow_html=True)
+                    _det8 = _sent8.get("detalle", {})
+                    st.markdown(
+                        f"<span style='font-size:11px;color:#9CA3AF;'>"
+                        f"score: {_sent8['score']:+.2f} · "
+                        f"pos={_det8.get('pos',0):.2f} neg={_det8.get('neg',0):.2f}</span>",
+                        unsafe_allow_html=True,
+                    )
+                st.markdown("---")
+
+    st.divider()
+
+    # ── SECCIÓN 2: RADAR DE SENTIMIENTO DEL PORTFOLIO ──────────────
+    st.markdown("### Radar de sentimiento del portfolio")
+
+    _port8_data = None
+    _tickers8 = []
+    _noticias_port8 = {}
+    _sent_port8 = {}
+
+    try:
+        _port8_data = _cargar_port8("pato")
+        _tickers8 = [_p["ticker"] for _p in _port8_data.get("posiciones", [])]
+    except Exception as _e8_port:
+        st.warning(f"No se pudo cargar el portfolio: {_e8_port}")
+
+    if _tickers8:
+        with st.spinner("Analizando sentimiento del portfolio..."):
+            _noticias_port8 = _get_noticias_port(_tickers8, max_por_ticker=3)
+            _sent_port8 = _sent_portfolio(_noticias_port8)
+
+        # Métricas resumen
+        _labels8 = [_v["label"] for _v in _sent_port8.values()]
+        _n8_pos = _labels8.count("Positivo")
+        _n8_neg = _labels8.count("Negativo")
+        _n8_neu = _labels8.count("Neutro") + _labels8.count("Sin datos")
+        _scores8_all = [_v["score_promedio"] for _v in _sent_port8.values()]
+        _score8_global = sum(_scores8_all) / len(_scores8_all) if _scores8_all else 0.0
+
+        _km1, _km2, _km3, _km4 = st.columns(4)
+        _km1.metric("Positivos", f"{_n8_pos} / {len(_tickers8)}")
+        _km2.metric("Neutros",   f"{_n8_neu} / {len(_tickers8)}")
+        _km3.metric("Negativos", f"{_n8_neg} / {len(_tickers8)}")
+        _km4.metric("Score global", f"{_score8_global:+.2f}")
+
+        st.markdown("")
+
+        # Tabla ticker × sentimiento
+        _rows8 = []
+        for _pos8 in _port8_data.get("posiciones", []):
+            _t8 = _pos8["ticker"]
+            _sv8 = _sent_port8.get(_t8, {})
+            _rows8.append({
+                "Ticker":      _t8,
+                "Sector":      _pos8.get("sector", "—"),
+                "Noticias":    _sv8.get("n_noticias", 0),
+                "Score":       _sv8.get("score_promedio", 0.0),
+                "Sentimiento": _sv8.get("label", "Sin datos"),
+            })
+        _df8 = _pd8.DataFrame(_rows8)
+        st.dataframe(
+            _df8.style
+                .apply(_color_sent_col, subset=["Sentimiento"])
+                .format({"Score": "{:+.3f}"}),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    st.divider()
+
+    # ── SECCIÓN 3: FEED COMBINADO DEL PORTFOLIO ────────────────────
+    st.markdown("### Feed del portfolio")
+
+    if _noticias_port8:
+        _feed8 = []
+        for _t8f, _nl8 in _noticias_port8.items():
+            for _n8f in _nl8:
+                _feed8.append({**_n8f, "ticker": _t8f})
+
+        if not _feed8:
+            st.info("No hay noticias disponibles para los tickers del portfolio.")
+        else:
+            _feed8_sorted = sorted(
+                _feed8,
+                key=lambda x: x.get("fecha_iso", "0000-00-00"),
+                reverse=True,
+            )
+            st.caption(
+                f"{len(_feed8_sorted)} noticias · últimas 3 por ticker · "
+                f"{len(_tickers8)} activos del portfolio"
+            )
+            for _nf8 in _feed8_sorted:
+                _sf8 = _analizar_sent(f"{_nf8['titulo']} {_nf8['resumen']}")
+                _cf1, _cf2, _cf3 = st.columns([1, 6, 1])
+                with _cf1:
+                    st.markdown(
+                        f"<span style='background:#EFF6FF;color:#1D4ED8;"
+                        f"padding:3px 8px;border-radius:6px;"
+                        f"font-size:12px;font-weight:700;'>{_nf8['ticker']}</span>",
+                        unsafe_allow_html=True,
+                    )
+                with _cf2:
+                    _tit_f = (
+                        f"[{_nf8['titulo']}]({_nf8['url']})"
+                        if _nf8["url"] else _nf8["titulo"]
+                    )
+                    st.markdown(f"**{_tit_f}**")
+                    st.caption(f"{_nf8['fecha']} · {_nf8['fuente']}")
+                with _cf3:
+                    st.markdown(_badge8(_sf8["label"]), unsafe_allow_html=True)
+                st.markdown("---")
+    elif not _tickers8:
+        st.info("Cargá el portfolio para ver el feed combinado.")
+
+    st.caption(
+        "Fuente: Yahoo Finance · Sentimiento: palabras clave financieras hardcodeadas · "
+        "No es recomendación de inversión."
+    )
