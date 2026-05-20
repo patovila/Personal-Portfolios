@@ -3048,6 +3048,6 @@ with tab8:
         st.info("Cargá el portfolio para ver el feed combinado.")
 
     st.caption(
-        "Fuente: Yahoo Finance · Sentimiento: palabras clave financieras hardcodeadas · "
+        "Fuente: Yahoo Finance · Sentimiento: VADER con léxico financiero AR · "
         "No es recomendación de inversión."
     )

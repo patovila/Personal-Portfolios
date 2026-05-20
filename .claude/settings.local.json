@@ -27,7 +27,8 @@
       "Bash(python -m py_compile src/fundamentals.py)",
       "Bash(findstr /V \"HTTP 404\")",
       "Bash(python -m py_compile src/datos.py src/fundamentals.py src/dcf.py app.py)",
-      "Bash(python -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\)\\) or print\\(f'OK: {f}'\\) for f in ['src/datos.py','src/fundamentals.py','app.py']]\")"
+      "Bash(python -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\)\\) or print\\(f'OK: {f}'\\) for f in ['src/datos.py','src/fundamentals.py','app.py']]\")",
+      "Bash(venv\\\\Scripts\\\\python.exe -c \"from src.noticias import get_noticias_ticker, analizar_sentimiento; noticias = get_noticias_ticker\\('YPF', 3\\); print\\(f'Noticias encontradas: {len\\(noticias\\)}'\\); [print\\(f\\\\\"  [{n['fecha']}] {n['titulo'][:60]} | {analizar_sentimiento\\(n['titulo'] + ' ' + n['resumen']\\)['label']}\\\\\"\\) for n in noticias]\")"
     ]
   }
 }
