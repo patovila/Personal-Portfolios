@@ -32,7 +32,10 @@
       "PowerShell(ls \"C:\\\\Users\\\\PC\\\\Documents\\\\Proyecto_mi bloomberg\\\\data\\\\\")",
       "PowerShell(ls \"C:\\\\Users\\\\PC\\\\Documents\\\\Proyecto_mi bloomberg\\\\data\\\\alertas\\\\\")",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(p['ticker']\\) for p in d.get\\('posiciones',[]\\)]\")",
-      "Bash(python -c \"import ast; ast.parse\\(open\\('src/benchmark.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('src/benchmark.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('src/calculadoras.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(git commit *)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('src/earnings.py', encoding='utf-8'\\).read\\(\\)\\); print\\('earnings.py OK'\\)\")"
     ]
   }
 }
