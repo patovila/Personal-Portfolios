@@ -746,7 +746,7 @@ except Exception:
     pass  # El banner nunca debe crashear la app
 # ──────────────────────────────────────────────────────────────────
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "🏢 Ficha",
     "📊 Fundamental",
     "📈 Tecnico",
@@ -755,6 +755,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "🇦🇷 Macro Argentina",
     "📐 DCF & Valuación",
     "📰 Noticias",
+    "🎯 Mi Perfil Inversor",
 ])
 
 # TAB 1: FICHA
@@ -3449,3 +3450,229 @@ with tab8:
         "Fuente: Yahoo Finance · Sentimiento: VADER con léxico financiero AR · "
         "No es recomendación de inversión."
     )
+
+# TAB 9: MI PERFIL INVERSOR
+with tab9:
+    from src.perfil_inversor import (
+        PREGUNTAS, PORTFOLIOS_MODELO,
+        calcular_perfil, analizar_portfolio_actual,
+    )
+    import plotly.graph_objects as _go9
+
+    N_PREGUNTAS = len(PREGUNTAS)
+
+    # ── Inicializar session_state del quiz ────────────────────────────────────
+    if "pf_respuestas" not in st.session_state:
+        st.session_state["pf_respuestas"]  = [None] * N_PREGUNTAS
+    if "pf_pregunta" not in st.session_state:
+        st.session_state["pf_pregunta"]    = 0
+    if "pf_completado" not in st.session_state:
+        st.session_state["pf_completado"]  = False
+    if "pf_resultado" not in st.session_state:
+        st.session_state["pf_resultado"]   = None
+
+    # ── Cabecera ──────────────────────────────────────────────────────────────
+    st.markdown(
+        "<h2 style='color:#1E40AF;margin-bottom:0;'>🎯 Mi Perfil Inversor</h2>"
+        "<p style='color:#6B7280;margin-top:4px;'>Respondé 10 preguntas y descubrí "
+        "si tu portfolio está alineado con tu tolerancia al riesgo.</p>",
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div style="border-bottom:1px solid #E1E4E8;margin:8px 0 18px 0;"></div>',
+                unsafe_allow_html=True)
+
+    # ── PASO 1: QUIZ ──────────────────────────────────────────────────────────
+    if not st.session_state["pf_completado"]:
+        _idx9 = st.session_state["pf_pregunta"]
+        _p9   = PREGUNTAS[_idx9]
+
+        # Barra de progreso
+        st.progress((_idx9) / N_PREGUNTAS,
+                    text=f"Pregunta {_idx9 + 1} de {N_PREGUNTAS}")
+
+        st.markdown(
+            f"<div style='background:#F0F4FF;border-left:4px solid #2563EB;"
+            f"border-radius:6px;padding:18px 20px;margin:12px 0 20px 0;"
+            f"font-size:18px;font-weight:600;color:#1E293B;'>"
+            f"{_p9['pregunta']}</div>",
+            unsafe_allow_html=True,
+        )
+
+        # Opciones como botones
+        for _op9 in _p9["opciones"]:
+            _ya_elegida = st.session_state["pf_respuestas"][_idx9] == _op9["puntaje"]
+            _btn_style  = "primary" if _ya_elegida else "secondary"
+            if st.button(
+                f"{'✓ ' if _ya_elegida else ''}{_op9['texto']}",
+                key=f"pf_q{_idx9}_p{_op9['puntaje']}",
+                use_container_width=True,
+                type=_btn_style,
+            ):
+                st.session_state["pf_respuestas"][_idx9] = _op9["puntaje"]
+                if _idx9 < N_PREGUNTAS - 1:
+                    st.session_state["pf_pregunta"] = _idx9 + 1
+                st.rerun()
+
+        # Navegación inferior
+        _nav_l, _nav_c, _nav_r = st.columns([2, 3, 2])
+        with _nav_l:
+            if _idx9 > 0 and st.button("← Anterior", key="pf_prev", use_container_width=True):
+                st.session_state["pf_pregunta"] = _idx9 - 1
+                st.rerun()
+        with _nav_r:
+            _resp_actual  = st.session_state["pf_respuestas"][_idx9]
+            _todas_ok     = all(r is not None for r in st.session_state["pf_respuestas"])
+            if _todas_ok:
+                if st.button("Ver mi perfil →", key="pf_ver", use_container_width=True, type="primary"):
+                    _puntajes = [r for r in st.session_state["pf_respuestas"] if r is not None]
+                    st.session_state["pf_resultado"]  = calcular_perfil(_puntajes)
+                    st.session_state["pf_completado"] = True
+                    st.rerun()
+            elif _resp_actual is not None and _idx9 < N_PREGUNTAS - 1:
+                if st.button("Siguiente →", key="pf_next", use_container_width=True):
+                    st.session_state["pf_pregunta"] = _idx9 + 1
+                    st.rerun()
+
+        # Respuestas completadas hasta ahora
+        _respondidas = sum(1 for r in st.session_state["pf_respuestas"] if r is not None)
+        if _respondidas > 0:
+            st.caption(f"{_respondidas} de {N_PREGUNTAS} preguntas respondidas")
+
+    # ── PASOS 2-4: RESULTADO + MODELO + COMPARACIÓN ───────────────────────────
+    else:
+        _res9 = st.session_state["pf_resultado"]
+
+        # ── PASO 2: Card de resultado ─────────────────────────────────────────
+        st.markdown(
+            f"<div style='background:#FFFFFF;border:2px solid {_res9['color']};"
+            f"border-radius:12px;padding:24px 28px;margin-bottom:1.5rem;'>"
+            f"<div style='font-size:42px;margin-bottom:8px;'>{_res9['emoji']}</div>"
+            f"<div style='font-size:28px;font-weight:800;color:{_res9['color']};'>"
+            f"{_res9['perfil']}</div>"
+            f"<div style='font-size:15px;color:#374151;margin:10px 0 14px 0;'>"
+            f"{_res9['descripcion']}</div>"
+            f"<div style='font-size:13px;color:#6B7280;margin-bottom:6px;'>"
+            f"Puntaje: {_res9['puntaje_total']} / {40} &nbsp;·&nbsp; "
+            f"{_res9['porcentaje']}%</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+        st.progress(_res9["porcentaje"] / 100)
+
+        if st.button("🔄 Repetir quiz", key="pf_reset"):
+            for _k in ("pf_respuestas", "pf_pregunta", "pf_completado", "pf_resultado"):
+                del st.session_state[_k]
+            st.rerun()
+
+        st.divider()
+
+        # ── PASO 3: Portfolio modelo ──────────────────────────────────────────
+        _modelo9 = PORTFOLIOS_MODELO[_res9["perfil"]]
+
+        st.markdown(f"### 📐 Portfolio ideal para tu perfil: {_res9['emoji']} {_res9['perfil']}")
+        st.caption(_modelo9["descripcion"])
+        st.warning(_modelo9["disclaimer"])
+
+        _alloc9     = _modelo9["allocacion"]
+        _labels9_m  = [a["activo"] for a in _alloc9]
+        _valores9_m = [a["porcentaje"] for a in _alloc9]
+        _colores9   = ["#2563EB", "#16A34A", "#F59E0B", "#8B5CF6",
+                       "#EC4899", "#06B6D4", "#84CC16", "#F97316"]
+
+        _fig9_modelo = _go9.Figure(_go9.Pie(
+            labels=_labels9_m, values=_valores9_m,
+            hole=0.5,
+            marker=dict(colors=_colores9[:len(_labels9_m)]),
+            textinfo="label+percent",
+            hovertemplate="<b>%{label}</b><br>%{percent}<extra></extra>",
+        ))
+        _fig9_modelo.update_layout(
+            title=f"Portfolio modelo — {_res9['perfil']}",
+            template="plotly_white", height=380,
+            margin=dict(l=20, r=20, t=50, b=20),
+            showlegend=False,
+        )
+        st.plotly_chart(_fig9_modelo, use_container_width=True)
+
+        # Tabla de allocación
+        import pandas as _pd9
+        _df9_modelo = _pd9.DataFrame([
+            {"Activo": a["activo"], "% sugerido": f"{a['porcentaje']}%", "Razón": a["razon"]}
+            for a in _alloc9
+        ])
+        st.dataframe(_df9_modelo, use_container_width=True, hide_index=True)
+
+        st.divider()
+
+        # ── PASO 4: Comparación con portfolio real ────────────────────────────
+        st.markdown("### 🔍 Tu portfolio vs tu perfil")
+
+        _port9 = None
+        try:
+            from src.portfolio import cargar_portfolio as _cp9
+            _port9 = _cp9("pato")
+        except Exception:
+            pass
+
+        if _port9 is None:
+            st.info("No se encontró un portfolio guardado. "
+                    "Cargá tu portfolio en la pestaña Mi Portfolio para ver la comparación.")
+        else:
+            _posiciones9 = _port9.get("posiciones", [])
+            _analisis9   = analizar_portfolio_actual(_posiciones9, _res9["perfil"])
+            _comp_real9  = _analisis9["composicion_real"]
+
+            if not _comp_real9:
+                st.info("No hay posiciones en el portfolio para comparar.")
+            else:
+                # Dos gráficos lado a lado
+                _cg1, _cg2 = st.columns(2)
+
+                with _cg1:
+                    _fig9_m2 = _go9.Figure(_go9.Pie(
+                        labels=_labels9_m, values=_valores9_m,
+                        hole=0.5,
+                        marker=dict(colors=_colores9[:len(_labels9_m)]),
+                        textinfo="percent",
+                        hovertemplate="<b>%{label}</b><br>%{percent}<extra></extra>",
+                    ))
+                    _fig9_m2.update_layout(
+                        title="Portfolio modelo", template="plotly_white",
+                        height=340, margin=dict(l=10, r=10, t=50, b=10),
+                        showlegend=False,
+                    )
+                    st.plotly_chart(_fig9_m2, use_container_width=True)
+
+                with _cg2:
+                    _cats_r  = list(_comp_real9.keys())
+                    _vals_r  = list(_comp_real9.values())
+                    _fig9_r  = _go9.Figure(_go9.Pie(
+                        labels=_cats_r, values=_vals_r,
+                        hole=0.5,
+                        marker=dict(colors=_colores9[:len(_cats_r)]),
+                        textinfo="percent",
+                        hovertemplate="<b>%{label}</b><br>%{percent:.1f}%<extra></extra>",
+                    ))
+                    _fig9_r.update_layout(
+                        title="Tu portfolio actual", template="plotly_white",
+                        height=340, margin=dict(l=10, r=10, t=50, b=10),
+                        showlegend=False,
+                    )
+                    st.plotly_chart(_fig9_r, use_container_width=True)
+
+                # Observaciones automáticas
+                st.markdown("#### 📋 Análisis automático")
+                for _obs9 in _analisis9["observaciones"]:
+                    if _obs9["tipo"] == "verde":
+                        st.success(_obs9["texto"])
+                    elif _obs9["tipo"] == "amarillo":
+                        st.warning(_obs9["texto"])
+                    else:
+                        st.error(_obs9["texto"])
+
+        st.warning(
+            "⚠️ Esta comparación es una referencia educativa general basada en "
+            "categorías amplias. No constituye asesoramiento financiero "
+            "personalizado. Consultá un asesor certificado antes de tomar "
+            "decisiones de inversión."
+        )
