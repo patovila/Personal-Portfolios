@@ -1,7 +1,21 @@
 """Funciones para cargar datos de yfinance."""
 import json
+import time
 from pathlib import Path
 import yfinance as yf
+
+
+def _fetch_info(ticker: str) -> dict:
+    """Descarga yf.Ticker.info con reintentos ante rate-limit (429)."""
+    for intento in range(3):
+        try:
+            return yf.Ticker(ticker).info
+        except Exception as e:
+            if "too many requests" in str(e).lower() or "429" in str(e):
+                time.sleep(2 ** intento)   # 1 s, 2 s, 4 s
+            else:
+                raise
+    return yf.Ticker(ticker).info  # último intento sin captura
 
 # ---------------------------------------------------------------------------
 # Mapa de tickers argentinos: ADR NYSE ↔ local BYMA (.BA)
@@ -75,8 +89,7 @@ def cargar_ticker(ticker):
         tk_adr    = _real_adr or tk_local      # lo que usamos para fundamentals
 
         # Fundamentals y metadatos desde el ADR si existe, si no desde local
-        t_fund = yf.Ticker(tk_adr)
-        info   = t_fund.info
+        info = _fetch_info(tk_adr)
 
         # Precio local en ARS vía history() — más robusto que info para .BA
         precio_local = None
@@ -123,8 +136,7 @@ def cargar_ticker(ticker):
         }
 
     # Ticker internacional — comportamiento original sin cambios
-    t = yf.Ticker(ticker)
-    info = t.info
+    info = _fetch_info(ticker)
     return {
         "ticker":        ticker,
         "ticker_adr":    None,

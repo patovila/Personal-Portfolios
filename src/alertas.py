@@ -52,7 +52,7 @@ def nueva_alerta(ticker: str, tipo: str, valor: float) -> dict:
 # PRECIOS
 # ──────────────────────────────────────────────────────────────────
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def get_precios_para_alertas(tickers: tuple) -> dict:
     """Precio actual y variación diaria para cada ticker. Cache 60 s.
 

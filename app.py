@@ -694,7 +694,10 @@ if datos:
     st.caption(f"{datos['sector']} | {datos['industria']} | {datos['pais']}")
 else:
     st.header(f"🔍 {ticker}")
-    st.caption(ticker_error or "No se encontraron datos para este ticker.")
+    if ticker_error and ("too many requests" in ticker_error.lower() or "429" in ticker_error):
+        st.warning("⏳ Datos temporalmente no disponibles. Reintentando en unos segundos...")
+    else:
+        st.caption(ticker_error or "No se encontraron datos para este ticker.")
 
 # ── BANNER: ALERTAS DISPARADAS ────────────────────────────────────
 try:
