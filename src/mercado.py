@@ -64,7 +64,7 @@ def _var_pct(df) -> float | None:
     return None
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=600)
 def get_indices_globales() -> list:
     """8 índices globales en una sola request. Cache 5 min."""
     data = _batch_download(_INDICES_TICKERS)
@@ -76,7 +76,7 @@ def get_indices_globales() -> list:
     return result
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=600)
 def get_movers_portfolio(tickers: tuple) -> dict:
     """Gainers y losers del portfolio en una sola request. Cache 5 min."""
     data = _batch_download(list(tickers))
@@ -96,7 +96,7 @@ def get_movers_portfolio(tickers: tuple) -> dict:
     return {"gainers": gainers, "losers": losers}
 
 
-@st.cache_data(ttl=180)
+@st.cache_data(ttl=600)
 def get_ticker_tape(portfolio_tickers: tuple) -> list:
     """Banda de precios: portfolio + índices principales. Cache 3 min."""
     all_tks = list(portfolio_tickers) + [t for t in _TAPE_INDICES if t not in portfolio_tickers]

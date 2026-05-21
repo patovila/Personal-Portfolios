@@ -462,7 +462,7 @@ try:
     from src.portfolio import cargar_portfolio as _cp_tape
     try:
         _pf_tape = _cp_tape("pato")
-        _tape_tks = tuple(p["ticker"] for p in _pf_tape.get("posiciones", []))
+        _tape_tks = tuple(p["ticker"] for p in _pf_tape.get("posiciones", []))[:5]
     except Exception:
         _tape_tks = ("YPF", "GOOGL", "NVDA", "PAM", "TGS")
     _tape_data = _get_tape(_tape_tks)
@@ -569,99 +569,97 @@ with st.sidebar:
 if not ticker:
     from src.mercado import get_indices_globales, get_movers_portfolio
 
-    # ── Sección A: Índices globales ───────────────────────────────────────────
-    st.markdown("### 🌎 Índices globales")
-    _indices = get_indices_globales()
+    # ── Sección A+B: lazy — solo carga cuando el usuario lo pide ─────────────
+    if not st.session_state.get("mercado_cargado"):
+        st.markdown('<div style="height:0.6rem;"></div>', unsafe_allow_html=True)
+        _bc1, _bc2, _bc3 = st.columns([1, 2, 1])
+        with _bc2:
+            if st.button("📊 Cargar datos de mercado", use_container_width=True, type="primary"):
+                st.session_state["mercado_cargado"] = True
+                st.rerun()
+            st.caption("Carga bajo demanda · datos cacheados 10 min")
+    else:
+        # ── Sección A: Índices globales ───────────────────────────────────────
+        st.markdown("### 🌎 Índices globales")
+        _indices = get_indices_globales()
 
-    def _idx_card(idx):
-        precio = idx["precio"]
-        var    = idx["variacion_pct"]
-        p_str  = f"${precio:,.2f}" if precio is not None else "—"
-        if var is None:
-            v_str, v_col = "—", "#6B7280"
-        else:
-            v_str = f"{'+'if var>=0 else ''}{var:.2f}%"
-            v_col = "#16A34A" if var >= 0 else "#DC2626"
-        return (
-            f"<div class='index-card'>"
-            f"<div class='idx-name'>{idx['nombre']}</div>"
-            f"<div class='idx-price'>{p_str}</div>"
-            f"<div class='idx-var' style='color:{v_col};'>{v_str}</div>"
-            f"</div>"
-        )
-
-    _ia, _ib, _ic, _id_ = st.columns(4)
-    _ia.markdown(_idx_card(_indices[0]), unsafe_allow_html=True)
-    _ib.markdown(_idx_card(_indices[1]), unsafe_allow_html=True)
-    _ic.markdown(_idx_card(_indices[2]), unsafe_allow_html=True)
-    _id_.markdown(_idx_card(_indices[3]), unsafe_allow_html=True)
-    _ie, _if_, _ig, _ih = st.columns(4)
-    _ie.markdown(_idx_card(_indices[4]), unsafe_allow_html=True)
-    _if_.markdown(_idx_card(_indices[5]), unsafe_allow_html=True)
-    _ig.markdown(_idx_card(_indices[6]), unsafe_allow_html=True)
-    _ih.markdown(_idx_card(_indices[7]), unsafe_allow_html=True)
-
-    st.markdown('<div style="margin-bottom:1.4rem;"></div>', unsafe_allow_html=True)
-
-    # ── Sección B: Movers del portfolio ──────────────────────────────────────
-    try:
-        from src.portfolio import cargar_portfolio as _cp_h
-        _pf_h = _cp_h("pato")
-        _port_tks = tuple(p["ticker"] for p in _pf_h.get("posiciones", []))
-    except Exception:
-        _port_tks = ("YPF", "GOOGL", "NVDA", "PAM", "TGS", "MELI", "AAPL")
-
-    st.markdown("### 📊 Movers del portfolio — hoy")
-    _movers = get_movers_portfolio(_port_tks)
-    _mcol_g, _mcol_l = st.columns(2)
-
-    def _mover_rows(items, label, up: bool):
-        emoji = "🚀" if up else "📉"
-        color = "#16A34A" if up else "#DC2626"
-        rows_html = ""
-        for it in items:
-            s = "+" if it["variacion_pct"] >= 0 else ""
-            rows_html += (
-                f"<div class='mover-row'>"
-                f"<span style='font-weight:600;color:#111827;'>{it['ticker']}</span>"
-                f"<span style='font-weight:700;color:{color};'>{s}{it['variacion_pct']:.2f}%</span>"
+        def _idx_card(idx):
+            precio = idx["precio"]
+            var    = idx["variacion_pct"]
+            p_str  = f"${precio:,.2f}" if precio is not None else "—"
+            if var is None:
+                v_str, v_col = "—", "#6B7280"
+            else:
+                v_str = f"{'+'if var>=0 else ''}{var:.2f}%"
+                v_col = "#16A34A" if var >= 0 else "#DC2626"
+            return (
+                f"<div class='index-card'>"
+                f"<div class='idx-name'>{idx['nombre']}</div>"
+                f"<div class='idx-price'>{p_str}</div>"
+                f"<div class='idx-var' style='color:{v_col};'>{v_str}</div>"
                 f"</div>"
             )
-        if not rows_html:
-            rows_html = "<div style='color:#9CA3AF;font-size:13px;padding:8px 0;'>Sin datos</div>"
-        return (
-            f"<div style='background:#FFF;border:1px solid #E1E4E8;border-radius:10px;padding:16px 18px;'>"
-            f"<div style='font-weight:700;font-size:14px;margin-bottom:10px;'>{emoji} {label}</div>"
-            f"{rows_html}</div>"
-        )
 
-    with _mcol_g:
-        st.markdown(_mover_rows(_movers["gainers"], "Mayores subas hoy", True), unsafe_allow_html=True)
-    with _mcol_l:
-        st.markdown(_mover_rows(_movers["losers"], "Mayores bajas hoy", False), unsafe_allow_html=True)
+        _ia, _ib, _ic, _id_ = st.columns(4)
+        _ia.markdown(_idx_card(_indices[0]), unsafe_allow_html=True)
+        _ib.markdown(_idx_card(_indices[1]), unsafe_allow_html=True)
+        _ic.markdown(_idx_card(_indices[2]), unsafe_allow_html=True)
+        _id_.markdown(_idx_card(_indices[3]), unsafe_allow_html=True)
+        _ie, _if_, _ig, _ih = st.columns(4)
+        _ie.markdown(_idx_card(_indices[4]), unsafe_allow_html=True)
+        _if_.markdown(_idx_card(_indices[5]), unsafe_allow_html=True)
+        _ig.markdown(_idx_card(_indices[6]), unsafe_allow_html=True)
+        _ih.markdown(_idx_card(_indices[7]), unsafe_allow_html=True)
 
-    st.markdown('<div style="margin-bottom:1.4rem;"></div>', unsafe_allow_html=True)
+        st.markdown('<div style="margin-bottom:1.4rem;"></div>', unsafe_allow_html=True)
 
-    # ── Sección C: Resumen del portfolio ─────────────────────────────────────
+        # ── Sección B: Movers del portfolio ──────────────────────────────────
+        try:
+            from src.portfolio import cargar_portfolio as _cp_h
+            _pf_h = _cp_h("pato")
+            _port_tks = tuple(p["ticker"] for p in _pf_h.get("posiciones", []))
+        except Exception:
+            _port_tks = ("YPF", "GOOGL", "NVDA", "PAM", "TGS", "MELI", "AAPL")
+
+        st.markdown("### 📊 Movers del portfolio — hoy")
+        _movers = get_movers_portfolio(_port_tks)
+        _mcol_g, _mcol_l = st.columns(2)
+
+        def _mover_rows(items, label, up: bool):
+            emoji = "🚀" if up else "📉"
+            color = "#16A34A" if up else "#DC2626"
+            rows_html = ""
+            for it in items:
+                s = "+" if it["variacion_pct"] >= 0 else ""
+                rows_html += (
+                    f"<div class='mover-row'>"
+                    f"<span style='font-weight:600;color:#111827;'>{it['ticker']}</span>"
+                    f"<span style='font-weight:700;color:{color};'>{s}{it['variacion_pct']:.2f}%</span>"
+                    f"</div>"
+                )
+            if not rows_html:
+                rows_html = "<div style='color:#9CA3AF;font-size:13px;padding:8px 0;'>Sin datos</div>"
+            return (
+                f"<div style='background:#FFF;border:1px solid #E1E4E8;border-radius:10px;padding:16px 18px;'>"
+                f"<div style='font-weight:700;font-size:14px;margin-bottom:10px;'>{emoji} {label}</div>"
+                f"{rows_html}</div>"
+            )
+
+        with _mcol_g:
+            st.markdown(_mover_rows(_movers["gainers"], "Mayores subas hoy", True), unsafe_allow_html=True)
+        with _mcol_l:
+            st.markdown(_mover_rows(_movers["losers"], "Mayores bajas hoy", False), unsafe_allow_html=True)
+
+        st.markdown('<div style="margin-bottom:1.4rem;"></div>', unsafe_allow_html=True)
+
+    # ── Sección C: Resumen del portfolio (siempre visible, sin yfinance) ──────
     st.markdown("### 💼 Mi Portfolio")
     try:
-        from src.portfolio import (
-            cargar_portfolio as _cp_c,
-            calcular_metricas_portfolio as _cmp_c,
-            actualizar_precios_actuales as _upa_c,
-        )
+        from src.portfolio import cargar_portfolio as _cp_c, calcular_metricas_portfolio as _cmp_c
         _pf_c = _cp_c("pato")
-        _tc_c = _pf_c.get("configuracion", {}).get("tipo_cambio_ars_usd", 1427)
-        try:
-            _pf_live = _upa_c(_pf_c)
-        except Exception:
-            _pf_live = _pf_c
-        _m = _cmp_c(_pf_live)
+        _m = _cmp_c(_pf_c)   # usa precios guardados en el JSON, sin llamar a yfinance
         _pc1, _pc2, _pc3, _pc4 = st.columns(4)
-        _pc1.metric(
-            "Valor total (ARS)",
-            f"$ {_m['valor_total_ars']:,.0f}",
-        )
+        _pc1.metric("Valor total (ARS)", f"$ {_m['valor_total_ars']:,.0f}")
         _pc2.metric(
             "P&L total",
             f"$ {_m['pnl_total_ars']:,.0f}",
@@ -674,6 +672,7 @@ if not ticker:
             delta=f"{_top.get('pnl_pct',0)*100:+.2f}%" if _top else None,
         )
         _pc4.metric("Posiciones", str(_m["num_posiciones"]))
+        st.caption("Precios del último guardado · actualizá en la pestaña Mi Portfolio")
     except Exception as _e_pc:
         st.info(f"Cargá el portfolio para ver el resumen. ({_e_pc})")
 
