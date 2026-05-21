@@ -291,6 +291,139 @@ def fcf_historico(ticker):
     return df
 
 
+_SECTOR_PB_TARGET: dict[str, float] = {
+    "Technology":             6.0,
+    "Communication Services": 4.0,
+    "Consumer Cyclical":      3.5,
+    "Consumer Defensive":     4.5,
+    "Healthcare":             4.5,
+    "Industrials":            3.5,
+    "Financial Services":     1.5,
+    "Energy":                 2.0,
+    "Basic Materials":        2.0,
+    "Utilities":              1.8,
+    "Real Estate":            2.0,
+}
+
+
+def calcular_fair_value(ticker: str) -> dict:
+    """Fair value por PE histórico × EPS forward y PB sector × Book Value.
+
+    Retorna dict con precio_actual, fair_value_pe, fair_value_pb,
+    fair_value_promedio, upside_downside %, veredicto, confianza,
+    metodos_usados. Nunca lanza excepción — devuelve veredicto='SIN DATOS'
+    si faltan datos.
+    """
+    import pandas as pd
+
+    _vacio = {
+        "precio_actual": None, "fair_value_pe": None, "fair_value_pb": None,
+        "fair_value_promedio": None, "upside_downside": None,
+        "veredicto": "SIN DATOS", "confianza": "Baja", "metodos_usados": 0,
+        "pe_promedio": None, "pe_fuente": "", "pb_target": None, "sector": "",
+    }
+
+    try:
+        adr  = get_ticker_adr(ticker)
+        t    = yf.Ticker(adr)
+        info = t.info
+
+        precio_actual = info.get("currentPrice") or info.get("regularMarketPrice")
+        if not precio_actual:
+            return _vacio
+
+        eps_forward = info.get("forwardEps")
+        pe_trailing = info.get("trailingPE")
+        book_value  = info.get("bookValue")
+        sector      = info.get("sector", "")
+
+        # ── Método 1: PE histórico promedio × EPS forward ─────────────────
+        fair_value_pe = None
+        pe_promedio   = None
+        pe_fuente     = ""
+
+        # Intento: PE anual de los últimos 4 años (precio / EPS calculado)
+        try:
+            fin    = t.financials   # columnas = años, filas = P&L
+            hist   = t.history(period="5y", interval="1mo")
+            shares = info.get("sharesOutstanding") or 0
+
+            if (fin is not None and not fin.empty and
+                    hist is not None and not hist.empty and shares > 0):
+
+                ni_key = next((k for k in fin.index if "Net Income" in str(k)), None)
+                if ni_key:
+                    pes: list[float] = []
+                    for col in fin.columns:
+                        try:
+                            ni     = float(fin.loc[ni_key, col])
+                            eps_yr = ni / shares
+                            if eps_yr <= 0:
+                                continue
+                            ts       = pd.Timestamp(col)
+                            price_at = float(hist["Close"].asof(ts))
+                            if not price_at or price_at <= 0:
+                                continue
+                            pe = price_at / eps_yr
+                            if 0 < pe < 300:
+                                pes.append(pe)
+                        except Exception:
+                            continue
+                    if pes:
+                        pe_promedio = round(sum(pes) / len(pes), 1)
+                        pe_fuente   = f"histórico ({len(pes)} años)"
+        except Exception:
+            pass
+
+        # Fallback: PE trailing como proxy del múltiplo habitual
+        if pe_promedio is None and pe_trailing and 0 < pe_trailing < 200:
+            pe_promedio = pe_trailing
+            pe_fuente   = "trailing actual"
+
+        if pe_promedio and eps_forward and eps_forward > 0:
+            fair_value_pe = round(pe_promedio * eps_forward, 2)
+
+        # ── Método 2: PB sector target × Book Value ───────────────────────
+        fair_value_pb = None
+        pb_target     = _SECTOR_PB_TARGET.get(sector, 2.5)
+
+        if book_value and book_value > 0:
+            fair_value_pb = round(pb_target * book_value, 2)
+
+        # ── Consolidar ────────────────────────────────────────────────────
+        metodos_validos = [v for v in [fair_value_pe, fair_value_pb] if v and v > 0]
+        if not metodos_validos:
+            return {**_vacio, "precio_actual": round(float(precio_actual), 2),
+                    "sector": sector}
+
+        fv_prom = round(sum(metodos_validos) / len(metodos_validos), 2)
+        upside  = round((fv_prom / precio_actual - 1) * 100, 1)
+
+        veredicto = ("SUBVALUADA"   if upside >  15 else
+                     "SOBREVALUADA" if upside < -15 else
+                     "PRECIO JUSTO")
+
+        confianza = ("Alta"  if len(metodos_validos) == 2 and "histórico" in pe_fuente else
+                     "Media" if len(metodos_validos) >= 1 else "Baja")
+
+        return {
+            "precio_actual":       round(float(precio_actual), 2),
+            "fair_value_pe":       fair_value_pe,
+            "fair_value_pb":       fair_value_pb,
+            "fair_value_promedio": fv_prom,
+            "upside_downside":     upside,
+            "veredicto":           veredicto,
+            "confianza":           confianza,
+            "metodos_usados":      len(metodos_validos),
+            "pe_promedio":         pe_promedio,
+            "pe_fuente":           pe_fuente,
+            "pb_target":           pb_target,
+            "sector":              sector,
+        }
+    except Exception:
+        return _vacio
+
+
 def analisis_completo(ticker):
     """Tira el análisis fundamental completo de una empresa."""
     from src.datos import mostrar_ticker

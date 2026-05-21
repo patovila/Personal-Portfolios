@@ -932,6 +932,124 @@ with tab2:
                 beta_r = ratios.get('Beta')
                 s4.metric("Beta", f"{beta_r:.2f}" if beta_r else "N/A")
 
+                st.divider()
+
+                # ── FAIR VALUE ────────────────────────────────────────────
+                st.markdown("### 🎯 Fair Value Estimado")
+                st.caption(
+                    "Estimación basada en múltiplos históricos. "
+                    "**No es recomendación de inversión.**"
+                )
+                try:
+                    from src.fundamentals import calcular_fair_value as _calc_fv
+                    _fv = _calc_fv(ticker)
+
+                    if _fv.get("veredicto") == "SIN DATOS" or _fv.get("fair_value_promedio") is None:
+                        st.info(
+                            "No hay suficientes datos para calcular el fair value. "
+                            "Se necesita EPS forward o book value disponible en yfinance."
+                        )
+                    else:
+                        _fv_precio  = _fv["precio_actual"]
+                        _fv_valor   = _fv["fair_value_promedio"]
+                        _fv_upside  = _fv["upside_downside"]
+                        _fv_verd    = _fv["veredicto"]
+                        _fv_conf    = _fv["confianza"]
+
+                        _VERD_CFG = {
+                            "SUBVALUADA":   ("🟢", "#DCFCE7", "#166534"),
+                            "PRECIO JUSTO": ("🟡", "#FEF3C7", "#92400E"),
+                            "SOBREVALUADA": ("🔴", "#FEE2E2", "#991B1B"),
+                            "SIN DATOS":    ("❔", "#F3F4F6", "#374151"),
+                        }
+                        _vd_em, _vd_bg, _vd_fg = _VERD_CFG.get(_fv_verd, ("❔", "#F3F4F6", "#374151"))
+                        _up_color = "#16A34A" if _fv_upside >= 0 else "#DC2626"
+
+                        _fv_c1, _fv_c2, _fv_c3, _fv_c4 = st.columns(4)
+
+                        _fv_c1.markdown(
+                            f"<div style='background:#F9FAFB;border:1px solid #E1E4E8;"
+                            f"border-radius:8px;padding:12px 14px;text-align:center;'>"
+                            f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
+                            f"margin-bottom:4px;'>💲 Precio Actual</div>"
+                            f"<div style='font-size:20px;font-weight:700;color:#1F2937;'>"
+                            f"${_fv_precio:,.2f}</div></div>",
+                            unsafe_allow_html=True,
+                        )
+                        _fv_c2.markdown(
+                            f"<div style='background:#F0F9FF;border:1px solid #BAE6FD;"
+                            f"border-radius:8px;padding:12px 14px;text-align:center;'>"
+                            f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
+                            f"margin-bottom:4px;'>🎯 Fair Value</div>"
+                            f"<div style='font-size:20px;font-weight:700;color:#1E40AF;'>"
+                            f"${_fv_valor:,.2f}</div>"
+                            f"<div style='font-size:10px;color:#6B7280;margin-top:2px;'>"
+                            f"{_fv['metodos_usados']} método{'s' if _fv['metodos_usados'] != 1 else ''}</div>"
+                            f"</div>",
+                            unsafe_allow_html=True,
+                        )
+                        _fv_c3.markdown(
+                            f"<div style='background:#F9FAFB;border:1px solid #E1E4E8;"
+                            f"border-radius:8px;padding:12px 14px;text-align:center;'>"
+                            f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
+                            f"margin-bottom:4px;'>📊 Upside / Downside</div>"
+                            f"<div style='font-size:20px;font-weight:700;color:{_up_color};'>"
+                            f"{_fv_upside:+.1f}%</div></div>",
+                            unsafe_allow_html=True,
+                        )
+                        _fv_c4.markdown(
+                            f"<div style='background:{_vd_bg};border:1px solid {_vd_fg}44;"
+                            f"border-radius:8px;padding:12px 14px;text-align:center;'>"
+                            f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
+                            f"margin-bottom:4px;'>Veredicto</div>"
+                            f"<div style='font-size:16px;font-weight:700;color:{_vd_fg};'>"
+                            f"{_vd_em} {_fv_verd}</div>"
+                            f"<div style='font-size:10px;color:{_vd_fg};margin-top:2px;'>"
+                            f"Confianza: {_fv_conf}</div>"
+                            f"</div>",
+                            unsafe_allow_html=True,
+                        )
+
+                        # Detalle expandible
+                        with st.expander("🔍 Ver detalle de métodos"):
+                            import pandas as _pd_fv
+                            _fv_rows = []
+                            if _fv.get("fair_value_pe"):
+                                _fv_rows.append({
+                                    "Método":     "PE × EPS Forward",
+                                    "Fair Value": f"${_fv['fair_value_pe']:,.2f}",
+                                    "Detalle":    (
+                                        f"PE usado: {_fv['pe_promedio']:.1f}x "
+                                        f"({_fv.get('pe_fuente', '')})"
+                                    ),
+                                })
+                            if _fv.get("fair_value_pb"):
+                                _fv_rows.append({
+                                    "Método":     "PB Sector × Book Value",
+                                    "Fair Value": f"${_fv['fair_value_pb']:,.2f}",
+                                    "Detalle":    (
+                                        f"PB target sector ({_fv.get('sector', 'N/A')}): "
+                                        f"{_fv.get('pb_target', 'N/A')}x"
+                                    ),
+                                })
+                            if _fv_rows:
+                                st.dataframe(
+                                    _pd_fv.DataFrame(_fv_rows),
+                                    use_container_width=True,
+                                    hide_index=True,
+                                )
+                            st.caption(
+                                f"⚠️ Método PB usa P/B objetivo por sector ({_fv.get('sector', 'N/A')}), "
+                                f"no el P/B actual. Método PE usa "
+                                f"{'PE promedio histórico' if 'histórico' in (_fv.get('pe_fuente') or '') else 'PE trailing como proxy'}. "
+                                f"Confianza {_fv_conf}: "
+                                + ("ambos métodos con datos históricos." if _fv_conf == "Alta"
+                                   else "un solo método o PE sin histórico." if _fv_conf == "Media"
+                                   else "datos insuficientes.")
+                            )
+                except Exception as _e_fv:
+                    st.warning(f"No se pudo calcular el fair value: {_e_fv}")
+
             except Exception as e:
                 st.error(f"❌ Error cargando fundamentals: {e}")
 
