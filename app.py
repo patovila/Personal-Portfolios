@@ -2391,14 +2391,15 @@ with tab5:
     import plotly.graph_objects as go
     from src.calculadoras import (
         calc_billetera, calc_plazo_fijo, calc_fci, calc_bono,
-        comparar_todas, evolucion_diaria,
+        comparar_todas, evolucion_diaria, simular_inversion_mensual,
     )
 
-    csub1, csub2, csub3, csub4 = st.tabs([
+    csub1, csub2, csub3, csub4, csub5 = st.tabs([
         "💵 Billetera Virtual",
         "📅 Plazo Fijo / FCI",
         "📊 Bono / TIR",
         "⚖️ Comparador",
+        "📈 Simulador",
     ])
 
     # ── SUB-TAB 1: BILLETERA VIRTUAL ──────────────────────────────────────────
@@ -2773,6 +2774,169 @@ with tab5:
             "Rendimiento real negativo = perdiste poder adquisitivo aunque el monto en ARS aumento. "
             "Siempre compara contra la inflacion esperada del periodo."
         )
+
+    # ── SUB-TAB 5: SIMULADOR DE INVERSIÓN ────────────────────────────────────
+    with csub5:
+        st.markdown("#### 📈 Simulador de Inversión — Interés Compuesto")
+        st.caption(
+            "Proyectá el crecimiento de tu capital con aportes mensuales fijos. "
+            "Defaults ajustados al contexto argentino actual."
+        )
+
+        _sc1, _sc2 = st.columns(2)
+        with _sc1:
+            _sim_capital = st.number_input(
+                "Capital inicial (ARS)", min_value=0.0, value=100_000.0,
+                step=10_000.0, format="%.0f", key="sim_capital",
+            )
+            _sim_aporte = st.number_input(
+                "Aporte mensual (ARS)", min_value=0.0, value=50_000.0,
+                step=5_000.0, format="%.0f", key="sim_aporte",
+            )
+            _sim_años = st.slider(
+                "Plazo (años)", min_value=1, max_value=40, value=10, key="sim_años",
+            )
+        with _sc2:
+            _sim_tasa = st.slider(
+                "Retorno anual esperado %", min_value=5, max_value=100,
+                value=30, key="sim_tasa",
+            )
+            _sim_inflacion = st.slider(
+                "Inflación anual esperada %", min_value=0, max_value=200,
+                value=60, key="sim_inflacion",
+            )
+            _sim_mostrar_real = st.checkbox(
+                "Mostrar valor real (ajustado por inflación)",
+                value=True, key="sim_mostrar_real",
+            )
+
+        _sim = simular_inversion_mensual(
+            capital_inicial=_sim_capital,
+            aporte_mensual=_sim_aporte,
+            tasa_anual=float(_sim_tasa),
+            años=_sim_años,
+            inflacion_anual=float(_sim_inflacion) if _sim_mostrar_real else 0,
+        )
+
+        # ── 4 cards de resultados ─────────────────────────────────────────
+        st.markdown('<div style="height:0.6rem;"></div>', unsafe_allow_html=True)
+        _rc1, _rc2, _rc3, _rc4 = st.columns(4)
+
+        def _sim_card(col, titulo, valor, color="#1F2937", sub=None):
+            sub_html = f"<div style='font-size:10px;color:#6B7280;margin-top:2px;'>{sub}</div>" if sub else ""
+            col.markdown(
+                f"<div style='background:#F9FAFB;border:1px solid #E1E4E8;"
+                f"border-radius:8px;padding:12px 14px;text-align:center;'>"
+                f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
+                f"margin-bottom:4px;'>{titulo}</div>"
+                f"<div style='font-size:18px;font-weight:700;color:{color};'>{valor}</div>"
+                f"{sub_html}</div>",
+                unsafe_allow_html=True,
+            )
+
+        def _fmt_ars(n):
+            return f"$ {n:,.0f}".replace(",", ".")
+
+        _sim_card(_rc1, "💰 Saldo final", _fmt_ars(_sim["saldo_final"]), "#16A34A")
+        if _sim_mostrar_real:
+            _sim_card(_rc2, "📉 Valor real (ARS hoy)",
+                      _fmt_ars(_sim["saldo_real"]), "#F59E0B",
+                      sub=f"inflación {_sim_inflacion}% anual")
+        else:
+            _sim_card(_rc2, "📥 Total aportado", _fmt_ars(_sim["total_aportado"]), "#2563EB")
+        _sim_card(_rc3, "📥 Total aportado", _fmt_ars(_sim["total_aportado"]), "#2563EB")
+        _sim_card(_rc4, "✨ Rendimientos", _fmt_ars(_sim["total_intereses"]), "#7C3AED",
+                  sub=f"x{_sim['multiplicador']} tu dinero")
+
+        st.markdown('<div style="height:0.8rem;"></div>', unsafe_allow_html=True)
+
+        # ── Gráfico área apilada ──────────────────────────────────────────
+        import plotly.graph_objects as _go_sim
+
+        _hist = _sim["historico"]
+        _años_x    = [h["año"] for h in _hist]
+        _aportado  = [h["aportado"] for h in _hist]
+        _intereses = [h["intereses"] for h in _hist]
+
+        _fig_sim = _go_sim.Figure()
+        _fig_sim.add_trace(_go_sim.Scatter(
+            x=_años_x, y=_aportado,
+            name="Capital aportado",
+            fill="tozeroy",
+            mode="none",
+            fillcolor="rgba(37,99,235,0.35)",
+        ))
+        _fig_sim.add_trace(_go_sim.Scatter(
+            x=_años_x, y=[a + i for a, i in zip(_aportado, _intereses)],
+            name="Intereses acumulados",
+            fill="tonexty",
+            mode="none",
+            fillcolor="rgba(22,163,74,0.45)",
+        ))
+
+        if _sim_mostrar_real and _sim_inflacion > 0:
+            _saldos_reales = []
+            for h in _hist:
+                _factor = (1 + _sim_inflacion / 100) ** h["año"]
+                _saldos_reales.append(round(h["saldo"] / _factor, 2))
+            _fig_sim.add_trace(_go_sim.Scatter(
+                x=_años_x, y=_saldos_reales,
+                name="Valor real (ARS hoy)",
+                mode="lines",
+                line=dict(color="#DC2626", width=2, dash="dot"),
+            ))
+
+        _fig_sim.update_layout(
+            title="Crecimiento de tu inversión en el tiempo",
+            template="plotly_white",
+            height=340,
+            margin=dict(l=20, r=20, t=40, b=20),
+            xaxis=dict(title="Año", dtick=max(1, _sim_años // 10)),
+            yaxis=dict(title="ARS", tickformat=",.0f"),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            hovermode="x unified",
+        )
+        st.plotly_chart(_fig_sim, use_container_width=True)
+
+        # ── Tabla anual ───────────────────────────────────────────────────
+        with st.expander("📋 Ver tabla anual detallada"):
+            import pandas as _pd_sim
+            _df_sim = _pd_sim.DataFrame(_hist)
+            _df_sim.columns = ["Año", "Saldo (ARS)", "Aportado (ARS)", "Intereses (ARS)"]
+            _df_sim["Crecim. %"] = _df_sim["Saldo (ARS)"].pct_change().mul(100).round(1)
+            _df_sim.loc[_df_sim.index[0], "Crecim. %"] = None
+            for _col_ars in ["Saldo (ARS)", "Aportado (ARS)", "Intereses (ARS)"]:
+                _df_sim[_col_ars] = _df_sim[_col_ars].apply(lambda v: f"$ {v:,.0f}".replace(",", "."))
+            _df_sim["Crecim. %"] = _df_sim["Crecim. %"].apply(
+                lambda v: f"{v:+.1f}%" if v == v else "—"
+            )
+            st.dataframe(_df_sim, use_container_width=True, hide_index=True)
+
+        # ── Mensaje educativo ─────────────────────────────────────────────
+        _mult = _sim["multiplicador"]
+        _msgs = []
+        if _mult >= 3:
+            _msgs.append(
+                f"🚀 Con este plan, tu dinero se multiplica **{_mult}x** en **{_sim_años} años**."
+            )
+        if _sim_mostrar_real and _sim_inflacion > _sim_tasa:
+            _msgs.append(
+                "⚠️ Tu retorno no supera la inflación. Considerá instrumentos con mayor rendimiento."
+            )
+        elif _sim_mostrar_real and _sim_inflacion > 0:
+            _poder_real = (_sim["saldo_real"] / _sim["total_aportado"] - 1) * 100
+            if _poder_real > 0:
+                _msgs.append(
+                    f"✅ En términos reales, tu poder adquisitivo **aumenta {_poder_real:.0f}%** "
+                    f"durante el período."
+                )
+            else:
+                _msgs.append(
+                    f"⚠️ En términos reales tu poder adquisitivo **cae {abs(_poder_real):.0f}%** "
+                    f"— la inflación supera al rendimiento."
+                )
+        if _msgs:
+            st.info("  \n".join(_msgs))
 
 # TAB 6: MACRO ARGENTINA
 with tab6:

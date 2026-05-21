@@ -140,6 +140,49 @@ def comparar_todas(monto: float, dias: int, tasas_dict: dict, inflacion_mensual:
     return df.drop(columns=["_orden"])
 
 
+def simular_inversion_mensual(
+    capital_inicial: float,
+    aporte_mensual: float,
+    tasa_anual: float,
+    años: int,
+    inflacion_anual: float = 0,
+) -> dict:
+    """Interés compuesto con aportes mensuales. Proyección año a año."""
+    tasa_mensual = tasa_anual / 12 / 100
+    meses = años * 12
+
+    saldo = capital_inicial
+    historico = []
+    total_aportado = capital_inicial
+
+    for mes in range(1, meses + 1):
+        saldo = saldo * (1 + tasa_mensual) + aporte_mensual
+        total_aportado += aporte_mensual
+        if mes % 12 == 0:
+            año_actual = mes // 12
+            historico.append({
+                "año":       año_actual,
+                "saldo":     round(saldo, 2),
+                "aportado":  round(total_aportado, 2),
+                "intereses": round(saldo - total_aportado, 2),
+            })
+
+    if inflacion_anual > 0:
+        factor_inflacion = (1 + inflacion_anual / 100) ** años
+        saldo_real = saldo / factor_inflacion
+    else:
+        saldo_real = saldo
+
+    return {
+        "saldo_final":     round(saldo, 2),
+        "saldo_real":      round(saldo_real, 2),
+        "total_aportado":  round(total_aportado, 2),
+        "total_intereses": round(saldo - total_aportado, 2),
+        "multiplicador":   round(saldo / total_aportado, 2) if total_aportado else 0,
+        "historico":       historico,
+    }
+
+
 def evolucion_diaria(monto: float, tna: float, dias: int, tipo: str = "diaria") -> pd.DataFrame:
     """Evolucion dia a dia del monto. tipo='diaria' o 'vencimiento'."""
     dias_arr = list(range(0, dias + 1))
