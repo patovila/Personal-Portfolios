@@ -746,7 +746,7 @@ except Exception:
     pass  # El banner nunca debe crashear la app
 # ──────────────────────────────────────────────────────────────────
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "🏢 Ficha",
     "📊 Fundamental",
     "📈 Tecnico",
@@ -756,6 +756,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "📐 DCF & Valuación",
     "📰 Noticias",
     "🎯 Mi Perfil Inversor",
+    "📅 Earnings",
 ])
 
 # TAB 1: FICHA
@@ -3788,4 +3789,162 @@ with tab9:
             "categorías amplias. No constituye asesoramiento financiero "
             "personalizado. Consultá un asesor certificado antes de tomar "
             "decisiones de inversión."
+        )
+
+# TAB 10: EARNINGS
+with tab10:
+    from src.earnings import get_earnings_portfolio, clasificar_earnings
+    from datetime import date as _date10
+    import pandas as _pd10
+
+    st.markdown(
+        "<h2 style='color:#1E40AF;margin-bottom:0;'>📅 Calendario de Earnings</h2>"
+        "<p style='color:#6B7280;margin-top:4px;'>Próximos reportes trimestrales "
+        "de las empresas de tu portfolio.</p>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div style="border-bottom:1px solid #E1E4E8;margin:8px 0 18px 0;"></div>',
+        unsafe_allow_html=True,
+    )
+
+    # Cargar tickers del portfolio
+    _e10_tickers: tuple = ()
+    try:
+        from src.portfolio import cargar_portfolio as _cp10
+        _pf10 = _cp10("pato")
+        _e10_tickers = tuple(p["ticker"] for p in _pf10.get("posiciones", []))
+    except Exception:
+        st.warning("No se pudo cargar el portfolio. Asegurate de tener posiciones cargadas.")
+
+    if _e10_tickers:
+        with st.spinner("Consultando fechas de earnings (cache 1 hora)..."):
+            try:
+                _proximos10, _historico10 = get_earnings_portfolio(_e10_tickers)
+            except Exception as _ex10:
+                st.error(f"Error al cargar earnings: {_ex10}")
+                _proximos10, _historico10 = [], []
+
+        # ── SECCIÓN 1: Cards de próximos earnings ────────────────────────────
+        st.markdown("### 🔔 Próximos earnings del portfolio")
+
+        if not _proximos10:
+            st.info("No se encontraron fechas de earnings futuras para los tickers del portfolio. "
+                    "Algunos brokers no publican fechas con mucha anticipación.")
+        else:
+            _BADGE: dict[str, tuple[str, str]] = {
+                "HOY":               ("🔴", "#FEE2E2", "#991B1B"),
+                "ESTA SEMANA":       ("🟡", "#FEF3C7", "#92400E"),
+                "ESTE MES":          ("🟢", "#DCFCE7", "#166534"),
+                "PRÓXIMO TRIMESTRE": ("🔵", "#DBEAFE", "#1E40AF"),
+                "MÁS ADELANTE":      ("⚪", "#F3F4F6", "#374151"),
+                "SIN FECHA":         ("❔", "#F3F4F6", "#374151"),
+            }
+
+            # Máx 3 cards por fila
+            _cols_por_fila = 3
+            for _i10 in range(0, len(_proximos10), _cols_por_fila):
+                _fila10 = _proximos10[_i10: _i10 + _cols_por_fila]
+                _cols10 = st.columns(len(_fila10))
+                for _col10, _e10 in zip(_cols10, _fila10):
+                    _urg   = _e10["urgencia"]
+                    _emoji, _bg, _fg = _BADGE.get(_urg, ("⚪", "#F3F4F6", "#374151"))
+                    _dias  = _e10["dias"]
+                    _dias_txt = "Hoy" if _dias == 0 else f"En {_dias} día{'s' if _dias != 1 else ''}"
+                    _eps_txt  = (
+                        f"EPS est.: <b>${_e10['eps_estimado']:.2f}</b>"
+                        if _e10.get("eps_estimado") is not None else ""
+                    )
+                    _rev_txt  = ""
+                    if _e10.get("revenue_estimado"):
+                        _rev_m = _e10["revenue_estimado"] / 1e6
+                        _rev_txt = f"Rev. est.: <b>${_rev_m:,.0f}M</b>"
+                    _col10.markdown(
+                        f"<div style='background:#FFFFFF;border:1px solid #E1E4E8;"
+                        f"border-radius:10px;padding:16px 18px;height:100%;'>"
+                        f"<div style='font-size:24px;font-weight:800;"
+                        f"color:#111827;letter-spacing:-0.02em;'>{_e10['ticker']}</div>"
+                        f"<div style='font-size:12px;color:#6B7280;margin-bottom:8px;'>"
+                        f"{_e10['nombre']}</div>"
+                        f"<div style='background:{_bg};color:{_fg};"
+                        f"padding:3px 10px;border-radius:12px;display:inline-block;"
+                        f"font-size:11px;font-weight:700;margin-bottom:8px;'>"
+                        f"{_emoji} {_urg}</div><br>"
+                        f"<div style='font-size:13px;color:#374151;margin-bottom:4px;'>"
+                        f"📆 {_e10['fecha'].strftime('%d/%m/%Y')} · {_dias_txt}</div>"
+                        + (f"<div style='font-size:12px;color:#374151;'>{_eps_txt}</div>" if _eps_txt else "")
+                        + (f"<div style='font-size:12px;color:#374151;'>{_rev_txt}</div>" if _rev_txt else "")
+                        + "</div>",
+                        unsafe_allow_html=True,
+                    )
+            st.markdown('<div style="margin-bottom:1rem;"></div>', unsafe_allow_html=True)
+
+        # ── SECCIÓN 2: Tabla completa ─────────────────────────────────────────
+        st.markdown("### 📋 Tabla completa")
+        if not _proximos10:
+            st.caption("Sin datos disponibles.")
+        else:
+            _filas_tbl10 = []
+            for _e10 in _proximos10:
+                _filas_tbl10.append({
+                    "Ticker":       _e10["ticker"],
+                    "Empresa":      _e10["nombre"],
+                    "Fecha":        _e10["fecha"].strftime("%d/%m/%Y"),
+                    "Días":         _e10["dias"],
+                    "EPS Est.":     f"${_e10['eps_estimado']:.2f}" if _e10.get("eps_estimado") is not None else "—",
+                    "Rev. Est. (M)": f"${_e10['revenue_estimado']/1e6:,.0f}" if _e10.get("revenue_estimado") else "—",
+                    "Urgencia":     _e10["urgencia"],
+                })
+            _df_tbl10 = _pd10.DataFrame(_filas_tbl10)
+
+            def _hl_semana(row):
+                if row["Urgencia"] in ("HOY", "ESTA SEMANA"):
+                    return ["background-color:#FEF3C7;"] * len(row)
+                return [""] * len(row)
+
+            st.dataframe(
+                _df_tbl10.style.apply(_hl_semana, axis=1),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+        st.divider()
+
+        # ── SECCIÓN 3: Historial reciente (últimos 90 días) ───────────────────
+        st.markdown("### 📜 Historial reciente — últimos 90 días")
+        if not _historico10:
+            st.info("No se encontraron earnings reportados en los últimos 90 días.")
+        else:
+            _filas_hist10 = []
+            for _h10 in _historico10:
+                _beat_txt = _h10.get("beat") or "—"
+                _sor = _h10.get("sorpresa")
+                _sor_txt = f"{_sor:+.1f}%" if _sor is not None else "—"
+                _filas_hist10.append({
+                    "Ticker":     _h10["ticker"],
+                    "Empresa":    _h10["nombre"],
+                    "Fecha":      _h10["fecha"].strftime("%d/%m/%Y"),
+                    "EPS Est.":   f"${_h10['eps_est']:.2f}" if _h10.get("eps_est") is not None else "—",
+                    "EPS Real":   f"${_h10['eps_real']:.2f}" if _h10.get("eps_real") is not None else "—",
+                    "Sorpresa":   _sor_txt,
+                    "Resultado":  _beat_txt,
+                })
+            _df_hist10 = _pd10.DataFrame(_filas_hist10)
+
+            def _hl_beat(row):
+                if row["Resultado"] == "BEAT":
+                    return [""] * 6 + ["background-color:#DCFCE7;color:#166534;font-weight:700;"]
+                if row["Resultado"] == "MISS":
+                    return [""] * 6 + ["background-color:#FEE2E2;color:#991B1B;font-weight:700;"]
+                return [""] * len(row)
+
+            st.dataframe(
+                _df_hist10.style.apply(_hl_beat, axis=1),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+        st.caption(
+            "Fuente: Yahoo Finance · Cache 1 hora · "
+            "Tickers argentinos usan su ADR en NYSE para obtener datos de earnings."
         )
