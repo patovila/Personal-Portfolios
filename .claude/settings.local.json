@@ -35,7 +35,8 @@
       "Bash(python -c \"import ast; ast.parse\\(open\\('src/benchmark.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\('src/calculadoras.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
       "Bash(git commit *)",
-      "Bash(python -c \"import ast; ast.parse\\(open\\('src/earnings.py', encoding='utf-8'\\).read\\(\\)\\); print\\('earnings.py OK'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('src/earnings.py', encoding='utf-8'\\).read\\(\\)\\); print\\('earnings.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('src/fundamentals.py', encoding='utf-8'\\).read\\(\\)\\); print\\('fundamentals.py OK'\\)\")"
     ]
   }
 }
