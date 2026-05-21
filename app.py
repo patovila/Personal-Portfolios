@@ -4112,9 +4112,14 @@ with tab9:
 
 # TAB 10: EARNINGS
 with tab10:
-    from src.earnings import get_earnings_portfolio, clasificar_earnings
+    from src.earnings import (
+        finnhub_disponible, get_earnings_calendario,
+        get_earnings_historico, get_earnings_portfolio_yf,
+        clasificar_earnings,
+    )
     from datetime import date as _date10
     import pandas as _pd10
+    import plotly.graph_objects as _go10
 
     st.markdown(
         "<h2 style='color:#1E40AF;margin-bottom:0;'>📅 Calendario de Earnings</h2>"
@@ -4127,143 +4132,276 @@ with tab10:
         unsafe_allow_html=True,
     )
 
-    # Cargar tickers del portfolio
+    # Tickers del portfolio
     _e10_tickers: tuple = ()
     try:
         from src.portfolio import cargar_portfolio as _cp10
-        _pf10 = _cp10("pato")
+        _pf10      = _cp10("pato")
         _e10_tickers = tuple(p["ticker"] for p in _pf10.get("posiciones", []))
+        _e10_nombres  = {p["ticker"]: p.get("activo", p["ticker"])
+                         for p in _pf10.get("posiciones", [])}
     except Exception:
-        st.warning("No se pudo cargar el portfolio. Asegurate de tener posiciones cargadas.")
+        st.warning("No se pudo cargar el portfolio.")
+        _e10_nombres = {}
 
-    if _e10_tickers:
-        with st.spinner("Consultando fechas de earnings (cache 1 hora)..."):
-            try:
-                _proximos10, _historico10 = get_earnings_portfolio(_e10_tickers)
-            except Exception as _ex10:
-                st.error(f"Error al cargar earnings: {_ex10}")
-                _proximos10, _historico10 = [], []
+    # ── Badge helpers ─────────────────────────────────────────────────────────
+    _BADGE10: dict = {
+        "HOY":               ("🔴", "#FEE2E2", "#991B1B"),
+        "ESTA SEMANA":       ("🟡", "#FEF3C7", "#92400E"),
+        "ESTE MES":          ("🟢", "#DCFCE7", "#166534"),
+        "PRÓXIMO TRIMESTRE": ("🔵", "#DBEAFE", "#1E40AF"),
+        "MÁS ADELANTE":      ("⚪", "#F3F4F6", "#374151"),
+        "SIN FECHA":         ("❔", "#F3F4F6", "#374151"),
+    }
+    _HOUR_LABEL = {"bmo": "BEFORE OPEN", "amc": "AFTER CLOSE", "dmh": "DURING MARKET"}
 
-        # ── SECCIÓN 1: Cards de próximos earnings ────────────────────────────
-        st.markdown("### 🔔 Próximos earnings del portfolio")
+    # ═════════════════════════════════════════════════════════════════════════
+    # RAMA FINNHUB
+    # ═════════════════════════════════════════════════════════════════════════
+    if finnhub_disponible():
+        st.caption("Fuente: Finnhub API · Cache 1 hora")
 
-        if not _proximos10:
-            st.info("No se encontraron fechas de earnings futuras para los tickers del portfolio. "
-                    "Algunos brokers no publican fechas con mucha anticipación.")
-        else:
-            _BADGE: dict[str, tuple[str, str]] = {
-                "HOY":               ("🔴", "#FEE2E2", "#991B1B"),
-                "ESTA SEMANA":       ("🟡", "#FEF3C7", "#92400E"),
-                "ESTE MES":          ("🟢", "#DCFCE7", "#166534"),
-                "PRÓXIMO TRIMESTRE": ("🔵", "#DBEAFE", "#1E40AF"),
-                "MÁS ADELANTE":      ("⚪", "#F3F4F6", "#374151"),
-                "SIN FECHA":         ("❔", "#F3F4F6", "#374151"),
-            }
+        if _e10_tickers:
+            with st.spinner("Consultando Finnhub (cache 1 hora)..."):
+                try:
+                    _proximos10 = get_earnings_calendario(_e10_tickers)
+                except Exception as _ex10:
+                    st.error(f"Error Finnhub calendario: {_ex10}")
+                    _proximos10 = []
 
-            # Máx 3 cards por fila
-            _cols_por_fila = 3
-            for _i10 in range(0, len(_proximos10), _cols_por_fila):
-                _fila10 = _proximos10[_i10: _i10 + _cols_por_fila]
-                _cols10 = st.columns(len(_fila10))
-                for _col10, _e10 in zip(_cols10, _fila10):
-                    _urg   = _e10["urgencia"]
-                    _emoji, _bg, _fg = _BADGE.get(_urg, ("⚪", "#F3F4F6", "#374151"))
-                    _dias  = _e10["dias"]
-                    _dias_txt = "Hoy" if _dias == 0 else f"En {_dias} día{'s' if _dias != 1 else ''}"
-                    _eps_txt  = (
-                        f"EPS est.: <b>${_e10['eps_estimado']:.2f}</b>"
-                        if _e10.get("eps_estimado") is not None else ""
+            # ── SECCIÓN 1: Cards ──────────────────────────────────────────────
+            st.markdown("### 🔔 Próximos earnings del portfolio")
+            if not _proximos10:
+                st.info("No se encontraron earnings en los próximos 90 días para los tickers del portfolio.")
+            else:
+                _cpf = 3
+                for _i10 in range(0, len(_proximos10), _cpf):
+                    _fila10  = _proximos10[_i10: _i10 + _cpf]
+                    _cols10  = st.columns(len(_fila10))
+                    for _col10, _e10 in zip(_cols10, _fila10):
+                        _urg  = _e10["urgencia"]
+                        _em10, _bg10, _fg10 = _BADGE10.get(_urg, ("⚪", "#F3F4F6", "#374151"))
+                        _dias = _e10["dias"]
+                        _dias_txt10 = "Hoy" if _dias == 0 else f"En {_dias} día{'s' if _dias != 1 else ''}"
+                        _hour_lbl   = _HOUR_LABEL.get(_e10.get("hour", ""), "")
+                        _eps_txt10  = (
+                            f"EPS est.: <b>${_e10['eps_estimado']:.2f}</b>"
+                            if _e10.get("eps_estimado") is not None else ""
+                        )
+                        _col10.markdown(
+                            f"<div style='background:#FFFFFF;border:1px solid #E1E4E8;"
+                            f"border-radius:10px;padding:16px 18px;'>"
+                            f"<div style='font-size:24px;font-weight:800;color:#111827;'>"
+                            f"{_e10['ticker']}</div>"
+                            f"<div style='background:{_bg10};color:{_fg10};"
+                            f"padding:3px 10px;border-radius:12px;display:inline-block;"
+                            f"font-size:11px;font-weight:700;margin:6px 0 4px;'>"
+                            f"{_em10} {_urg}</div>"
+                            + (f"<span style='margin-left:6px;background:#F3F4F6;color:#374151;"
+                               f"padding:2px 8px;border-radius:10px;font-size:10px;"
+                               f"font-weight:600;'>{_hour_lbl}</span>" if _hour_lbl else "")
+                            + f"<br><div style='font-size:13px;color:#374151;margin-top:6px;'>"
+                            f"📆 {_e10['fecha'].strftime('%d/%m/%Y')} · {_dias_txt10}</div>"
+                            + (f"<div style='font-size:12px;color:#374151;margin-top:3px;'>{_eps_txt10}</div>" if _eps_txt10 else "")
+                            + "</div>",
+                            unsafe_allow_html=True,
+                        )
+                st.markdown('<div style="margin-bottom:1rem;"></div>', unsafe_allow_html=True)
+
+            # ── SECCIÓN 2: Tabla ──────────────────────────────────────────────
+            st.markdown("### 📋 Tabla completa")
+            if _proximos10:
+                _filas_t10 = []
+                for _e10 in _proximos10:
+                    _hl = _HOUR_LABEL.get(_e10.get("hour", ""), "—")
+                    _filas_t10.append({
+                        "Ticker":    _e10["ticker"],
+                        "Fecha":     _e10["fecha"].strftime("%d/%m/%Y"),
+                        "Días":      _e10["dias"],
+                        "Horario":   _hl,
+                        "EPS Est.":  f"${_e10['eps_estimado']:.2f}" if _e10.get("eps_estimado") is not None else "—",
+                        "Urgencia":  _e10["urgencia"],
+                    })
+                _df_t10 = _pd10.DataFrame(_filas_t10)
+
+                def _hl_sem10(row):
+                    if row["Urgencia"] in ("HOY", "ESTA SEMANA"):
+                        return ["background-color:#FEF3C7;"] * len(row)
+                    return [""] * len(row)
+
+                st.dataframe(
+                    _df_t10.style.apply(_hl_sem10, axis=1),
+                    use_container_width=True, hide_index=True,
+                )
+
+            st.divider()
+
+            # ── SECCIÓN 3: Historial EPS por ticker ───────────────────────────
+            st.markdown("### 📊 Historial EPS — últimos 4 trimestres")
+            if _e10_tickers:
+                _tk_sel10 = st.selectbox(
+                    "Seleccioná un ticker",
+                    options=list(_e10_tickers),
+                    key="earn_tk_sel",
+                )
+                with st.spinner(f"Cargando historial de {_tk_sel10}..."):
+                    try:
+                        _hist10 = get_earnings_historico(_tk_sel10)
+                    except Exception as _ex_h10:
+                        st.error(f"Error: {_ex_h10}")
+                        _hist10 = []
+
+                if not _hist10:
+                    st.info(f"No se encontraron datos históricos de EPS para {_tk_sel10}.")
+                else:
+                    # Gráfico barras EPS real vs estimado
+                    _periods10  = [h["period"] for h in _hist10]
+                    _eps_est10  = [h["eps_est"]  for h in _hist10]
+                    _eps_real10 = [h["eps_real"] for h in _hist10]
+                    _colors10   = [
+                        "#16A34A" if h["beat"] == "BEAT"
+                        else "#DC2626" if h["beat"] == "MISS"
+                        else "#6B7280"
+                        for h in _hist10
+                    ]
+
+                    _fig_eps = _go10.Figure()
+                    _fig_eps.add_trace(_go10.Bar(
+                        x=_periods10, y=_eps_est10,
+                        name="EPS Estimado",
+                        marker_color="#93C5FD",
+                        opacity=0.8,
+                    ))
+                    _fig_eps.add_trace(_go10.Bar(
+                        x=_periods10, y=_eps_real10,
+                        name="EPS Real",
+                        marker_color=_colors10,
+                    ))
+                    _fig_eps.update_layout(
+                        barmode="group",
+                        title=f"EPS real vs estimado — {_tk_sel10}",
+                        template="plotly_white",
+                        height=300,
+                        margin=dict(l=20, r=20, t=40, b=20),
+                        xaxis_title="Trimestre",
+                        yaxis_title="EPS (USD)",
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
                     )
-                    _rev_txt  = ""
-                    if _e10.get("revenue_estimado"):
-                        _rev_m = _e10["revenue_estimado"] / 1e6
-                        _rev_txt = f"Rev. est.: <b>${_rev_m:,.0f}M</b>"
-                    _col10.markdown(
-                        f"<div style='background:#FFFFFF;border:1px solid #E1E4E8;"
-                        f"border-radius:10px;padding:16px 18px;height:100%;'>"
-                        f"<div style='font-size:24px;font-weight:800;"
-                        f"color:#111827;letter-spacing:-0.02em;'>{_e10['ticker']}</div>"
-                        f"<div style='font-size:12px;color:#6B7280;margin-bottom:8px;'>"
-                        f"{_e10['nombre']}</div>"
-                        f"<div style='background:{_bg};color:{_fg};"
-                        f"padding:3px 10px;border-radius:12px;display:inline-block;"
-                        f"font-size:11px;font-weight:700;margin-bottom:8px;'>"
-                        f"{_emoji} {_urg}</div><br>"
-                        f"<div style='font-size:13px;color:#374151;margin-bottom:4px;'>"
-                        f"📆 {_e10['fecha'].strftime('%d/%m/%Y')} · {_dias_txt}</div>"
-                        + (f"<div style='font-size:12px;color:#374151;'>{_eps_txt}</div>" if _eps_txt else "")
-                        + (f"<div style='font-size:12px;color:#374151;'>{_rev_txt}</div>" if _rev_txt else "")
-                        + "</div>",
-                        unsafe_allow_html=True,
+                    st.plotly_chart(_fig_eps, use_container_width=True)
+
+                    # Tabla historial
+                    _filas_h10 = []
+                    for _h10 in _hist10:
+                        _sor = _h10.get("sorpresa")
+                        _filas_h10.append({
+                            "Trimestre": _h10["period"],
+                            "EPS Est.":  f"${_h10['eps_est']:.2f}"  if _h10.get("eps_est")  is not None else "—",
+                            "EPS Real":  f"${_h10['eps_real']:.2f}" if _h10.get("eps_real") is not None else "—",
+                            "Sorpresa":  f"{_sor:+.1f}%"            if _sor is not None      else "—",
+                            "Resultado": _h10.get("beat") or "—",
+                        })
+                    _df_h10 = _pd10.DataFrame(_filas_h10)
+
+                    def _hl_beat10(row):
+                        if row["Resultado"] == "BEAT":
+                            return [""] * 4 + ["background-color:#DCFCE7;color:#166534;font-weight:700;"]
+                        if row["Resultado"] == "MISS":
+                            return [""] * 4 + ["background-color:#FEE2E2;color:#991B1B;font-weight:700;"]
+                        return [""] * len(row)
+
+                    st.dataframe(
+                        _df_h10.style.apply(_hl_beat10, axis=1),
+                        use_container_width=True, hide_index=True,
                     )
-            st.markdown('<div style="margin-bottom:1rem;"></div>', unsafe_allow_html=True)
 
-        # ── SECCIÓN 2: Tabla completa ─────────────────────────────────────────
-        st.markdown("### 📋 Tabla completa")
-        if not _proximos10:
-            st.caption("Sin datos disponibles.")
-        else:
-            _filas_tbl10 = []
-            for _e10 in _proximos10:
-                _filas_tbl10.append({
-                    "Ticker":       _e10["ticker"],
-                    "Empresa":      _e10["nombre"],
-                    "Fecha":        _e10["fecha"].strftime("%d/%m/%Y"),
-                    "Días":         _e10["dias"],
-                    "EPS Est.":     f"${_e10['eps_estimado']:.2f}" if _e10.get("eps_estimado") is not None else "—",
-                    "Rev. Est. (M)": f"${_e10['revenue_estimado']/1e6:,.0f}" if _e10.get("revenue_estimado") else "—",
-                    "Urgencia":     _e10["urgencia"],
-                })
-            _df_tbl10 = _pd10.DataFrame(_filas_tbl10)
+    # ═════════════════════════════════════════════════════════════════════════
+    # RAMA SIN API KEY — instrucciones + fallback yfinance
+    # ═════════════════════════════════════════════════════════════════════════
+    else:
+        st.warning(
+            "**API key de Finnhub no configurada.** "
+            "Para ver el calendario de earnings con fechas exactas necesitás configurarla. "
+            "Ver instrucciones abajo."
+        )
 
-            def _hl_semana(row):
-                if row["Urgencia"] in ("HOY", "ESTA SEMANA"):
-                    return ["background-color:#FEF3C7;"] * len(row)
-                return [""] * len(row)
+        with st.expander("📋 Cómo configurar Finnhub (2 minutos)", expanded=True):
+            st.markdown("""
+**Paso 1 — Crear cuenta gratuita**
+1. Andá a [finnhub.io](https://finnhub.io) y registrate (es gratis)
+2. Copiá tu **API Key** desde el dashboard
 
-            st.dataframe(
-                _df_tbl10.style.apply(_hl_semana, axis=1),
-                use_container_width=True,
-                hide_index=True,
-            )
+**Paso 2 — Configurar en Streamlit Cloud**
+1. Abrí tu app en [share.streamlit.io](https://share.streamlit.io)
+2. Hacé click en los **3 puntos** (⋮) → **Settings**
+3. Andá a la sección **Secrets**
+4. Agregá esta línea exactamente así:
+```
+FINNHUB_API_KEY = "tu_api_key_aqui"
+```
+5. Guardá — la app se reinicia automáticamente
+
+**Paso 3 — Uso local (opcional)**
+Creá un archivo `.env` en la raíz del proyecto:
+```
+FINNHUB_API_KEY=tu_api_key_aqui
+```
+(instalá `python-dotenv` y cargalo en `app.py` con `load_dotenv()`)
+
+> Plan gratuito: 60 llamadas/minuto — más que suficiente para este portfolio.
+""")
 
         st.divider()
+        st.markdown("### 📜 Historial reciente (fuente: Yahoo Finance)")
+        st.caption("Fallback sin Finnhub — no garantiza fechas futuras.")
 
-        # ── SECCIÓN 3: Historial reciente (últimos 90 días) ───────────────────
-        st.markdown("### 📜 Historial reciente — últimos 90 días")
-        if not _historico10:
-            st.info("No se encontraron earnings reportados en los últimos 90 días.")
-        else:
-            _filas_hist10 = []
-            for _h10 in _historico10:
-                _beat_txt = _h10.get("beat") or "—"
-                _sor = _h10.get("sorpresa")
-                _sor_txt = f"{_sor:+.1f}%" if _sor is not None else "—"
-                _filas_hist10.append({
-                    "Ticker":     _h10["ticker"],
-                    "Empresa":    _h10["nombre"],
-                    "Fecha":      _h10["fecha"].strftime("%d/%m/%Y"),
-                    "EPS Est.":   f"${_h10['eps_est']:.2f}" if _h10.get("eps_est") is not None else "—",
-                    "EPS Real":   f"${_h10['eps_real']:.2f}" if _h10.get("eps_real") is not None else "—",
-                    "Sorpresa":   _sor_txt,
-                    "Resultado":  _beat_txt,
-                })
-            _df_hist10 = _pd10.DataFrame(_filas_hist10)
+        if _e10_tickers:
+            with st.spinner("Consultando Yahoo Finance..."):
+                try:
+                    _prox_yf, _hist_yf = get_earnings_portfolio_yf(_e10_tickers)
+                except Exception as _exyf:
+                    st.error(f"Error yfinance: {_exyf}")
+                    _prox_yf, _hist_yf = [], []
 
-            def _hl_beat(row):
-                if row["Resultado"] == "BEAT":
-                    return [""] * 6 + ["background-color:#DCFCE7;color:#166534;font-weight:700;"]
-                if row["Resultado"] == "MISS":
-                    return [""] * 6 + ["background-color:#FEE2E2;color:#991B1B;font-weight:700;"]
-                return [""] * len(row)
+            if _prox_yf:
+                st.markdown("#### Próximos (si los hay)")
+                for _e10 in _prox_yf:
+                    _urg  = _e10["urgencia"]
+                    _em10, _bg10, _fg10 = _BADGE10.get(_urg, ("⚪", "#F3F4F6", "#374151"))
+                    _eps_t = f" · EPS est: ${_e10['eps_estimado']:.2f}" if _e10.get("eps_estimado") is not None else ""
+                    st.markdown(
+                        f"<div style='background:{_bg10};color:{_fg10};"
+                        f"padding:6px 12px;border-radius:8px;margin-bottom:5px;"
+                        f"font-size:13px;'>"
+                        f"<b>{_e10['ticker']}</b> — {_e10['fecha'].strftime('%d/%m/%Y')}"
+                        f" · {_em10} {_urg}{_eps_t}</div>",
+                        unsafe_allow_html=True,
+                    )
 
-            st.dataframe(
-                _df_hist10.style.apply(_hl_beat, axis=1),
-                use_container_width=True,
-                hide_index=True,
-            )
+            if _hist_yf:
+                st.markdown("#### Últimos 90 días reportados")
+                _filas_yf = []
+                for _h10 in _hist_yf:
+                    _sor = _h10.get("sorpresa")
+                    _filas_yf.append({
+                        "Ticker":    _h10["ticker"],
+                        "Fecha":     _h10["fecha"].strftime("%d/%m/%Y"),
+                        "EPS Est.":  f"${_h10['eps_est']:.2f}"  if _h10.get("eps_est")  is not None else "—",
+                        "EPS Real":  f"${_h10['eps_real']:.2f}" if _h10.get("eps_real") is not None else "—",
+                        "Sorpresa":  f"{_sor:+.1f}%"            if _sor is not None      else "—",
+                        "Resultado": _h10.get("beat") or "—",
+                    })
+                _df_yf = _pd10.DataFrame(_filas_yf)
 
-        st.caption(
-            "Fuente: Yahoo Finance · Cache 1 hora · "
-            "Tickers argentinos usan su ADR en NYSE para obtener datos de earnings."
-        )
+                def _hl_yf(row):
+                    if row["Resultado"] == "BEAT":
+                        return [""] * 5 + ["background-color:#DCFCE7;color:#166534;font-weight:700;"]
+                    if row["Resultado"] == "MISS":
+                        return [""] * 5 + ["background-color:#FEE2E2;color:#991B1B;font-weight:700;"]
+                    return [""] * len(row)
+
+                st.dataframe(
+                    _df_yf.style.apply(_hl_yf, axis=1),
+                    use_container_width=True, hide_index=True,
+                )
+            elif not _prox_yf:
+                st.info("No se encontraron datos de earnings en Yahoo Finance.")

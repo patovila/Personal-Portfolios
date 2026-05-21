@@ -5,3 +5,4 @@ plotly
 requests
 numpy
 vaderSentiment
+finnhub-python
