@@ -362,6 +362,46 @@ a:hover {
     background: #94A3B8;
 }
 
+/* === TICKER TAPE === */
+.ticker-tape {
+    background: #1E293B;
+    border-radius: 6px;
+    padding: 9px 16px;
+    overflow: hidden;
+    white-space: nowrap;
+    margin-bottom: 1rem;
+    font-size: 13px;
+}
+.ticker-tape-inner {
+    display: inline-block;
+    animation: tape-scroll 45s linear infinite;
+    padding-left: 100%;
+}
+.ticker-tape:hover .ticker-tape-inner { animation-play-state: paused; }
+@keyframes tape-scroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+}
+
+/* === HOME SCREEN === */
+.index-card {
+    background: #FFFFFF;
+    border: 1px solid #E1E4E8;
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    margin-bottom: 8px;
+}
+.index-card .idx-name  { color:#6B7280; font-size:12px; font-weight:500; margin-bottom:4px; }
+.index-card .idx-price { color:#111827; font-size:22px; font-weight:700; letter-spacing:-0.02em; }
+.index-card .idx-var   { font-size:13px; font-weight:600; margin-top:2px; }
+.mover-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 0; border-bottom:1px solid #F3F4F6;
+}
+.mover-row:last-child { border-bottom: none; }
+.home-section { margin-bottom: 1.8rem; }
+
 /* === MOBILE RESPONSIVE === */
 @media (max-width: 768px) {
   section[data-testid="stSidebar"] {
@@ -384,29 +424,70 @@ a:hover {
 
 universo = cargar_universo()
 
-st.markdown("""
-<div class="bloomberg-header">
-    <div class="title-block">
-        <h1>Mi Bloomberg Personal</h1>
-        <div class="subtitle">Sistema de analisis financiero &middot; Educacion Financiera AR</div>
-    </div>
-    <div class="live-indicator">
-        <span class="live-dot"></span>
-        <span>LIVE</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+# ── HEADER: logo | buscador central | badge LIVE ─────────────────────────────
+_hc1, _hc2, _hc3 = st.columns([3, 5, 2])
+with _hc1:
+    st.markdown(
+        "<div style='padding:10px 0 6px 0;'>"
+        "<span style='font-size:21px;font-weight:800;color:#1E40AF;letter-spacing:-0.02em;'>"
+        "📊 Mi Bloomberg Personal</span><br>"
+        "<span style='font-size:11px;color:#6B7280;'>Educación Financiera AR</span>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+with _hc2:
+    ticker = st.text_input(
+        "search",
+        value="",
+        placeholder="🔍  Buscar ticker: YPF, MELI, AAPL, GOOGL...",
+        label_visibility="collapsed",
+        key="ticker_main",
+    ).upper().strip()
+with _hc3:
+    st.markdown(
+        "<div style='text-align:right;padding:12px 0 0 0;'>"
+        "<span style='background:#DCFCE7;color:#16A34A;padding:6px 14px;"
+        "border-radius:20px;font-weight:600;font-size:13px;'>"
+        "<span style='display:inline-block;width:7px;height:7px;"
+        "background:#16A34A;border-radius:50%;margin-right:5px;"
+        "animation:pulse 1.6s infinite;'></span>LIVE</span>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+st.markdown('<div style="border-bottom:2px solid #E1E4E8;margin:4px 0 12px 0;"></div>', unsafe_allow_html=True)
+
+# ── TICKER TAPE ───────────────────────────────────────────────────────────────
+try:
+    from src.mercado import get_ticker_tape as _get_tape
+    from src.portfolio import cargar_portfolio as _cp_tape
+    try:
+        _pf_tape = _cp_tape("pato")
+        _tape_tks = tuple(p["ticker"] for p in _pf_tape.get("posiciones", []))
+    except Exception:
+        _tape_tks = ("YPF", "GOOGL", "NVDA", "PAM", "TGS")
+    _tape_data = _get_tape(_tape_tks)
+    if _tape_data:
+        _parts = []
+        for _td in _tape_data:
+            _s = "+" if _td["variacion_pct"] >= 0 else ""
+            _c = "#4ADE80" if _td["variacion_pct"] >= 0 else "#F87171"
+            _parts.append(
+                f"<span style='margin:0 16px;'><b style='color:#F8FAFC;'>{_td['ticker']}</b>"
+                f" <span style='color:#CBD5E1;'>${_td['precio']:,.2f}</span>"
+                f" <span style='color:{_c};font-weight:600;'>{_s}{_td['variacion_pct']:.2f}%</span></span>"
+            )
+        _tape_str = " <span style='color:#475569;'>|</span> ".join(_parts)
+        st.markdown(
+            f'<div class="ticker-tape"><div class="ticker-tape-inner">{_tape_str}</div></div>',
+            unsafe_allow_html=True,
+        )
+except Exception:
+    pass
 
 # SIDEBAR
 with st.sidebar:
-    st.header("Buscador")
-    
-    ticker = st.text_input(
-        "Escribe un ticker:",
-        value="YPF",
-        placeholder="Ej: YPF, MELI, AAPL"
-    ).upper()
-    
+    st.header("⚙️ Opciones")
+
     periodo = st.selectbox(
         "Periodo para graficos:",
         ["1mo", "3mo", "6mo", "1y", "2y", "5y"],
@@ -484,26 +565,136 @@ with st.sidebar:
 "Agregar a pantalla de inicio"
 """)
 
-# CONTENIDO PRINCIPAL
-# Cargamos el ticker del sidebar pero NO abortamos si falla:
-# el tab Mi Portfolio funciona aunque el ticker sea invalido.
+# ── HOME SCREEN (sin ticker) ─────────────────────────────────────────────────
+if not ticker:
+    from src.mercado import get_indices_globales, get_movers_portfolio
+
+    # ── Sección A: Índices globales ───────────────────────────────────────────
+    st.markdown("### 🌎 Índices globales")
+    _indices = get_indices_globales()
+
+    def _idx_card(idx):
+        precio = idx["precio"]
+        var    = idx["variacion_pct"]
+        p_str  = f"${precio:,.2f}" if precio is not None else "—"
+        if var is None:
+            v_str, v_col = "—", "#6B7280"
+        else:
+            v_str = f"{'+'if var>=0 else ''}{var:.2f}%"
+            v_col = "#16A34A" if var >= 0 else "#DC2626"
+        return (
+            f"<div class='index-card'>"
+            f"<div class='idx-name'>{idx['nombre']}</div>"
+            f"<div class='idx-price'>{p_str}</div>"
+            f"<div class='idx-var' style='color:{v_col};'>{v_str}</div>"
+            f"</div>"
+        )
+
+    _ia, _ib, _ic, _id_ = st.columns(4)
+    _ia.markdown(_idx_card(_indices[0]), unsafe_allow_html=True)
+    _ib.markdown(_idx_card(_indices[1]), unsafe_allow_html=True)
+    _ic.markdown(_idx_card(_indices[2]), unsafe_allow_html=True)
+    _id_.markdown(_idx_card(_indices[3]), unsafe_allow_html=True)
+    _ie, _if_, _ig, _ih = st.columns(4)
+    _ie.markdown(_idx_card(_indices[4]), unsafe_allow_html=True)
+    _if_.markdown(_idx_card(_indices[5]), unsafe_allow_html=True)
+    _ig.markdown(_idx_card(_indices[6]), unsafe_allow_html=True)
+    _ih.markdown(_idx_card(_indices[7]), unsafe_allow_html=True)
+
+    st.markdown('<div style="margin-bottom:1.4rem;"></div>', unsafe_allow_html=True)
+
+    # ── Sección B: Movers del portfolio ──────────────────────────────────────
+    try:
+        from src.portfolio import cargar_portfolio as _cp_h
+        _pf_h = _cp_h("pato")
+        _port_tks = tuple(p["ticker"] for p in _pf_h.get("posiciones", []))
+    except Exception:
+        _port_tks = ("YPF", "GOOGL", "NVDA", "PAM", "TGS", "MELI", "AAPL")
+
+    st.markdown("### 📊 Movers del portfolio — hoy")
+    _movers = get_movers_portfolio(_port_tks)
+    _mcol_g, _mcol_l = st.columns(2)
+
+    def _mover_rows(items, label, up: bool):
+        emoji = "🚀" if up else "📉"
+        color = "#16A34A" if up else "#DC2626"
+        rows_html = ""
+        for it in items:
+            s = "+" if it["variacion_pct"] >= 0 else ""
+            rows_html += (
+                f"<div class='mover-row'>"
+                f"<span style='font-weight:600;color:#111827;'>{it['ticker']}</span>"
+                f"<span style='font-weight:700;color:{color};'>{s}{it['variacion_pct']:.2f}%</span>"
+                f"</div>"
+            )
+        if not rows_html:
+            rows_html = "<div style='color:#9CA3AF;font-size:13px;padding:8px 0;'>Sin datos</div>"
+        return (
+            f"<div style='background:#FFF;border:1px solid #E1E4E8;border-radius:10px;padding:16px 18px;'>"
+            f"<div style='font-weight:700;font-size:14px;margin-bottom:10px;'>{emoji} {label}</div>"
+            f"{rows_html}</div>"
+        )
+
+    with _mcol_g:
+        st.markdown(_mover_rows(_movers["gainers"], "Mayores subas hoy", True), unsafe_allow_html=True)
+    with _mcol_l:
+        st.markdown(_mover_rows(_movers["losers"], "Mayores bajas hoy", False), unsafe_allow_html=True)
+
+    st.markdown('<div style="margin-bottom:1.4rem;"></div>', unsafe_allow_html=True)
+
+    # ── Sección C: Resumen del portfolio ─────────────────────────────────────
+    st.markdown("### 💼 Mi Portfolio")
+    try:
+        from src.portfolio import (
+            cargar_portfolio as _cp_c,
+            calcular_metricas_portfolio as _cmp_c,
+            actualizar_precios_actuales as _upa_c,
+        )
+        _pf_c = _cp_c("pato")
+        _tc_c = _pf_c.get("configuracion", {}).get("tipo_cambio_ars_usd", 1427)
+        try:
+            _pf_live = _upa_c(_pf_c)
+        except Exception:
+            _pf_live = _pf_c
+        _m = _cmp_c(_pf_live)
+        _pc1, _pc2, _pc3, _pc4 = st.columns(4)
+        _pc1.metric(
+            "Valor total (ARS)",
+            f"$ {_m['valor_total_ars']:,.0f}",
+        )
+        _pc2.metric(
+            "P&L total",
+            f"$ {_m['pnl_total_ars']:,.0f}",
+            delta=f"{_m['pnl_total_pct']*100:+.2f}%",
+        )
+        _top = _m.get("top_performer") or {}
+        _pc3.metric(
+            "Top performer",
+            _top.get("ticker", "—"),
+            delta=f"{_top.get('pnl_pct',0)*100:+.2f}%" if _top else None,
+        )
+        _pc4.metric("Posiciones", str(_m["num_posiciones"]))
+    except Exception as _e_pc:
+        st.info(f"Cargá el portfolio para ver el resumen. ({_e_pc})")
+
+    st.info("👆 Escribí un ticker en el buscador para ver Ficha, Fundamental, Técnico y más.")
+    st.stop()
+
+# ── CONTENIDO TICKER ──────────────────────────────────────────────────────────
 datos = None
 ticker_error = None
-if not ticker:
-    ticker_error = "Escribe un ticker en el buscador para ver Ficha/Fundamental/Tecnico"
-else:
-    try:
-        with st.spinner(f"Cargando datos de {ticker}..."):
-            datos = cargar_ticker(ticker)
-    except Exception as e:
-        ticker_error = f"Error al cargar {ticker}: {e}"
+try:
+    with st.spinner(f"Cargando datos de {ticker}..."):
+        datos = cargar_ticker(ticker)
+except Exception as e:
+    ticker_error = f"Error al cargar {ticker}: {e}"
 
 if datos:
     st.header(f"{datos['nombre']} ({datos['ticker']})")
     st.caption(f"{datos['sector']} | {datos['industria']} | {datos['pais']}")
 else:
-    st.header("Mi Bloomberg Personal")
-    st.caption(ticker_error or "")
+    st.header(f"🔍 {ticker}")
+    st.caption(ticker_error or "No se encontraron datos para este ticker.")
 
 # ── BANNER: ALERTAS DISPARADAS ────────────────────────────────────
 try:
