@@ -1493,6 +1493,119 @@ with tab4:
 
             st.divider()
 
+            # ========== SALUD DEL PORTFOLIO ==========
+            st.markdown("### 💊 Salud del Portfolio")
+            try:
+                from src.salud_portfolio import calcular_score_salud, get_recomendaciones
+                import plotly.graph_objects as _go_s
+
+                _salud = calcular_score_salud(portfolio_live.get("posiciones", []))
+                _score_s  = _salud["score_final"]
+                _mets_s   = _salud["metricas"]
+                _det_s    = _salud["detalle"]
+
+                # Color y label del score global
+                if _score_s >= 71:
+                    _color_s, _label_s = "#16A34A", "SALUDABLE"
+                elif _score_s >= 41:
+                    _color_s, _label_s = "#F59E0B", "MEJORABLE"
+                else:
+                    _color_s, _label_s = "#DC2626", "EN RIESGO"
+
+                # Gauge chart
+                _fig_gauge = _go_s.Figure(_go_s.Indicator(
+                    mode="gauge+number",
+                    value=_score_s,
+                    number={"suffix": "/100", "font": {"size": 36, "color": _color_s}},
+                    title={"text": f"<b>{_label_s}</b>",
+                           "font": {"size": 16, "color": _color_s}},
+                    gauge={
+                        "axis": {"range": [0, 100], "tickwidth": 1,
+                                 "tickcolor": "#6B7280"},
+                        "bar":  {"color": _color_s, "thickness": 0.25},
+                        "bgcolor": "#F9FAFB",
+                        "borderwidth": 0,
+                        "steps": [
+                            {"range": [0,  40], "color": "#FEE2E2"},
+                            {"range": [40, 70], "color": "#FEF3C7"},
+                            {"range": [70, 100], "color": "#DCFCE7"},
+                        ],
+                        "threshold": {
+                            "line": {"color": _color_s, "width": 4},
+                            "thickness": 0.75, "value": _score_s,
+                        },
+                    },
+                ))
+                _fig_gauge.update_layout(
+                    height=240, margin=dict(l=30, r=30, t=40, b=10),
+                    paper_bgcolor="#FFFFFF",
+                )
+
+                _gcol_gauge, _gcol_recs = st.columns([2, 3])
+                with _gcol_gauge:
+                    st.plotly_chart(_fig_gauge, use_container_width=True)
+
+                # 6 métricas en 2 filas x 3 columnas
+                _met_names = list(_mets_s.keys())
+                _row1, _row2 = _met_names[:3], _met_names[3:]
+
+                def _render_metrica(col, nombre, info):
+                    sc = info["score"]
+                    em = info["emoji"]
+                    if sc >= 70:
+                        _bar_color = "#16A34A"
+                    elif sc >= 40:
+                        _bar_color = "#F59E0B"
+                    else:
+                        _bar_color = "#DC2626"
+                    col.markdown(
+                        f"<div style='background:#F9FAFB;border:1px solid #E1E4E8;"
+                        f"border-radius:8px;padding:12px 14px;'>"
+                        f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
+                        f"margin-bottom:4px;'>{em} {nombre}</div>"
+                        f"<div style='font-size:22px;font-weight:700;"
+                        f"color:{_bar_color};'>{sc}</div>"
+                        f"<div style='background:#E5E7EB;border-radius:4px;"
+                        f"height:6px;margin-top:6px;'>"
+                        f"<div style='background:{_bar_color};width:{sc}%;"
+                        f"height:6px;border-radius:4px;'></div></div>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+
+                _sm1, _sm2, _sm3 = st.columns(3)
+                _render_metrica(_sm1, _row1[0], _mets_s[_row1[0]])
+                _render_metrica(_sm2, _row1[1], _mets_s[_row1[1]])
+                _render_metrica(_sm3, _row1[2], _mets_s[_row1[2]])
+
+                _sm4, _sm5, _sm6 = st.columns(3)
+                _render_metrica(_sm4, _row2[0], _mets_s[_row2[0]])
+                _render_metrica(_sm5, _row2[1], _mets_s[_row2[1]])
+                _render_metrica(_sm6, _row2[2], _mets_s[_row2[2]])
+
+                # Recomendaciones
+                _recomendaciones = get_recomendaciones(_mets_s, _det_s)
+                if _recomendaciones:
+                    st.markdown('<div style="height:0.8rem;"></div>', unsafe_allow_html=True)
+                    st.markdown(
+                        "<div style='background:#FFFBEB;border:1px solid #F59E0B;"
+                        "border-radius:8px;padding:14px 18px;'>"
+                        "<div style='font-weight:600;font-size:14px;color:#92400E;"
+                        "margin-bottom:10px;'>💡 Recomendaciones</div>"
+                        + "".join(
+                            f"<div style='color:#1F2937;font-size:13px;"
+                            f"margin-bottom:7px;line-height:1.45;'>{r}</div>"
+                            for r in _recomendaciones
+                        )
+                        + "</div>",
+                        unsafe_allow_html=True,
+                    )
+
+            except Exception as _e_salud:
+                st.warning(f"No se pudo calcular la salud del portfolio: {_e_salud}")
+
+            st.divider()
+
             # ========== C2: POSICIONES DETALLE ==========
             st.markdown("### 📋 Posiciones")
             try:
