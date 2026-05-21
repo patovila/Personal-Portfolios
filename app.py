@@ -434,6 +434,43 @@ a:hover {
 
 universo = cargar_universo()
 
+# ── MODO OSCURO: CSS condicional (persiste via session_state key) ─────────────
+if st.session_state.get("modo_oscuro", False):
+    st.markdown("""
+<style>
+.stApp { background-color: #0d1117 !important; color: #e6edf3 !important; }
+section[data-testid="stSidebar"] { background-color: #161b22 !important; }
+[data-testid="stMetric"] {
+  background-color: #1c2128 !important;
+  border: 1px solid #30363d !important;
+  border-radius: 8px !important;
+  padding: 16px !important;
+}
+[data-testid="stMetricLabel"],
+[data-testid="stMetricLabel"] p { color: #8b949e !important; }
+[data-testid="stMetricValue"] { color: #e6edf3 !important; }
+.stTabs [data-baseweb="tab"] { color: #8b949e !important; }
+.stTabs [aria-selected="true"] {
+  color: #58a6ff !important;
+  border-bottom-color: #58a6ff !important;
+}
+.stTextInput input, .stNumberInput input, .stSelectbox select {
+  background-color: #1c2128 !important;
+  color: #e6edf3 !important;
+  border-color: #30363d !important;
+}
+.stDataFrame { background-color: #1c2128 !important; }
+h1, h2, h3 { color: #e6edf3 !important; }
+hr { border-color: #30363d !important; }
+.ticker-wrapper { background: #1a1a2e !important; }
+.main .block-container { background: #0d1117 !important; }
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 { color: #58a6ff !important; }
+[data-testid="stSidebar"] label { color: #8b949e !important; }
+</style>
+""", unsafe_allow_html=True)
+
 # ── HEADER: logo | buscador central | badge LIVE ─────────────────────────────
 _hc1, _hc2, _hc3 = st.columns([3, 5, 2])
 with _hc1:
@@ -533,6 +570,8 @@ except Exception:
 
 # SIDEBAR
 with st.sidebar:
+    st.toggle("🌙 Modo oscuro", key="modo_oscuro")
+    st.divider()
     st.header("⚙️ Opciones")
 
     periodo = st.selectbox(
