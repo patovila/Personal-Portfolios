@@ -1607,6 +1607,161 @@ with tab4:
 
             st.divider()
 
+            # ========== BENCHMARK ==========
+            st.markdown("### 📊 Benchmark")
+            try:
+                from src.benchmark import (
+                    get_benchmark_data,
+                    calcular_rendimiento_portfolio,
+                    comparar_benchmarks,
+                )
+                import plotly.graph_objects as _go_bm
+
+                _rend_pf = calcular_rendimiento_portfolio(
+                    portfolio_live.get("posiciones", [])
+                )
+                _fecha_ini_bm = _rend_pf.get("fecha_inicio")
+                _hoy_bm       = __import__("datetime").date.today()
+
+                if _fecha_ini_bm is None:
+                    st.info("Sin fecha de compra registrada — no se puede calcular benchmark.")
+                else:
+                    _rend_bms = get_benchmark_data(_fecha_ini_bm, _hoy_bm)
+                    _comp     = comparar_benchmarks(
+                        _rend_pf.get("rendimiento_pct"), _rend_bms
+                    )
+
+                    # ── 4 tarjetas métricas ────────────────────────────────
+                    _bm_c1, _bm_c2, _bm_c3, _bm_c4 = st.columns(4)
+                    _pf_rend = _rend_pf.get("rendimiento_pct")
+                    _pf_color = "#16A34A" if (_pf_rend or 0) >= 0 else "#DC2626"
+
+                    _bm_c1.markdown(
+                        f"<div style='background:#F0F9FF;border:1px solid #BAE6FD;"
+                        f"border-radius:8px;padding:12px 14px;text-align:center;'>"
+                        f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
+                        f"margin-bottom:4px;'>💼 Tu Portfolio</div>"
+                        f"<div style='font-size:22px;font-weight:700;color:{_pf_color};'>"
+                        f"{_pf_rend:+.1f}%</div>"
+                        f"<div style='font-size:10px;color:#6B7280;margin-top:3px;'>"
+                        f"desde {_fecha_ini_bm.strftime('%b %Y')}</div>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+
+                    _bm_cols_data = [
+                        (_bm_c2, "S&P 500"),
+                        (_bm_c3, "Nasdaq"),
+                        (_bm_c4, "Merval"),
+                    ]
+                    for _col_bm, _nm_bm in _bm_cols_data:
+                        _rb = _rend_bms.get(_nm_bm, {}).get("rendimiento_pct")
+                        _alpha_bm = _comp["alphas"].get(_nm_bm)
+                        if _rb is not None:
+                            _rb_color = "#16A34A" if _rb >= 0 else "#DC2626"
+                            if _alpha_bm is not None:
+                                _alpha_color = "#16A34A" if _alpha_bm >= 0 else "#DC2626"
+                                _alpha_txt = (f"<div style='font-size:10px;"
+                                              f"color:{_alpha_color};margin-top:3px;'>"
+                                              f"alpha: {_alpha_bm:+.1f}pp</div>")
+                            else:
+                                _alpha_txt = ""
+                            _col_bm.markdown(
+                                f"<div style='background:#F9FAFB;border:1px solid #E1E4E8;"
+                                f"border-radius:8px;padding:12px 14px;text-align:center;'>"
+                                f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
+                                f"margin-bottom:4px;'>{_nm_bm}</div>"
+                                f"<div style='font-size:22px;font-weight:700;"
+                                f"color:{_rb_color};'>{_rb:+.1f}%</div>"
+                                f"{_alpha_txt}</div>",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            _col_bm.markdown(
+                                f"<div style='background:#F9FAFB;border:1px solid #E1E4E8;"
+                                f"border-radius:8px;padding:12px 14px;text-align:center;'>"
+                                f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
+                                f"margin-bottom:4px;'>{_nm_bm}</div>"
+                                f"<div style='font-size:14px;color:#9CA3AF;'>Sin datos</div>"
+                                f"</div>",
+                                unsafe_allow_html=True,
+                            )
+
+                    st.markdown('<div style="height:1rem;"></div>', unsafe_allow_html=True)
+
+                    # ── Gráfico de barras horizontal ──────────────────────
+                    _bar_labels  = ["Tu Portfolio", "S&P 500", "Nasdaq", "Merval"]
+                    _bar_vals = [
+                        _rend_pf.get("rendimiento_pct"),
+                        _rend_bms.get("S&P 500",  {}).get("rendimiento_pct"),
+                        _rend_bms.get("Nasdaq",   {}).get("rendimiento_pct"),
+                        _rend_bms.get("Merval",   {}).get("rendimiento_pct"),
+                    ]
+                    _bar_colors = []
+                    for i, (lbl, val) in enumerate(zip(_bar_labels, _bar_vals)):
+                        if val is None:
+                            _bar_colors.append("#D1D5DB")
+                        elif lbl == "Tu Portfolio":
+                            _bar_colors.append("#2563EB" if val >= 0 else "#DC2626")
+                        else:
+                            _bar_colors.append("#6EE7B7" if val >= 0 else "#FCA5A5")
+
+                    _bar_vals_plot = [v if v is not None else 0 for v in _bar_vals]
+
+                    _fig_bm = _go_bm.Figure(_go_bm.Bar(
+                        x=_bar_vals_plot,
+                        y=_bar_labels,
+                        orientation="h",
+                        marker_color=_bar_colors,
+                        text=[f"{v:+.1f}%" if v is not None else "N/D"
+                              for v in _bar_vals],
+                        textposition="outside",
+                        textfont={"size": 12},
+                        cliponaxis=False,
+                    ))
+                    _fig_bm.update_layout(
+                        height=220,
+                        margin=dict(l=10, r=60, t=10, b=10),
+                        paper_bgcolor="#FFFFFF",
+                        plot_bgcolor="#FFFFFF",
+                        xaxis=dict(
+                            showgrid=True, gridcolor="#F3F4F6",
+                            zeroline=True, zerolinecolor="#9CA3AF",
+                            ticksuffix="%",
+                        ),
+                        yaxis=dict(showgrid=False),
+                        showlegend=False,
+                    )
+                    st.plotly_chart(_fig_bm, use_container_width=True)
+
+                    # ── Análisis automático ───────────────────────────────
+                    _veredictos = _comp.get("veredictos", {})
+                    if _veredictos:
+                        _txt_lines = list(_veredictos.values())
+                        _rend_an = _rend_pf.get("rendimiento_anualizado")
+                        if _rend_an is not None:
+                            _txt_lines.append(
+                                f"📅 CAGR del portfolio: **{_rend_an:+.1f}% anual**"
+                            )
+                        st.markdown(
+                            "<div style='background:#F0F9FF;border:1px solid #BAE6FD;"
+                            "border-radius:8px;padding:14px 18px;'>"
+                            "<div style='font-weight:600;font-size:14px;color:#1E40AF;"
+                            "margin-bottom:10px;'>🔍 Análisis</div>"
+                            + "".join(
+                                f"<div style='color:#1F2937;font-size:13px;"
+                                f"margin-bottom:6px;line-height:1.45;'>{t}</div>"
+                                for t in _txt_lines
+                            )
+                            + "</div>",
+                            unsafe_allow_html=True,
+                        )
+
+            except Exception as _e_bm:
+                st.warning(f"No se pudo calcular el benchmark: {_e_bm}")
+
+            st.divider()
+
             # ========== C2: POSICIONES DETALLE ==========
             st.markdown("### 📋 Posiciones")
             try:
