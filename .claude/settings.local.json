@@ -31,7 +31,8 @@
       "Bash(venv\\\\Scripts\\\\python.exe -c \"from src.noticias import get_noticias_ticker, analizar_sentimiento; noticias = get_noticias_ticker\\('YPF', 3\\); print\\(f'Noticias encontradas: {len\\(noticias\\)}'\\); [print\\(f\\\\\"  [{n['fecha']}] {n['titulo'][:60]} | {analizar_sentimiento\\(n['titulo'] + ' ' + n['resumen']\\)['label']}\\\\\"\\) for n in noticias]\")",
       "PowerShell(ls \"C:\\\\Users\\\\PC\\\\Documents\\\\Proyecto_mi bloomberg\\\\data\\\\\")",
       "PowerShell(ls \"C:\\\\Users\\\\PC\\\\Documents\\\\Proyecto_mi bloomberg\\\\data\\\\alertas\\\\\")",
-      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(p['ticker']\\) for p in d.get\\('posiciones',[]\\)]\")"
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(p['ticker']\\) for p in d.get\\('posiciones',[]\\)]\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('src/benchmark.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")"
     ]
   }
 }
