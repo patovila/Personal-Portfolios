@@ -446,13 +446,35 @@ with _hc1:
         unsafe_allow_html=True,
     )
 with _hc2:
-    ticker = st.text_input(
-        "search",
-        value="",
-        placeholder="🔍  Buscar ticker: YPF, MELI, AAPL, GOOGL...",
+    from src.buscador import buscar_tickers as _buscar
+    _query = st.text_input(
+        "🔍 Buscar empresa o ticker",
+        placeholder="Ej: Apple, AAPL, YPF, Google...",
         label_visibility="collapsed",
-        key="ticker_main",
-    ).upper().strip()
+        key="buscador_principal",
+    )
+    if _query and len(_query) >= 1:
+        _sugerencias = _buscar(_query)
+        if _sugerencias:
+            _opciones = [
+                f"{s['ticker']} — {s['nombre']} ({s['sector']})"
+                for s in _sugerencias
+            ]
+            _seleccion = st.selectbox(
+                "Seleccioná una empresa:",
+                [""] + _opciones,
+                key="seleccion_ticker",
+                label_visibility="collapsed",
+            )
+            if _seleccion:
+                ticker = _seleccion.split(" — ")[0].strip()
+            else:
+                ticker = _query.upper().strip()
+        else:
+            ticker = _query.upper().strip()
+            st.caption(f"Buscando {ticker} directamente...")
+    else:
+        ticker = ""
 with _hc3:
     st.markdown(
         "<div style='text-align:right;padding:12px 0 0 0;'>"
