@@ -7,7 +7,7 @@ import streamlit as st
 from src.datos import cargar_ticker, cargar_universo
 
 st.set_page_config(
-    page_title="Mi Bloomberg Personal",
+    page_title="Mi Bloomberg Personal | Análisis Financiero AR",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -23,6 +23,7 @@ st.markdown("""
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <link rel="manifest" href="./static/manifest.json">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2534/2534844.png">
+  <meta name="description" content="Análisis financiero profesional para inversores argentinos. Precios en tiempo real, fundamentals, DCF, macro Argentina y más.">
 </head>
 """, unsafe_allow_html=True)
 
@@ -651,6 +652,29 @@ with st.sidebar:
 "Agregar a pantalla de inicio"
 """)
 
+    st.sidebar.markdown("---")
+    with st.sidebar.expander("ℹ️ Acerca de"):
+        st.markdown("""
+**Mi Bloomberg Personal**
+Sistema de análisis financiero para inversores argentinos.
+
+**Versión:** 1.0.0
+**Desarrollado con:** Python + Streamlit
+
+**Fuentes de datos:**
+- 📊 Yahoo Finance (precios y fundamentals)
+- 💵 DolarAPI (tipos de cambio)
+- 🌎 ArgentinaDatos (macro)
+
+**Disclaimer:**
+Esta herramienta es solo para fines educativos.
+No constituye asesoramiento financiero.
+Las inversiones conllevan riesgo de pérdida de capital.
+
+**Educación Financiera AR**
+[Ver proyecto educativo →]
+""")
+
 # ── SPARKLINE HELPER (cacheado 5 min) ────────────────────────────────────────
 @st.cache_data(ttl=300)
 def _get_sparkline_prices(ticker_sym: str) -> list:
@@ -924,6 +948,32 @@ with tab1:
             col2.metric("Mkt Cap", f"${mcap:.1f}B" if mcap else "N/A")
             col3.metric("PE", f"{pe:.1f}" if pe else "N/A")
             col4.metric("ROE", f"{roe*100:.1f}%" if roe else "N/A")
+
+        # ── Fair Value compacto (ancho completo) ─────────────────────────────
+        try:
+            from src.fundamentals import calcular_fair_value as _calc_fv1
+            _fv1 = _calc_fv1(ticker)
+            if _fv1.get("veredicto") != "SIN DATOS" and _fv1.get("fair_value_promedio") is not None:
+                _fv1_val   = _fv1["fair_value_promedio"]
+                _fv1_up    = _fv1["upside_downside"]
+                _fv1_verd  = _fv1["veredicto"]
+                _fv1_EMOJ  = {"SUBVALUADA": "🟢", "PRECIO JUSTO": "🟡", "SOBREVALUADA": "🔴"}.get(_fv1_verd, "❔")
+                _fv1_BG    = {"SUBVALUADA": "#DCFCE7", "PRECIO JUSTO": "#FEF3C7", "SOBREVALUADA": "#FEE2E2"}.get(_fv1_verd, "#F3F4F6")
+                _fv1_FG    = {"SUBVALUADA": "#166534", "PRECIO JUSTO": "#92400E", "SOBREVALUADA": "#991B1B"}.get(_fv1_verd, "#374151")
+                _fv1_up_c  = "#16A34A" if _fv1_up >= 0 else "#DC2626"
+                st.markdown(
+                    f"<div style='background:{_fv1_BG};border:1px solid {_fv1_FG}33;"
+                    f"border-radius:8px;padding:10px 18px;margin-bottom:6px;"
+                    f"display:flex;align-items:center;gap:20px;flex-wrap:wrap;'>"
+                    f"<span style='font-size:13px;color:#6B7280;font-weight:500;'>🎯 Fair Value estimado</span>"
+                    f"<span style='font-size:18px;font-weight:700;color:{_fv1_FG};'>${_fv1_val:,.2f}</span>"
+                    f"<span style='font-size:14px;font-weight:600;color:{_fv1_up_c};'>Upside: {_fv1_up:+.1f}%</span>"
+                    f"<span style='font-size:14px;font-weight:700;color:{_fv1_FG};'>{_fv1_EMOJ} {_fv1_verd}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+        except Exception:
+            pass
 
         st.divider()
 
