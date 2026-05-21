@@ -866,7 +866,7 @@ except Exception:
     pass  # El banner nunca debe crashear la app
 # ──────────────────────────────────────────────────────────────────
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
     "🏢 Ficha",
     "📊 Fundamental",
     "📈 Tecnico",
@@ -877,6 +877,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "📰 Noticias",
     "🎯 Mi Perfil Inversor",
     "📅 Earnings",
+    "🔎 Screener",
 ])
 
 # TAB 1: FICHA
@@ -4801,3 +4802,168 @@ FINNHUB_API_KEY=tu_api_key_aqui
                 )
             elif not _prox_yf:
                 st.info("No se encontraron datos de earnings en Yahoo Finance.")
+
+# TAB 11: SCREENER
+with tab11:
+    try:
+        import pandas as _pd_scr
+        from src.screener import UNIVERSO_ACCIONES as _SCR_UNI, get_datos_screener, aplicar_filtros as _aplicar_scr
+
+        st.markdown("### 🔎 Screener de Acciones")
+        st.caption(f"Universo: {len(_SCR_UNI)} acciones · Ratios fundamentales vía yfinance · Cache 1h")
+
+        # ── Carga lazy ────────────────────────────────────────────────────────
+        if not st.session_state.get("screener_cargado"):
+            _sl1, _sl2, _sl3 = st.columns([1, 2, 1])
+            with _sl2:
+                if st.button(
+                    f"🔎 Cargar Screener ({len(_SCR_UNI)} acciones)",
+                    use_container_width=True, type="primary", key="btn_scr_load",
+                ):
+                    st.session_state["screener_cargado"] = True
+                    st.rerun()
+                st.caption("Primera carga ~30 s · cacheado 1 hora")
+        else:
+            with st.spinner(f"Descargando datos de {len(_SCR_UNI)} acciones..."):
+                _df_scr_raw = get_datos_screener(tuple(_SCR_UNI))
+
+            if _df_scr_raw is None or _df_scr_raw.empty:
+                st.error("No se pudieron cargar los datos del screener.")
+            else:
+                # ── SECCIÓN 1: Filtros ────────────────────────────────────────
+                with st.expander("⚙️ Filtros", expanded=True):
+                    _fc1, _fc2, _fc3 = st.columns(3)
+
+                    with _fc1:
+                        st.markdown("**📊 Valuación**")
+                        _pe_rng  = st.slider("PE Trailing",   0,    100,  (0,  50),       key="scr_pe")
+                        _pb_rng  = st.slider("P/B",           0.0,  20.0, (0.0, 5.0),  step=0.5, key="scr_pb")
+
+                    with _fc2:
+                        st.markdown("**📈 Rentabilidad**")
+                        _roe_rng = st.slider("ROE %",         0,    100,  (0,  100),       key="scr_roe")
+                        _mg_rng  = st.slider("Margen Neto %", -50,  100,  (0,  100),       key="scr_mg")
+                        _div_rng = st.slider("Div Yield %",   0.0,  20.0, (0.0, 20.0), step=0.5, key="scr_div")
+
+                    with _fc3:
+                        st.markdown("**⚠️ Riesgo**")
+                        _beta_rng = st.slider("Beta",          0.0, 3.0,  (0.0, 2.0),  step=0.1, key="scr_beta")
+                        _de_rng   = st.slider("Debt/Equity x", 0.0, 5.0,  (0.0, 3.0),  step=0.1, key="scr_de")
+                        _mcap_sel = st.selectbox(
+                            "Market Cap",
+                            ["Todas", "Small (<$2B)", "Mid ($2-10B)", "Large (>$10B)"],
+                            key="scr_mcap",
+                        )
+
+                    _btn1, _btn2, _btn3 = st.columns([2, 1, 3])
+                    with _btn1:
+                        _aplicar  = st.button("🔎 Aplicar filtros", type="primary",
+                                              key="scr_aplicar", use_container_width=True)
+                    with _btn2:
+                        _resetear = st.button("↺ Resetear", key="scr_reset", use_container_width=True)
+
+                # Reset: borra keys de widgets + filtros guardados y reruns
+                if _resetear:
+                    for _k in ["scr_pe", "scr_pb", "scr_roe", "scr_mg", "scr_div",
+                                "scr_beta", "scr_de", "scr_mcap", "scr_filtros_guardados"]:
+                        st.session_state.pop(_k, None)
+                    st.rerun()
+
+                # Guardar filtros al aplicar; usar los guardados si no se vuelve a aplicar
+                _filtros_actuales = {
+                    "pe_min":   _pe_rng[0],  "pe_max":   _pe_rng[1],
+                    "pb_min":   _pb_rng[0],  "pb_max":   _pb_rng[1],
+                    "roe_min":  _roe_rng[0], "roe_max":  _roe_rng[1],
+                    "mg_min":   _mg_rng[0],  "mg_max":   _mg_rng[1],
+                    "div_min":  _div_rng[0], "div_max":  _div_rng[1],
+                    "beta_min": _beta_rng[0],"beta_max": _beta_rng[1],
+                    "de_min":   _de_rng[0],  "de_max":   _de_rng[1],
+                    "mcap":     _mcap_sel,
+                }
+                if _aplicar:
+                    st.session_state["scr_filtros_guardados"] = _filtros_actuales
+                _filtros_a_usar = st.session_state.get("scr_filtros_guardados", {})
+                _df_result = _aplicar_scr(_df_scr_raw, _filtros_a_usar)
+
+                # ── SECCIÓN 2: Resultados ─────────────────────────────────────
+                st.markdown(f"### 📋 Resultados — **{len(_df_result)}** acciones")
+
+                if _df_result.empty:
+                    st.info("Ninguna acción cumple los filtros. Ampliá los rangos y volvé a aplicar.")
+                else:
+                    _COL_MAP = {
+                        "Ticker": "Ticker", "Empresa": "Empresa",
+                        "PE": "PE", "PB": "P/B",
+                        "ROE_%": "ROE %", "Mg_Neto_%": "Mg Neto %",
+                        "Beta": "Beta", "Market_Cap_B": "Mkt Cap $B",
+                        "Var_Dia_%": "Var Hoy %",
+                    }
+                    _cols_pres = [c for c in _COL_MAP if c in _df_result.columns]
+                    _df_show = _df_result[_cols_pres].rename(columns=_COL_MAP)
+
+                    def _hl_scr(row):
+                        styles = [""] * len(row)
+                        if "Var Hoy %" in row.index:
+                            _i = list(row.index).index("Var Hoy %")
+                            _v = row["Var Hoy %"]
+                            if _pd_scr.notna(_v):
+                                styles[_i] = "color:#16A34A;font-weight:600;" if _v > 0 \
+                                             else "color:#DC2626;font-weight:600;" if _v < 0 else ""
+                        return styles
+
+                    _fmt_scr = {k: v for k, v in {
+                        "PE": "{:.1f}", "P/B": "{:.2f}", "ROE %": "{:.1f}",
+                        "Mg Neto %": "{:.1f}", "Beta": "{:.2f}",
+                        "Mkt Cap $B": "{:.1f}", "Var Hoy %": "{:+.2f}",
+                    }.items() if k in _df_show.columns}
+
+                    st.dataframe(
+                        _df_show.style.apply(_hl_scr, axis=1).format(_fmt_scr, na_rep="—"),
+                        use_container_width=True, hide_index=True,
+                    )
+
+                    # Navegación → ficha del ticker
+                    st.markdown("---")
+                    _nav_tks = _df_result["Ticker"].tolist()
+                    _nc1, _nc2 = st.columns([4, 1])
+                    with _nc1:
+                        _nav_sel = st.selectbox("Abrir ficha de:", _nav_tks, key="scr_nav_sel")
+                    with _nc2:
+                        st.write("")
+                        st.write("")
+                        if st.button("📊 Ver ficha", key="scr_nav_btn", use_container_width=True):
+                            st.session_state["buscador_principal"] = _nav_sel
+                            st.rerun()
+
+                    # ── SECCIÓN 3: Comparar seleccionados ────────────────────
+                    st.markdown("### 🆚 Comparar tickers")
+                    try:
+                        _comp_sel = st.multiselect(
+                            "Seleccioná 2–4 tickers para comparar lado a lado:",
+                            options=_nav_tks,
+                            max_selections=4,
+                            key="scr_comp_sel",
+                        )
+                    except TypeError:
+                        # max_selections no disponible en versiones antiguas de Streamlit
+                        _comp_sel = st.multiselect(
+                            "Seleccioná 2–4 tickers para comparar lado a lado:",
+                            options=_nav_tks,
+                            key="scr_comp_sel",
+                        )
+                        _comp_sel = _comp_sel[:4]
+
+                    if len(_comp_sel) >= 2:
+                        _df_comp = (
+                            _df_result[_df_result["Ticker"].isin(_comp_sel)][_cols_pres]
+                            .rename(columns=_COL_MAP)
+                            .set_index("Ticker")
+                            .T
+                        )
+                        st.dataframe(_df_comp.style.format("{}", na_rep="—"),
+                                     use_container_width=True)
+                    elif len(_comp_sel) == 1:
+                        st.caption("Seleccioná al menos 2 tickers para comparar.")
+
+    except Exception as _e_scr:
+        st.error(f"❌ Error en el Screener: {_e_scr}")
