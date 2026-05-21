@@ -1185,6 +1185,164 @@ with tab2:
                 except Exception as _e_rev:
                     st.warning(f"No se pudo graficar Revenue/NI: {_e_rev}")
 
+                # ── Gráficos detallados: Revenue, EPS, Márgenes ──────────
+                try:
+                    from src.fundamentals import get_revenue_eps_historico as _get_reh
+                    import numpy as _np_crec
+
+                    _reh = _get_reh(ticker)
+
+                    if not _reh or len(_reh.get("años", [])) < 2:
+                        st.info("Datos históricos insuficientes para los gráficos detallados.")
+                    else:
+                        _reh_años = _reh["años"]
+                        _reh_x    = list(range(len(_reh_años)))
+
+                        if _reh.get("es_argentino"):
+                            st.caption("ℹ️ Datos del ADR en USD — el ticker AR opera en pesos pero reporta en USD.")
+
+                        st.divider()
+
+                        # ── Gráfico 1: Revenue histórico ─────────────────
+                        st.markdown("### 💰 Revenue histórico")
+                        if _reh.get("revenue") and len(_reh["revenue"]) >= 2:
+                            _rv_vals = _reh["revenue"]
+                            _rv_cols = []
+                            for _i_rv, _v_rv in enumerate(_rv_vals):
+                                if _i_rv == 0:
+                                    _rv_cols.append("#2563EB")
+                                elif _v_rv >= _rv_vals[_i_rv - 1]:
+                                    _rv_cols.append("#2563EB")
+                                else:
+                                    _rv_cols.append("#9CA3AF")
+
+                            _fig_rv2 = _go2.Figure()
+                            _fig_rv2.add_trace(_go2.Bar(
+                                x=_reh_años, y=_rv_vals,
+                                marker_color=_rv_cols,
+                                text=[
+                                    f"${v/1000:.1f}B" if v >= 1000 else f"${v:.0f}M"
+                                    for v in _rv_vals
+                                ],
+                                textposition="outside",
+                                name="Revenue",
+                                hovertemplate="<b>%{x}</b><br>Revenue: $%{y:,.0f}M<extra></extra>",
+                            ))
+
+                            # Línea de tendencia
+                            _rv_arr  = _np_crec.array(_rv_vals, dtype=float)
+                            _rv_z    = _np_crec.polyfit(_reh_x, _rv_arr, 1)
+                            _rv_tend = list(_np_crec.poly1d(_rv_z)(_np_crec.array(_reh_x)))
+                            _fig_rv2.add_trace(_go2.Scatter(
+                                x=_reh_años, y=_rv_tend,
+                                mode="lines",
+                                line=dict(color="#F59E0B", width=2, dash="dash"),
+                                name="Tendencia",
+                            ))
+                            _fig_rv2.update_layout(
+                                title="Revenue histórico (USD Millones)",
+                                xaxis_title="Año", yaxis_title="USD M",
+                                template="plotly_white", height=380,
+                                margin=dict(l=20, r=20, t=50, b=20),
+                                legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+                            )
+                            st.plotly_chart(_fig_rv2, use_container_width=True)
+                        else:
+                            st.info("Sin datos de Revenue.")
+
+                        st.divider()
+
+                        # ── Gráfico 2: EPS histórico ──────────────────────
+                        st.markdown("### 💵 EPS histórico")
+                        if _reh.get("eps") and len(_reh["eps"]) >= 2:
+                            _eps_vals = _reh["eps"]
+                            _eps_cols = ["#16A34A" if v >= 0 else "#DC2626" for v in _eps_vals]
+
+                            _fig_eps2 = _go2.Figure()
+                            _fig_eps2.add_trace(_go2.Bar(
+                                x=_reh_años, y=_eps_vals,
+                                marker_color=_eps_cols,
+                                text=[f"${v:.2f}" for v in _eps_vals],
+                                textposition="outside",
+                                name="EPS",
+                                hovertemplate="<b>%{x}</b><br>EPS: $%{y:.2f}<extra></extra>",
+                            ))
+
+                            _eps_arr  = _np_crec.array(_eps_vals, dtype=float)
+                            _eps_z    = _np_crec.polyfit(_reh_x, _eps_arr, 1)
+                            _eps_tend = list(_np_crec.poly1d(_eps_z)(_np_crec.array(_reh_x)))
+                            _fig_eps2.add_trace(_go2.Scatter(
+                                x=_reh_años, y=_eps_tend,
+                                mode="lines",
+                                line=dict(color="#7C3AED", width=2, dash="dash"),
+                                name="Tendencia",
+                            ))
+                            _fig_eps2.add_hline(
+                                y=0, line_dash="solid",
+                                line_color="#9CA3AF", line_width=1,
+                            )
+                            _fig_eps2.update_layout(
+                                title="EPS histórico (USD por acción)",
+                                xaxis_title="Año", yaxis_title="EPS (USD)",
+                                template="plotly_white", height=380,
+                                margin=dict(l=20, r=20, t=50, b=20),
+                                legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+                            )
+                            st.plotly_chart(_fig_eps2, use_container_width=True)
+                        else:
+                            st.info("Sin datos de EPS (requiere shares outstanding en yfinance).")
+
+                        st.divider()
+
+                        # ── Gráfico 3: Márgenes históricos ────────────────
+                        st.markdown("### 📐 Evolución de márgenes %")
+                        _mg_disponibles = (
+                            _reh.get("gross_margin") or
+                            _reh.get("operating_margin") or
+                            _reh.get("net_margin")
+                        )
+                        if _mg_disponibles:
+                            _fig_mg = _go2.Figure()
+                            _MG_SERIES = [
+                                ("gross_margin",    "Mg. Bruto",     "#2563EB"),
+                                ("operating_margin","Mg. Operativo", "#16A34A"),
+                                ("net_margin",      "Mg. Neto",      "#7C3AED"),
+                            ]
+                            for _mg_key, _mg_lbl, _mg_col in _MG_SERIES:
+                                _mg_vals = _reh.get(_mg_key)
+                                if not _mg_vals:
+                                    continue
+                                # Filtrar None para el trazado
+                                _mg_y = [v if v is not None else float("nan") for v in _mg_vals]
+                                _fig_mg.add_trace(_go2.Scatter(
+                                    x=_reh_años, y=_mg_y,
+                                    mode="lines+markers",
+                                    line=dict(color=_mg_col, width=2),
+                                    marker=dict(size=7),
+                                    name=_mg_lbl,
+                                    hovertemplate=f"<b>%{{x}}</b><br>{_mg_lbl}: %{{y:.1f}}%<extra></extra>",
+                                ))
+                            _fig_mg.add_hline(
+                                y=0, line_dash="dot",
+                                line_color="#9CA3AF", line_width=1,
+                            )
+                            _fig_mg.update_layout(
+                                title="Evolución de márgenes %",
+                                xaxis_title="Año",
+                                yaxis_title="%",
+                                yaxis_ticksuffix="%",
+                                template="plotly_white",
+                                height=380,
+                                margin=dict(l=20, r=20, t=50, b=20),
+                                legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+                            )
+                            st.plotly_chart(_fig_mg, use_container_width=True)
+                        else:
+                            st.info("Sin datos de márgenes disponibles.")
+
+                except Exception as _e_reh:
+                    st.warning(f"No se pudieron graficar Revenue/EPS/Márgenes: {_e_reh}")
+
             except Exception as e:
                 st.error(f"❌ Error en análisis de crecimiento: {e}")
 

@@ -291,6 +291,74 @@ def fcf_historico(ticker):
     return df
 
 
+def get_revenue_eps_historico(ticker: str) -> dict:
+    """Revenue, EPS y márgenes históricos anuales desde el income statement.
+
+    Para tickers AR usa el ADR. Retorna {} si hay menos de 2 años de datos.
+    Valores de Revenue y Net Income en millones USD.
+    """
+    adr = get_ticker_adr(ticker)
+    t   = yf.Ticker(adr)
+
+    try:
+        fin = t.financials
+        if fin is None or fin.empty:
+            return {}
+
+        # Ordenar cronológicamente (más antiguo → más reciente)
+        fin  = fin[fin.columns[::-1]]
+        años = [int(c.year) for c in fin.columns]
+
+        if len(años) < 2:
+            return {}
+
+        shares = (t.info or {}).get("sharesOutstanding") or 0
+
+        def _row(key):
+            """Extrae fila como lista de millones, None si falta."""
+            for k in fin.index:
+                if key.lower() in str(k).lower():
+                    return [float(v) / 1e6 for v in fin.loc[k].values]
+            return []
+
+        revenue         = _row("Total Revenue")
+        net_income      = _row("Net Income")
+        gross_profit    = _row("Gross Profit")
+        operating_income = _row("Operating Income")
+
+        # EPS = Net Income (en USD) / shares
+        eps: list = []
+        if net_income and shares > 0:
+            eps = [round((ni * 1e6) / shares, 2) for ni in net_income]
+
+        # Márgenes %
+        def _margin(numerator, denominator):
+            if not numerator or not denominator:
+                return []
+            return [
+                round(n / d * 100, 1) if d and d != 0 else None
+                for n, d in zip(numerator, denominator)
+            ]
+
+        gross_margin    = _margin(gross_profit, revenue)
+        operating_margin = _margin(operating_income, revenue)
+        net_margin      = _margin(net_income, revenue)
+
+        return {
+            "ticker":           adr,
+            "es_argentino":     is_ticker_argentino(ticker),
+            "años":             años,
+            "revenue":          revenue,
+            "net_income":       net_income,
+            "eps":              eps,
+            "gross_margin":     gross_margin,
+            "operating_margin": operating_margin,
+            "net_margin":       net_margin,
+        }
+    except Exception:
+        return {}
+
+
 _SECTOR_PB_TARGET: dict[str, float] = {
     "Technology":             6.0,
     "Communication Services": 4.0,
