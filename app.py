@@ -363,24 +363,34 @@ a:hover {
 }
 
 /* === TICKER TAPE === */
-.ticker-tape {
-    background: #1E293B;
-    border-radius: 6px;
-    padding: 9px 16px;
+.ticker-wrapper {
+    background: #1a1a2e;
+    padding: 10px 0;
     overflow: hidden;
-    white-space: nowrap;
+    width: 100%;
     margin-bottom: 1rem;
+}
+.ticker-content {
+    display: inline-flex;
+    animation: ticker-scroll 40s linear infinite;
+    white-space: nowrap;
+}
+.ticker-content:hover {
+    animation-play-state: paused;
+}
+.ticker-item {
+    padding: 0 30px;
     font-size: 13px;
+    font-weight: 600;
+    color: white;
+    border-right: 1px solid #333;
 }
-.ticker-tape-inner {
-    display: inline-block;
-    animation: tape-scroll 45s linear infinite;
-    padding-left: 100%;
-}
-.ticker-tape:hover .ticker-tape-inner { animation-play-state: paused; }
-@keyframes tape-scroll {
+.ticker-up { color: #00ff88; }
+.ticker-down { color: #ff4444; }
+.ticker-neutral { color: #aaaaaa; }
+@keyframes ticker-scroll {
     0%   { transform: translateX(0); }
-    100% { transform: translateX(-100%); }
+    100% { transform: translateX(-50%); }
 }
 
 /* === HOME SCREEN === */
@@ -465,20 +475,35 @@ try:
         _tape_tks = tuple(p["ticker"] for p in _pf_tape.get("posiciones", []))[:5]
     except Exception:
         _tape_tks = ("YPF", "GOOGL", "NVDA", "PAM", "TGS")
-    _tape_data = _get_tape(_tape_tks)
+    # BTC, Gold, WTI van como portfolio tickers; get_ticker_tape agrega ^GSPC, ^IXIC, ^MERV internamente
+    _tape_extra = ("BTC-USD", "GC=F", "CL=F")
+    _tape_all_tks = _tape_tks + tuple(t for t in _tape_extra if t not in _tape_tks)
+    _tape_data = _get_tape(_tape_all_tks)
     if _tape_data:
-        _parts = []
+        _TAPE_NAME_MAP = {
+            "GSPC": "S&P500", "IXIC": "NASDAQ", "MERV": "MERVAL",
+            "BTC": "BTC", "GC": "ORO", "CL": "WTI",
+        }
+        _ticker_items = []
         for _td in _tape_data:
+            _name = _TAPE_NAME_MAP.get(_td["ticker"], _td["ticker"])
             _s = "+" if _td["variacion_pct"] >= 0 else ""
-            _c = "#4ADE80" if _td["variacion_pct"] >= 0 else "#F87171"
-            _parts.append(
-                f"<span style='margin:0 16px;'><b style='color:#F8FAFC;'>{_td['ticker']}</b>"
-                f" <span style='color:#CBD5E1;'>${_td['precio']:,.2f}</span>"
-                f" <span style='color:{_c};font-weight:600;'>{_s}{_td['variacion_pct']:.2f}%</span></span>"
+            _cls = "ticker-up" if _td["variacion_pct"] >= 0 else "ticker-down"
+            _ticker_items.append(
+                f"<span class='ticker-item'>"
+                f"<span>{_name}</span>"
+                f" <span class='ticker-neutral'>${_td['precio']:,.2f}</span>"
+                f" <span class='{_cls}'>{_s}{_td['variacion_pct']:.2f}%</span>"
+                f"</span>"
             )
-        _tape_str = " <span style='color:#475569;'>|</span> ".join(_parts)
+        ticker_items_html = "".join(_ticker_items)
         st.markdown(
-            f'<div class="ticker-tape"><div class="ticker-tape-inner">{_tape_str}</div></div>',
+            f"""<div class="ticker-wrapper">
+  <div class="ticker-content">
+    {ticker_items_html}
+    {ticker_items_html}
+  </div>
+</div>""",
             unsafe_allow_html=True,
         )
 except Exception:
@@ -565,6 +590,16 @@ with st.sidebar:
 "Agregar a pantalla de inicio"
 """)
 
+# ── SPARKLINE HELPER (cacheado 5 min) ────────────────────────────────────────
+@st.cache_data(ttl=300)
+def _get_sparkline_prices(ticker_sym: str) -> list:
+    try:
+        import yfinance as _yf_sp
+        data = _yf_sp.Ticker(ticker_sym).history(period="5d", interval="1d")
+        return data["Close"].dropna().tolist()
+    except Exception:
+        return []
+
 # ── HOME SCREEN (sin ticker) ─────────────────────────────────────────────────
 if not ticker:
     from src.mercado import get_indices_globales, get_movers_portfolio
@@ -583,33 +618,57 @@ if not ticker:
         st.markdown("### 🌎 Índices globales")
         _indices = get_indices_globales()
 
-        def _idx_card(idx):
+        import plotly.graph_objects as _go_spark
+
+        def _render_idx_spark(col, idx):
             precio = idx["precio"]
-            var    = idx["variacion_pct"]
-            p_str  = f"${precio:,.2f}" if precio is not None else "—"
+            var = idx["variacion_pct"]
+            p_str = f"${precio:,.2f}" if precio is not None else "—"
             if var is None:
                 v_str, v_col = "—", "#6B7280"
             else:
                 v_str = f"{'+'if var>=0 else ''}{var:.2f}%"
                 v_col = "#16A34A" if var >= 0 else "#DC2626"
-            return (
-                f"<div class='index-card'>"
-                f"<div class='idx-name'>{idx['nombre']}</div>"
-                f"<div class='idx-price'>{p_str}</div>"
-                f"<div class='idx-var' style='color:{v_col};'>{v_str}</div>"
-                f"</div>"
-            )
+            with col:
+                with st.container(border=True):
+                    st.markdown(
+                        f"<div class='idx-name'>{idx['nombre']}</div>"
+                        f"<div class='idx-price'>{p_str}</div>"
+                        f"<div class='idx-var' style='color:{v_col};'>{v_str}</div>",
+                        unsafe_allow_html=True,
+                    )
+                    _sp = _get_sparkline_prices(idx["ticker"])
+                    if len(_sp) >= 2:
+                        _positivo = _sp[-1] >= _sp[0]
+                        _sp_color = "#00ff88" if _positivo else "#ff4444"
+                        _sp_fill = "rgba(0,255,136,0.1)" if _positivo else "rgba(255,68,68,0.1)"
+                        _sf = _go_spark.Figure(_go_spark.Scatter(
+                            y=_sp, mode="lines",
+                            line=dict(color=_sp_color, width=2),
+                            fill="tozeroy", fillcolor=_sp_fill,
+                        ))
+                        _sf.update_layout(
+                            height=60,
+                            margin=dict(l=0, r=0, t=0, b=0),
+                            paper_bgcolor="rgba(0,0,0,0)",
+                            plot_bgcolor="rgba(0,0,0,0)",
+                            showlegend=False,
+                            xaxis=dict(visible=False),
+                            yaxis=dict(visible=False),
+                        )
+                        st.plotly_chart(_sf, use_container_width=True,
+                                        config={"staticPlot": True}, key=f"spark_{idx['ticker']}")
 
         _ia, _ib, _ic, _id_ = st.columns(4)
-        _ia.markdown(_idx_card(_indices[0]), unsafe_allow_html=True)
-        _ib.markdown(_idx_card(_indices[1]), unsafe_allow_html=True)
-        _ic.markdown(_idx_card(_indices[2]), unsafe_allow_html=True)
-        _id_.markdown(_idx_card(_indices[3]), unsafe_allow_html=True)
+        _render_idx_spark(_ia, _indices[0])
+        _render_idx_spark(_ib, _indices[1])
+        _render_idx_spark(_ic, _indices[2])
+        _render_idx_spark(_id_, _indices[3])
         _ie, _if_, _ig, _ih = st.columns(4)
-        _ie.markdown(_idx_card(_indices[4]), unsafe_allow_html=True)
-        _if_.markdown(_idx_card(_indices[5]), unsafe_allow_html=True)
-        _ig.markdown(_idx_card(_indices[6]), unsafe_allow_html=True)
-        _ih.markdown(_idx_card(_indices[7]), unsafe_allow_html=True)
+        _render_idx_spark(_ie, _indices[4])
+        _render_idx_spark(_if_, _indices[5])
+        _render_idx_spark(_ig, _indices[6])
+        _render_idx_spark(_ih, _indices[7])
 
         st.markdown('<div style="margin-bottom:1.4rem;"></div>', unsafe_allow_html=True)
 
