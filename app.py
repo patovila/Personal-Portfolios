@@ -9,8 +9,22 @@ from src.datos import cargar_ticker, cargar_universo
 st.set_page_config(
     page_title="Mi Bloomberg Personal",
     page_icon="📊",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
+
+st.markdown("""
+<head>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Mi Bloomberg">
+  <meta name="theme-color" content="#1f77b4">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="manifest" href="./static/manifest.json">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2534/2534844.png">
+</head>
+""", unsafe_allow_html=True)
 
 # ============== ESTILO INVESTING / TRADINGVIEW ==============
 st.markdown("""
@@ -347,6 +361,23 @@ a:hover {
 ::-webkit-scrollbar-thumb:hover {
     background: #94A3B8;
 }
+
+/* === MOBILE RESPONSIVE === */
+@media (max-width: 768px) {
+  section[data-testid="stSidebar"] {
+    width: 100% !important;
+  }
+  [data-testid="stMetricValue"] {
+    font-size: 1.4rem !important;
+  }
+  .stTabs [data-baseweb="tab-list"] {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+  }
+  .stButton > button {
+    width: 100% !important;
+  }
+}
 </style>
 """, unsafe_allow_html=True)
 # =================================================
@@ -442,6 +473,16 @@ with st.sidebar:
                     st.caption(f"Act: {_ts[:16]}")
     except Exception:
         st.caption("Sin conexión")
+
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📱 Instalá la app")
+    st.sidebar.markdown("""
+**En iPhone:** Safari → Compartir →
+"Agregar a pantalla de inicio"
+
+**En Android:** Chrome → Menú ⋮ →
+"Agregar a pantalla de inicio"
+""")
 
 # CONTENIDO PRINCIPAL
 # Cargamos el ticker del sidebar pero NO abortamos si falla:
