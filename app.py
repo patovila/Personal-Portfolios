@@ -11,6 +11,14 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
+
+st.markdown("""
+<meta name="description" content="Análisis financiero para inversores argentinos. Precios en tiempo real, fundamentals, DCF, macro Argentina, CEDEARs y más. Gratis.">
+<meta name="keywords" content="inversiones argentina, cedears, dolar blue, merval, analisis fundamental">
+<meta property="og:title" content="Mi Bloomberg Personal">
+<meta property="og:description" content="Tu herramienta de análisis financiero para el mercado argentino">
+""", unsafe_allow_html=True)
+
 # ============== ESTILO INVESTING / TRADINGVIEW ==============
 st.markdown("""
 <style>
@@ -489,6 +497,20 @@ with st.sidebar:
         st.caption("⏱️ Actualizando cada 5 minutos")
     _ar_countdown_slot = st.empty()
 
+    st.markdown("---")
+    with st.expander("ℹ️ Acerca de la app"):
+        st.markdown("""
+**Mi Bloomberg Personal v1.0**
+Sistema de análisis financiero para inversores argentinos.
+
+**Datos:**
+- 📊 Yahoo Finance
+- 💵 DolarAPI
+- 🌎 ArgentinaDatos
+
+⚠️ *Solo fines educativos. No es asesoramiento financiero.*
+""")
+
 # ── MODO OSCURO CSS ───────────────────────────────────────────────────────────
 if st.session_state.get("modo_oscuro"):
     st.markdown("""
@@ -541,6 +563,7 @@ else:
         _sk_slot.empty()
 
 if datos:
+    st.markdown(f"<title>{ticker} — Mi Bloomberg Personal</title>", unsafe_allow_html=True)
     st.header(f"{datos['nombre']} ({datos['ticker']})")
     st.caption(f"{datos['sector']} | {datos['industria']} | {datos['pais']}")
 else:
@@ -853,6 +876,26 @@ with tab1:
             col2.metric("Mkt Cap", f"${mcap:.1f}B" if mcap else "N/A")
             col3.metric("PE", f"{pe:.1f}" if pe else "N/A")
             col4.metric("ROE", f"{roe*100:.1f}%" if roe else "N/A")
+
+        # ── FAIR VALUE ───────────────────────────────────────────────────────
+        try:
+            from src.fundamentals import calcular_fair_value as _calc_fv
+
+            @st.cache_data(ttl=600)
+            def _cached_fv(t):
+                return _calc_fv(t)
+
+            _fv_data = _cached_fv(ticker)
+            _fv      = _fv_data.get("fair_value_promedio")
+            _upside  = _fv_data.get("upside_downside")
+            _verdict = _fv_data.get("veredicto", "")
+            if _fv and _upside is not None and _verdict != "SIN DATOS":
+                st.info(
+                    f"🎯 Fair Value estimado: **${_fv:.2f}** | "
+                    f"Upside: **{_upside:+.1f}%** | {_verdict}"
+                )
+        except Exception:
+            pass
 
         st.divider()
 
