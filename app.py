@@ -740,7 +740,7 @@ try:
                         width=1.5,
                     ),
                     fill="tozeroy",
-                    fillcolor="rgba(0,204,102,0.08)" if _positivo else "rgba(255,51,51,0.08)",
+                    fillcolor="rgba(0,204,102,0.15)" if _positivo else "rgba(255,51,51,0.15)",
                 ))
                 _fig_sp.update_layout(
                     height=50,
@@ -749,7 +749,10 @@ try:
                     plot_bgcolor="rgba(0,0,0,0)",
                     showlegend=False,
                     xaxis=dict(visible=False),
-                    yaxis=dict(visible=False),
+                    yaxis=dict(
+                        visible=False,
+                        range=[min(_spxs) * 0.999, max(_spxs) * 1.001],
+                    ),
                 )
                 st.plotly_chart(
                     _fig_sp, use_container_width=True,
