@@ -7,26 +7,10 @@ import streamlit as st
 from src.datos import cargar_ticker, cargar_universo
 
 st.set_page_config(
-    page_title="Mi Bloomberg Personal | Análisis Financiero AR",
+    page_title="Mi Bloomberg Personal",
     page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    layout="wide"
 )
-
-st.markdown("""
-<head>
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Mi Bloomberg">
-  <meta name="theme-color" content="#1f77b4">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <link rel="manifest" href="./static/manifest.json">
-  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2534/2534844.png">
-  <meta name="description" content="Análisis financiero profesional para inversores argentinos. Precios en tiempo real, fundamentals, DCF, macro Argentina y más.">
-</head>
-""", unsafe_allow_html=True)
-
 # ============== ESTILO INVESTING / TRADINGVIEW ==============
 st.markdown("""
 <style>
@@ -362,219 +346,35 @@ a:hover {
 ::-webkit-scrollbar-thumb:hover {
     background: #94A3B8;
 }
-
-/* === TICKER TAPE === */
-.ticker-wrapper {
-    background: #1a1a2e;
-    padding: 10px 0;
-    overflow: hidden;
-    width: 100%;
-    margin-bottom: 1rem;
-}
-.ticker-content {
-    display: inline-flex;
-    animation: ticker-scroll 40s linear infinite;
-    white-space: nowrap;
-}
-.ticker-content:hover {
-    animation-play-state: paused;
-}
-.ticker-item {
-    padding: 0 30px;
-    font-size: 13px;
-    font-weight: 600;
-    color: white;
-    border-right: 1px solid #333;
-}
-.ticker-up { color: #00ff88; }
-.ticker-down { color: #ff4444; }
-.ticker-neutral { color: #aaaaaa; }
-@keyframes ticker-scroll {
-    0%   { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-}
-
-/* === HOME SCREEN === */
-.index-card {
-    background: #FFFFFF;
-    border: 1px solid #E1E4E8;
-    border-radius: 10px;
-    padding: 18px 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    margin-bottom: 8px;
-}
-.index-card .idx-name  { color:#6B7280; font-size:12px; font-weight:500; margin-bottom:4px; }
-.index-card .idx-price { color:#111827; font-size:22px; font-weight:700; letter-spacing:-0.02em; }
-.index-card .idx-var   { font-size:13px; font-weight:600; margin-top:2px; }
-.mover-row {
-    display:flex; align-items:center; justify-content:space-between;
-    padding:8px 0; border-bottom:1px solid #F3F4F6;
-}
-.mover-row:last-child { border-bottom: none; }
-.home-section { margin-bottom: 1.8rem; }
-
-/* === MOBILE RESPONSIVE === */
-@media (max-width: 768px) {
-  section[data-testid="stSidebar"] {
-    width: 100% !important;
-  }
-  [data-testid="stMetricValue"] {
-    font-size: 1.4rem !important;
-  }
-  .stTabs [data-baseweb="tab-list"] {
-    overflow-x: auto !important;
-    flex-wrap: nowrap !important;
-  }
-  .stButton > button {
-    width: 100% !important;
-  }
-}
 </style>
 """, unsafe_allow_html=True)
 # =================================================
 
 universo = cargar_universo()
 
-# ── MODO OSCURO: CSS condicional (persiste via session_state key) ─────────────
-if st.session_state.get("modo_oscuro", False):
-    st.markdown("""
-<style>
-.stApp { background-color: #0d1117 !important; color: #e6edf3 !important; }
-section[data-testid="stSidebar"] { background-color: #161b22 !important; }
-[data-testid="stMetric"] {
-  background-color: #1c2128 !important;
-  border: 1px solid #30363d !important;
-  border-radius: 8px !important;
-  padding: 16px !important;
-}
-[data-testid="stMetricLabel"],
-[data-testid="stMetricLabel"] p { color: #8b949e !important; }
-[data-testid="stMetricValue"] { color: #e6edf3 !important; }
-.stTabs [data-baseweb="tab"] { color: #8b949e !important; }
-.stTabs [aria-selected="true"] {
-  color: #58a6ff !important;
-  border-bottom-color: #58a6ff !important;
-}
-.stTextInput input, .stNumberInput input, .stSelectbox select {
-  background-color: #1c2128 !important;
-  color: #e6edf3 !important;
-  border-color: #30363d !important;
-}
-.stDataFrame { background-color: #1c2128 !important; }
-h1, h2, h3 { color: #e6edf3 !important; }
-hr { border-color: #30363d !important; }
-.ticker-wrapper { background: #1a1a2e !important; }
-.main .block-container { background: #0d1117 !important; }
-[data-testid="stSidebar"] h1,
-[data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3 { color: #58a6ff !important; }
-[data-testid="stSidebar"] label { color: #8b949e !important; }
-</style>
+st.markdown("""
+<div class="bloomberg-header">
+    <div class="title-block">
+        <h1>Mi Bloomberg Personal</h1>
+        <div class="subtitle">Sistema de analisis financiero &middot; Educacion Financiera AR</div>
+    </div>
+    <div class="live-indicator">
+        <span class="live-dot"></span>
+        <span>LIVE</span>
+    </div>
+</div>
 """, unsafe_allow_html=True)
-
-# ── HEADER: logo | buscador central | badge LIVE ─────────────────────────────
-_hc1, _hc2, _hc3 = st.columns([3, 5, 2])
-with _hc1:
-    st.markdown(
-        "<div style='padding:10px 0 6px 0;'>"
-        "<span style='font-size:21px;font-weight:800;color:#1E40AF;letter-spacing:-0.02em;'>"
-        "📊 Mi Bloomberg Personal</span><br>"
-        "<span style='font-size:11px;color:#6B7280;'>Educación Financiera AR</span>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-with _hc2:
-    from src.buscador import buscar_tickers as _buscar
-    _query = st.text_input(
-        "🔍 Buscar empresa o ticker",
-        placeholder="Ej: Apple, AAPL, YPF, Google...",
-        label_visibility="collapsed",
-        key="buscador_principal",
-    )
-    if _query and len(_query) >= 1:
-        _sugerencias = _buscar(_query)
-        if _sugerencias:
-            _opciones = [
-                f"{s['ticker']} — {s['nombre']} ({s['sector']})"
-                for s in _sugerencias
-            ]
-            _seleccion = st.selectbox(
-                "Seleccioná una empresa:",
-                [""] + _opciones,
-                key="seleccion_ticker",
-                label_visibility="collapsed",
-            )
-            if _seleccion:
-                ticker = _seleccion.split(" — ")[0].strip()
-            else:
-                ticker = _query.upper().strip()
-        else:
-            ticker = _query.upper().strip()
-            st.caption(f"Buscando {ticker} directamente...")
-    else:
-        ticker = ""
-with _hc3:
-    st.markdown(
-        "<div style='text-align:right;padding:12px 0 0 0;'>"
-        "<span style='background:#DCFCE7;color:#16A34A;padding:6px 14px;"
-        "border-radius:20px;font-weight:600;font-size:13px;'>"
-        "<span style='display:inline-block;width:7px;height:7px;"
-        "background:#16A34A;border-radius:50%;margin-right:5px;"
-        "animation:pulse 1.6s infinite;'></span>LIVE</span>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-st.markdown('<div style="border-bottom:2px solid #E1E4E8;margin:4px 0 12px 0;"></div>', unsafe_allow_html=True)
-
-# ── TICKER TAPE ───────────────────────────────────────────────────────────────
-try:
-    from src.mercado import get_ticker_tape as _get_tape
-    from src.portfolio import cargar_portfolio as _cp_tape
-    try:
-        _pf_tape = _cp_tape("pato")
-        _tape_tks = tuple(p["ticker"] for p in _pf_tape.get("posiciones", []))[:5]
-    except Exception:
-        _tape_tks = ("YPF", "GOOGL", "NVDA", "PAM", "TGS")
-    # BTC, Gold, WTI van como portfolio tickers; get_ticker_tape agrega ^GSPC, ^IXIC, ^MERV internamente
-    _tape_extra = ("BTC-USD", "GC=F", "CL=F")
-    _tape_all_tks = _tape_tks + tuple(t for t in _tape_extra if t not in _tape_tks)
-    _tape_data = _get_tape(_tape_all_tks)
-    if _tape_data:
-        _TAPE_NAME_MAP = {
-            "GSPC": "S&P500", "IXIC": "NASDAQ", "MERV": "MERVAL",
-            "BTC": "BTC", "GC": "ORO", "CL": "WTI",
-        }
-        _ticker_items = []
-        for _td in _tape_data:
-            _name = _TAPE_NAME_MAP.get(_td["ticker"], _td["ticker"])
-            _s = "+" if _td["variacion_pct"] >= 0 else ""
-            _cls = "ticker-up" if _td["variacion_pct"] >= 0 else "ticker-down"
-            _ticker_items.append(
-                f"<span class='ticker-item'>"
-                f"<span>{_name}</span>"
-                f" <span class='ticker-neutral'>${_td['precio']:,.2f}</span>"
-                f" <span class='{_cls}'>{_s}{_td['variacion_pct']:.2f}%</span>"
-                f"</span>"
-            )
-        ticker_items_html = "".join(_ticker_items)
-        st.markdown(
-            f"""<div class="ticker-wrapper">
-  <div class="ticker-content">
-    {ticker_items_html}
-    {ticker_items_html}
-  </div>
-</div>""",
-            unsafe_allow_html=True,
-        )
-except Exception:
-    pass
 
 # SIDEBAR
 with st.sidebar:
-    st.toggle("🌙 Modo oscuro", key="modo_oscuro")
-    st.divider()
-    st.header("⚙️ Opciones")
-
+    st.header("Buscador")
+    
+    ticker = st.text_input(
+        "Escribe un ticker:",
+        value="YPF",
+        placeholder="Ej: YPF, MELI, AAPL"
+    ).upper()
+    
     periodo = st.selectbox(
         "Periodo para graficos:",
         ["1mo", "3mo", "6mo", "1y", "2y", "5y"],
@@ -642,255 +442,28 @@ with st.sidebar:
     except Exception:
         st.caption("Sin conexión")
 
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 📱 Instalá la app")
-    st.sidebar.markdown("""
-**En iPhone:** Safari → Compartir →
-"Agregar a pantalla de inicio"
-
-**En Android:** Chrome → Menú ⋮ →
-"Agregar a pantalla de inicio"
-""")
-
-    st.sidebar.markdown("---")
-    with st.sidebar.expander("ℹ️ Acerca de"):
-        st.markdown("""
-**Mi Bloomberg Personal**
-Sistema de análisis financiero para inversores argentinos.
-
-**Versión:** 1.0.0
-**Desarrollado con:** Python + Streamlit
-
-**Fuentes de datos:**
-- 📊 Yahoo Finance (precios y fundamentals)
-- 💵 DolarAPI (tipos de cambio)
-- 🌎 ArgentinaDatos (macro)
-
-**Disclaimer:**
-Esta herramienta es solo para fines educativos.
-No constituye asesoramiento financiero.
-Las inversiones conllevan riesgo de pérdida de capital.
-
-**Educación Financiera AR**
-[Ver proyecto educativo →]
-""")
-
-# ── SPARKLINE HELPER (cacheado 5 min) ────────────────────────────────────────
-@st.cache_data(ttl=300)
-def _get_sparkline_prices(ticker_sym: str) -> list:
-    try:
-        import yfinance as _yf_sp
-        data = _yf_sp.Ticker(ticker_sym).history(period="5d", interval="1d")
-        return data["Close"].dropna().tolist()
-    except Exception:
-        return []
-
-# ── HOME SCREEN (sin ticker) ─────────────────────────────────────────────────
-if not ticker:
-    from src.mercado import get_indices_globales, get_movers_portfolio
-
-    # ── Sección A+B: lazy — solo carga cuando el usuario lo pide ─────────────
-    if not st.session_state.get("mercado_cargado"):
-        st.markdown('<div style="height:0.6rem;"></div>', unsafe_allow_html=True)
-        _bc1, _bc2, _bc3 = st.columns([1, 2, 1])
-        with _bc2:
-            if st.button("📊 Cargar datos de mercado", use_container_width=True, type="primary"):
-                st.session_state["mercado_cargado"] = True
-                st.rerun()
-            st.caption("Carga bajo demanda · datos cacheados 10 min")
-    else:
-        # ── Sección A: Índices globales ───────────────────────────────────────
-        st.markdown("### 🌎 Índices globales")
-        _indices = get_indices_globales()
-
-        import plotly.graph_objects as _go_spark
-
-        def _render_idx_spark(col, idx):
-            precio = idx["precio"]
-            var = idx["variacion_pct"]
-            p_str = f"${precio:,.2f}" if precio is not None else "—"
-            if var is None:
-                v_str, v_col = "—", "#6B7280"
-            else:
-                v_str = f"{'+'if var>=0 else ''}{var:.2f}%"
-                v_col = "#16A34A" if var >= 0 else "#DC2626"
-            with col:
-                with st.container(border=True):
-                    st.markdown(
-                        f"<div class='idx-name'>{idx['nombre']}</div>"
-                        f"<div class='idx-price'>{p_str}</div>"
-                        f"<div class='idx-var' style='color:{v_col};'>{v_str}</div>",
-                        unsafe_allow_html=True,
-                    )
-                    _sp = _get_sparkline_prices(idx["ticker"])
-                    if len(_sp) >= 2:
-                        _positivo = _sp[-1] >= _sp[0]
-                        _sp_color = "#00ff88" if _positivo else "#ff4444"
-                        _sp_fill = "rgba(0,255,136,0.1)" if _positivo else "rgba(255,68,68,0.1)"
-                        _sf = _go_spark.Figure(_go_spark.Scatter(
-                            y=_sp, mode="lines",
-                            line=dict(color=_sp_color, width=2),
-                            fill="tozeroy", fillcolor=_sp_fill,
-                        ))
-                        _sf.update_layout(
-                            height=60,
-                            margin=dict(l=0, r=0, t=0, b=0),
-                            paper_bgcolor="rgba(0,0,0,0)",
-                            plot_bgcolor="rgba(0,0,0,0)",
-                            showlegend=False,
-                            xaxis=dict(visible=False),
-                            yaxis=dict(visible=False),
-                        )
-                        st.plotly_chart(_sf, use_container_width=True,
-                                        config={"staticPlot": True}, key=f"spark_{idx['ticker']}")
-
-        _ia, _ib, _ic, _id_ = st.columns(4)
-        _render_idx_spark(_ia, _indices[0])
-        _render_idx_spark(_ib, _indices[1])
-        _render_idx_spark(_ic, _indices[2])
-        _render_idx_spark(_id_, _indices[3])
-        _ie, _if_, _ig, _ih = st.columns(4)
-        _render_idx_spark(_ie, _indices[4])
-        _render_idx_spark(_if_, _indices[5])
-        _render_idx_spark(_ig, _indices[6])
-        _render_idx_spark(_ih, _indices[7])
-
-        st.markdown('<div style="margin-bottom:1.4rem;"></div>', unsafe_allow_html=True)
-
-        # ── Sección B: Movers del portfolio ──────────────────────────────────
-        try:
-            from src.portfolio import cargar_portfolio as _cp_h
-            _pf_h = _cp_h("pato")
-            _port_tks = tuple(p["ticker"] for p in _pf_h.get("posiciones", []))
-        except Exception:
-            _port_tks = ("YPF", "GOOGL", "NVDA", "PAM", "TGS", "MELI", "AAPL")
-
-        st.markdown("### 📊 Movers del portfolio — hoy")
-        _movers = get_movers_portfolio(_port_tks)
-        _mcol_g, _mcol_l = st.columns(2)
-
-        def _mover_rows(items, label, up: bool):
-            emoji = "🚀" if up else "📉"
-            color = "#16A34A" if up else "#DC2626"
-            rows_html = ""
-            for it in items:
-                s = "+" if it["variacion_pct"] >= 0 else ""
-                rows_html += (
-                    f"<div class='mover-row'>"
-                    f"<span style='font-weight:600;color:#111827;'>{it['ticker']}</span>"
-                    f"<span style='font-weight:700;color:{color};'>{s}{it['variacion_pct']:.2f}%</span>"
-                    f"</div>"
-                )
-            if not rows_html:
-                rows_html = "<div style='color:#9CA3AF;font-size:13px;padding:8px 0;'>Sin datos</div>"
-            return (
-                f"<div style='background:#FFF;border:1px solid #E1E4E8;border-radius:10px;padding:16px 18px;'>"
-                f"<div style='font-weight:700;font-size:14px;margin-bottom:10px;'>{emoji} {label}</div>"
-                f"{rows_html}</div>"
-            )
-
-        with _mcol_g:
-            st.markdown(_mover_rows(_movers["gainers"], "Mayores subas hoy", True), unsafe_allow_html=True)
-        with _mcol_l:
-            st.markdown(_mover_rows(_movers["losers"], "Mayores bajas hoy", False), unsafe_allow_html=True)
-
-        st.markdown('<div style="margin-bottom:1.4rem;"></div>', unsafe_allow_html=True)
-
-    # ── Sección C: Resumen del portfolio (siempre visible, sin yfinance) ──────
-    st.markdown("### 💼 Mi Portfolio")
-    try:
-        from src.portfolio import cargar_portfolio as _cp_c, calcular_metricas_portfolio as _cmp_c
-        _pf_c = _cp_c("pato")
-        _m = _cmp_c(_pf_c)   # usa precios guardados en el JSON, sin llamar a yfinance
-        _pc1, _pc2, _pc3, _pc4 = st.columns(4)
-        _pc1.metric("Valor total (ARS)", f"$ {_m['valor_total_ars']:,.0f}")
-        _pc2.metric(
-            "P&L total",
-            f"$ {_m['pnl_total_ars']:,.0f}",
-            delta=f"{_m['pnl_total_pct']*100:+.2f}%",
-        )
-        _top = _m.get("top_performer") or {}
-        _pc3.metric(
-            "Top performer",
-            _top.get("ticker", "—"),
-            delta=f"{_top.get('pnl_pct',0)*100:+.2f}%" if _top else None,
-        )
-        _pc4.metric("Posiciones", str(_m["num_posiciones"]))
-        st.caption("Precios del último guardado · actualizá en la pestaña Mi Portfolio")
-    except Exception as _e_pc:
-        st.info(f"Cargá el portfolio para ver el resumen. ({_e_pc})")
-
-    st.info("👆 Escribí un ticker en el buscador para ver Ficha, Fundamental, Técnico y más.")
-    st.stop()
-
-# ── CONTENIDO TICKER ──────────────────────────────────────────────────────────
+# CONTENIDO PRINCIPAL
+# Cargamos el ticker del sidebar pero NO abortamos si falla:
+# el tab Mi Portfolio funciona aunque el ticker sea invalido.
 datos = None
 ticker_error = None
-try:
-    with st.spinner(f"Cargando datos de {ticker}..."):
-        datos = cargar_ticker(ticker)
-except Exception as e:
-    ticker_error = f"Error al cargar {ticker}: {e}"
+if not ticker:
+    ticker_error = "Escribe un ticker en el buscador para ver Ficha/Fundamental/Tecnico"
+else:
+    try:
+        with st.spinner(f"Cargando datos de {ticker}..."):
+            datos = cargar_ticker(ticker)
+    except Exception as e:
+        ticker_error = f"Error al cargar {ticker}: {e}"
 
 if datos:
     st.header(f"{datos['nombre']} ({datos['ticker']})")
     st.caption(f"{datos['sector']} | {datos['industria']} | {datos['pais']}")
 else:
-    st.header(f"🔍 {ticker}")
-    if ticker_error and ("too many requests" in ticker_error.lower() or "429" in ticker_error):
-        st.warning("⏳ Datos temporalmente no disponibles. Reintentando en unos segundos...")
-    else:
-        st.caption(ticker_error or "No se encontraron datos para este ticker.")
+    st.header("Mi Bloomberg Personal")
+    st.caption(ticker_error or "")
 
-# ── BANNER: ALERTAS DISPARADAS ────────────────────────────────────
-try:
-    from src.alertas import (
-        cargar_alertas as _cal_b, guardar_alertas as _gal_b,
-        get_precios_para_alertas as _gppa_b,
-        verificar_alertas as _val_b,
-        formatear_alerta_disparada as _fad_b,
-    )
-    from datetime import datetime as _dt_b
-    _alertas_b = _cal_b("pato")
-    if _alertas_b:
-        _tks_b = tuple(set(a["ticker"] for a in _alertas_b if a.get("activa")))
-        _precios_b = _gppa_b(_tks_b) if _tks_b else {}
-        # Detectar y persistir nuevas disparadas
-        _pend_b = [a for a in _alertas_b if a.get("activa") and not a.get("disparada")]
-        _nuevas_b = _val_b(_pend_b, _precios_b)
-        if _nuevas_b:
-            _ids_b = {a["id"] for a in _nuevas_b}
-            for _a_b in _alertas_b:
-                if _a_b["id"] in _ids_b:
-                    _a_b["disparada"] = True
-                    _a_b["fecha_disparo"] = _dt_b.now().isoformat()
-            _gal_b("pato", _alertas_b)
-        # Mostrar banner si hay disparadas activas
-        _banner_b = [a for a in _alertas_b if a.get("activa") and a.get("disparada")]
-        if _banner_b:
-            st.warning(
-                f"🔔 **{len(_banner_b)} alerta(s) disparada(s)** — "
-                "revisá la sección Mis Alertas en Mi Portfolio"
-            )
-            for _ab in _banner_b:
-                _d_b = _precios_b.get(_ab["ticker"], {})
-                _v_b = (
-                    _d_b.get("variacion_dia", 0.0)
-                    if _ab["tipo"] == "variacion_dia"
-                    else _d_b.get("precio", 0.0)
-                )
-                st.markdown(f"- {_fad_b(_ab, _v_b)}")
-            if st.button("✓ Marcar como vistas", key="btn_vistas_banner"):
-                for _ab2 in _alertas_b:
-                    if _ab2.get("activa") and _ab2.get("disparada"):
-                        _ab2["activa"] = False
-                _gal_b("pato", _alertas_b)
-                st.rerun()
-except Exception:
-    pass  # El banner nunca debe crashear la app
-# ──────────────────────────────────────────────────────────────────
-
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "🏢 Ficha",
     "📊 Fundamental",
     "📈 Tecnico",
@@ -899,9 +472,6 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
     "🇦🇷 Macro Argentina",
     "📐 DCF & Valuación",
     "📰 Noticias",
-    "🎯 Mi Perfil Inversor",
-    "📅 Earnings",
-    "🔎 Screener",
 ])
 
 # TAB 1: FICHA
@@ -948,32 +518,6 @@ with tab1:
             col2.metric("Mkt Cap", f"${mcap:.1f}B" if mcap else "N/A")
             col3.metric("PE", f"{pe:.1f}" if pe else "N/A")
             col4.metric("ROE", f"{roe*100:.1f}%" if roe else "N/A")
-
-        # ── Fair Value compacto (ancho completo) ─────────────────────────────
-        try:
-            from src.fundamentals import calcular_fair_value as _calc_fv1
-            _fv1 = _calc_fv1(ticker)
-            if _fv1.get("veredicto") != "SIN DATOS" and _fv1.get("fair_value_promedio") is not None:
-                _fv1_val   = _fv1["fair_value_promedio"]
-                _fv1_up    = _fv1["upside_downside"]
-                _fv1_verd  = _fv1["veredicto"]
-                _fv1_EMOJ  = {"SUBVALUADA": "🟢", "PRECIO JUSTO": "🟡", "SOBREVALUADA": "🔴"}.get(_fv1_verd, "❔")
-                _fv1_BG    = {"SUBVALUADA": "#DCFCE7", "PRECIO JUSTO": "#FEF3C7", "SOBREVALUADA": "#FEE2E2"}.get(_fv1_verd, "#F3F4F6")
-                _fv1_FG    = {"SUBVALUADA": "#166534", "PRECIO JUSTO": "#92400E", "SOBREVALUADA": "#991B1B"}.get(_fv1_verd, "#374151")
-                _fv1_up_c  = "#16A34A" if _fv1_up >= 0 else "#DC2626"
-                st.markdown(
-                    f"<div style='background:{_fv1_BG};border:1px solid {_fv1_FG}33;"
-                    f"border-radius:8px;padding:10px 18px;margin-bottom:6px;"
-                    f"display:flex;align-items:center;gap:20px;flex-wrap:wrap;'>"
-                    f"<span style='font-size:13px;color:#6B7280;font-weight:500;'>🎯 Fair Value estimado</span>"
-                    f"<span style='font-size:18px;font-weight:700;color:{_fv1_FG};'>${_fv1_val:,.2f}</span>"
-                    f"<span style='font-size:14px;font-weight:600;color:{_fv1_up_c};'>Upside: {_fv1_up:+.1f}%</span>"
-                    f"<span style='font-size:14px;font-weight:700;color:{_fv1_FG};'>{_fv1_EMOJ} {_fv1_verd}</span>"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-        except Exception:
-            pass
 
         st.divider()
 
@@ -1102,124 +646,6 @@ with tab2:
 
                 beta_r = ratios.get('Beta')
                 s4.metric("Beta", f"{beta_r:.2f}" if beta_r else "N/A")
-
-                st.divider()
-
-                # ── FAIR VALUE ────────────────────────────────────────────
-                st.markdown("### 🎯 Fair Value Estimado")
-                st.caption(
-                    "Estimación basada en múltiplos históricos. "
-                    "**No es recomendación de inversión.**"
-                )
-                try:
-                    from src.fundamentals import calcular_fair_value as _calc_fv
-                    _fv = _calc_fv(ticker)
-
-                    if _fv.get("veredicto") == "SIN DATOS" or _fv.get("fair_value_promedio") is None:
-                        st.info(
-                            "No hay suficientes datos para calcular el fair value. "
-                            "Se necesita EPS forward o book value disponible en yfinance."
-                        )
-                    else:
-                        _fv_precio  = _fv["precio_actual"]
-                        _fv_valor   = _fv["fair_value_promedio"]
-                        _fv_upside  = _fv["upside_downside"]
-                        _fv_verd    = _fv["veredicto"]
-                        _fv_conf    = _fv["confianza"]
-
-                        _VERD_CFG = {
-                            "SUBVALUADA":   ("🟢", "#DCFCE7", "#166534"),
-                            "PRECIO JUSTO": ("🟡", "#FEF3C7", "#92400E"),
-                            "SOBREVALUADA": ("🔴", "#FEE2E2", "#991B1B"),
-                            "SIN DATOS":    ("❔", "#F3F4F6", "#374151"),
-                        }
-                        _vd_em, _vd_bg, _vd_fg = _VERD_CFG.get(_fv_verd, ("❔", "#F3F4F6", "#374151"))
-                        _up_color = "#16A34A" if _fv_upside >= 0 else "#DC2626"
-
-                        _fv_c1, _fv_c2, _fv_c3, _fv_c4 = st.columns(4)
-
-                        _fv_c1.markdown(
-                            f"<div style='background:#F9FAFB;border:1px solid #E1E4E8;"
-                            f"border-radius:8px;padding:12px 14px;text-align:center;'>"
-                            f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
-                            f"margin-bottom:4px;'>💲 Precio Actual</div>"
-                            f"<div style='font-size:20px;font-weight:700;color:#1F2937;'>"
-                            f"${_fv_precio:,.2f}</div></div>",
-                            unsafe_allow_html=True,
-                        )
-                        _fv_c2.markdown(
-                            f"<div style='background:#F0F9FF;border:1px solid #BAE6FD;"
-                            f"border-radius:8px;padding:12px 14px;text-align:center;'>"
-                            f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
-                            f"margin-bottom:4px;'>🎯 Fair Value</div>"
-                            f"<div style='font-size:20px;font-weight:700;color:#1E40AF;'>"
-                            f"${_fv_valor:,.2f}</div>"
-                            f"<div style='font-size:10px;color:#6B7280;margin-top:2px;'>"
-                            f"{_fv['metodos_usados']} método{'s' if _fv['metodos_usados'] != 1 else ''}</div>"
-                            f"</div>",
-                            unsafe_allow_html=True,
-                        )
-                        _fv_c3.markdown(
-                            f"<div style='background:#F9FAFB;border:1px solid #E1E4E8;"
-                            f"border-radius:8px;padding:12px 14px;text-align:center;'>"
-                            f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
-                            f"margin-bottom:4px;'>📊 Upside / Downside</div>"
-                            f"<div style='font-size:20px;font-weight:700;color:{_up_color};'>"
-                            f"{_fv_upside:+.1f}%</div></div>",
-                            unsafe_allow_html=True,
-                        )
-                        _fv_c4.markdown(
-                            f"<div style='background:{_vd_bg};border:1px solid {_vd_fg}44;"
-                            f"border-radius:8px;padding:12px 14px;text-align:center;'>"
-                            f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
-                            f"margin-bottom:4px;'>Veredicto</div>"
-                            f"<div style='font-size:16px;font-weight:700;color:{_vd_fg};'>"
-                            f"{_vd_em} {_fv_verd}</div>"
-                            f"<div style='font-size:10px;color:{_vd_fg};margin-top:2px;'>"
-                            f"Confianza: {_fv_conf}</div>"
-                            f"</div>",
-                            unsafe_allow_html=True,
-                        )
-
-                        # Detalle expandible
-                        with st.expander("🔍 Ver detalle de métodos"):
-                            import pandas as _pd_fv
-                            _fv_rows = []
-                            if _fv.get("fair_value_pe"):
-                                _fv_rows.append({
-                                    "Método":     "PE × EPS Forward",
-                                    "Fair Value": f"${_fv['fair_value_pe']:,.2f}",
-                                    "Detalle":    (
-                                        f"PE usado: {_fv['pe_promedio']:.1f}x "
-                                        f"({_fv.get('pe_fuente', '')})"
-                                    ),
-                                })
-                            if _fv.get("fair_value_pb"):
-                                _fv_rows.append({
-                                    "Método":     "PB Sector × Book Value",
-                                    "Fair Value": f"${_fv['fair_value_pb']:,.2f}",
-                                    "Detalle":    (
-                                        f"PB target sector ({_fv.get('sector', 'N/A')}): "
-                                        f"{_fv.get('pb_target', 'N/A')}x"
-                                    ),
-                                })
-                            if _fv_rows:
-                                st.dataframe(
-                                    _pd_fv.DataFrame(_fv_rows),
-                                    use_container_width=True,
-                                    hide_index=True,
-                                )
-                            st.caption(
-                                f"⚠️ Método PB usa P/B objetivo por sector ({_fv.get('sector', 'N/A')}), "
-                                f"no el P/B actual. Método PE usa "
-                                f"{'PE promedio histórico' if 'histórico' in (_fv.get('pe_fuente') or '') else 'PE trailing como proxy'}. "
-                                f"Confianza {_fv_conf}: "
-                                + ("ambos métodos con datos históricos." if _fv_conf == "Alta"
-                                   else "un solo método o PE sin histórico." if _fv_conf == "Media"
-                                   else "datos insuficientes.")
-                            )
-                except Exception as _e_fv:
-                    st.warning(f"No se pudo calcular el fair value: {_e_fv}")
 
             except Exception as e:
                 st.error(f"❌ Error cargando fundamentals: {e}")
@@ -1355,164 +781,6 @@ with tab2:
                         st.plotly_chart(_fig_rev, use_container_width=True)
                 except Exception as _e_rev:
                     st.warning(f"No se pudo graficar Revenue/NI: {_e_rev}")
-
-                # ── Gráficos detallados: Revenue, EPS, Márgenes ──────────
-                try:
-                    from src.fundamentals import get_revenue_eps_historico as _get_reh
-                    import numpy as _np_crec
-
-                    _reh = _get_reh(ticker)
-
-                    if not _reh or len(_reh.get("años", [])) < 2:
-                        st.info("Datos históricos insuficientes para los gráficos detallados.")
-                    else:
-                        _reh_años = _reh["años"]
-                        _reh_x    = list(range(len(_reh_años)))
-
-                        if _reh.get("es_argentino"):
-                            st.caption("ℹ️ Datos del ADR en USD — el ticker AR opera en pesos pero reporta en USD.")
-
-                        st.divider()
-
-                        # ── Gráfico 1: Revenue histórico ─────────────────
-                        st.markdown("### 💰 Revenue histórico")
-                        if _reh.get("revenue") and len(_reh["revenue"]) >= 2:
-                            _rv_vals = _reh["revenue"]
-                            _rv_cols = []
-                            for _i_rv, _v_rv in enumerate(_rv_vals):
-                                if _i_rv == 0:
-                                    _rv_cols.append("#2563EB")
-                                elif _v_rv >= _rv_vals[_i_rv - 1]:
-                                    _rv_cols.append("#2563EB")
-                                else:
-                                    _rv_cols.append("#9CA3AF")
-
-                            _fig_rv2 = _go2.Figure()
-                            _fig_rv2.add_trace(_go2.Bar(
-                                x=_reh_años, y=_rv_vals,
-                                marker_color=_rv_cols,
-                                text=[
-                                    f"${v/1000:.1f}B" if v >= 1000 else f"${v:.0f}M"
-                                    for v in _rv_vals
-                                ],
-                                textposition="outside",
-                                name="Revenue",
-                                hovertemplate="<b>%{x}</b><br>Revenue: $%{y:,.0f}M<extra></extra>",
-                            ))
-
-                            # Línea de tendencia
-                            _rv_arr  = _np_crec.array(_rv_vals, dtype=float)
-                            _rv_z    = _np_crec.polyfit(_reh_x, _rv_arr, 1)
-                            _rv_tend = list(_np_crec.poly1d(_rv_z)(_np_crec.array(_reh_x)))
-                            _fig_rv2.add_trace(_go2.Scatter(
-                                x=_reh_años, y=_rv_tend,
-                                mode="lines",
-                                line=dict(color="#F59E0B", width=2, dash="dash"),
-                                name="Tendencia",
-                            ))
-                            _fig_rv2.update_layout(
-                                title="Revenue histórico (USD Millones)",
-                                xaxis_title="Año", yaxis_title="USD M",
-                                template="plotly_white", height=380,
-                                margin=dict(l=20, r=20, t=50, b=20),
-                                legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
-                            )
-                            st.plotly_chart(_fig_rv2, use_container_width=True)
-                        else:
-                            st.info("Sin datos de Revenue.")
-
-                        st.divider()
-
-                        # ── Gráfico 2: EPS histórico ──────────────────────
-                        st.markdown("### 💵 EPS histórico")
-                        if _reh.get("eps") and len(_reh["eps"]) >= 2:
-                            _eps_vals = _reh["eps"]
-                            _eps_cols = ["#16A34A" if v >= 0 else "#DC2626" for v in _eps_vals]
-
-                            _fig_eps2 = _go2.Figure()
-                            _fig_eps2.add_trace(_go2.Bar(
-                                x=_reh_años, y=_eps_vals,
-                                marker_color=_eps_cols,
-                                text=[f"${v:.2f}" for v in _eps_vals],
-                                textposition="outside",
-                                name="EPS",
-                                hovertemplate="<b>%{x}</b><br>EPS: $%{y:.2f}<extra></extra>",
-                            ))
-
-                            _eps_arr  = _np_crec.array(_eps_vals, dtype=float)
-                            _eps_z    = _np_crec.polyfit(_reh_x, _eps_arr, 1)
-                            _eps_tend = list(_np_crec.poly1d(_eps_z)(_np_crec.array(_reh_x)))
-                            _fig_eps2.add_trace(_go2.Scatter(
-                                x=_reh_años, y=_eps_tend,
-                                mode="lines",
-                                line=dict(color="#7C3AED", width=2, dash="dash"),
-                                name="Tendencia",
-                            ))
-                            _fig_eps2.add_hline(
-                                y=0, line_dash="solid",
-                                line_color="#9CA3AF", line_width=1,
-                            )
-                            _fig_eps2.update_layout(
-                                title="EPS histórico (USD por acción)",
-                                xaxis_title="Año", yaxis_title="EPS (USD)",
-                                template="plotly_white", height=380,
-                                margin=dict(l=20, r=20, t=50, b=20),
-                                legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
-                            )
-                            st.plotly_chart(_fig_eps2, use_container_width=True)
-                        else:
-                            st.info("Sin datos de EPS (requiere shares outstanding en yfinance).")
-
-                        st.divider()
-
-                        # ── Gráfico 3: Márgenes históricos ────────────────
-                        st.markdown("### 📐 Evolución de márgenes %")
-                        _mg_disponibles = (
-                            _reh.get("gross_margin") or
-                            _reh.get("operating_margin") or
-                            _reh.get("net_margin")
-                        )
-                        if _mg_disponibles:
-                            _fig_mg = _go2.Figure()
-                            _MG_SERIES = [
-                                ("gross_margin",    "Mg. Bruto",     "#2563EB"),
-                                ("operating_margin","Mg. Operativo", "#16A34A"),
-                                ("net_margin",      "Mg. Neto",      "#7C3AED"),
-                            ]
-                            for _mg_key, _mg_lbl, _mg_col in _MG_SERIES:
-                                _mg_vals = _reh.get(_mg_key)
-                                if not _mg_vals:
-                                    continue
-                                # Filtrar None para el trazado
-                                _mg_y = [v if v is not None else float("nan") for v in _mg_vals]
-                                _fig_mg.add_trace(_go2.Scatter(
-                                    x=_reh_años, y=_mg_y,
-                                    mode="lines+markers",
-                                    line=dict(color=_mg_col, width=2),
-                                    marker=dict(size=7),
-                                    name=_mg_lbl,
-                                    hovertemplate=f"<b>%{{x}}</b><br>{_mg_lbl}: %{{y:.1f}}%<extra></extra>",
-                                ))
-                            _fig_mg.add_hline(
-                                y=0, line_dash="dot",
-                                line_color="#9CA3AF", line_width=1,
-                            )
-                            _fig_mg.update_layout(
-                                title="Evolución de márgenes %",
-                                xaxis_title="Año",
-                                yaxis_title="%",
-                                yaxis_ticksuffix="%",
-                                template="plotly_white",
-                                height=380,
-                                margin=dict(l=20, r=20, t=50, b=20),
-                                legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
-                            )
-                            st.plotly_chart(_fig_mg, use_container_width=True)
-                        else:
-                            st.info("Sin datos de márgenes disponibles.")
-
-                except Exception as _e_reh:
-                    st.warning(f"No se pudieron graficar Revenue/EPS/Márgenes: {_e_reh}")
 
             except Exception as e:
                 st.error(f"❌ Error en análisis de crecimiento: {e}")
@@ -1938,274 +1206,6 @@ with tab4:
                 )
             except Exception as e:
                 st.error(f"Error calculando metricas globales: {e}")
-
-            st.divider()
-
-            # ========== SALUD DEL PORTFOLIO ==========
-            st.markdown("### 💊 Salud del Portfolio")
-            try:
-                from src.salud_portfolio import calcular_score_salud, get_recomendaciones
-                import plotly.graph_objects as _go_s
-
-                _salud = calcular_score_salud(portfolio_live.get("posiciones", []))
-                _score_s  = _salud["score_final"]
-                _mets_s   = _salud["metricas"]
-                _det_s    = _salud["detalle"]
-
-                # Color y label del score global
-                if _score_s >= 71:
-                    _color_s, _label_s = "#16A34A", "SALUDABLE"
-                elif _score_s >= 41:
-                    _color_s, _label_s = "#F59E0B", "MEJORABLE"
-                else:
-                    _color_s, _label_s = "#DC2626", "EN RIESGO"
-
-                # Gauge chart
-                _fig_gauge = _go_s.Figure(_go_s.Indicator(
-                    mode="gauge+number",
-                    value=_score_s,
-                    number={"suffix": "/100", "font": {"size": 36, "color": _color_s}},
-                    title={"text": f"<b>{_label_s}</b>",
-                           "font": {"size": 16, "color": _color_s}},
-                    gauge={
-                        "axis": {"range": [0, 100], "tickwidth": 1,
-                                 "tickcolor": "#6B7280"},
-                        "bar":  {"color": _color_s, "thickness": 0.25},
-                        "bgcolor": "#F9FAFB",
-                        "borderwidth": 0,
-                        "steps": [
-                            {"range": [0,  40], "color": "#FEE2E2"},
-                            {"range": [40, 70], "color": "#FEF3C7"},
-                            {"range": [70, 100], "color": "#DCFCE7"},
-                        ],
-                        "threshold": {
-                            "line": {"color": _color_s, "width": 4},
-                            "thickness": 0.75, "value": _score_s,
-                        },
-                    },
-                ))
-                _fig_gauge.update_layout(
-                    height=240, margin=dict(l=30, r=30, t=40, b=10),
-                    paper_bgcolor="#FFFFFF",
-                )
-
-                _gcol_gauge, _gcol_recs = st.columns([2, 3])
-                with _gcol_gauge:
-                    st.plotly_chart(_fig_gauge, use_container_width=True)
-
-                # 6 métricas en 2 filas x 3 columnas
-                _met_names = list(_mets_s.keys())
-                _row1, _row2 = _met_names[:3], _met_names[3:]
-
-                def _render_metrica(col, nombre, info):
-                    sc = info["score"]
-                    em = info["emoji"]
-                    if sc >= 70:
-                        _bar_color = "#16A34A"
-                    elif sc >= 40:
-                        _bar_color = "#F59E0B"
-                    else:
-                        _bar_color = "#DC2626"
-                    col.markdown(
-                        f"<div style='background:#F9FAFB;border:1px solid #E1E4E8;"
-                        f"border-radius:8px;padding:12px 14px;'>"
-                        f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
-                        f"margin-bottom:4px;'>{em} {nombre}</div>"
-                        f"<div style='font-size:22px;font-weight:700;"
-                        f"color:{_bar_color};'>{sc}</div>"
-                        f"<div style='background:#E5E7EB;border-radius:4px;"
-                        f"height:6px;margin-top:6px;'>"
-                        f"<div style='background:{_bar_color};width:{sc}%;"
-                        f"height:6px;border-radius:4px;'></div></div>"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-
-                _sm1, _sm2, _sm3 = st.columns(3)
-                _render_metrica(_sm1, _row1[0], _mets_s[_row1[0]])
-                _render_metrica(_sm2, _row1[1], _mets_s[_row1[1]])
-                _render_metrica(_sm3, _row1[2], _mets_s[_row1[2]])
-
-                _sm4, _sm5, _sm6 = st.columns(3)
-                _render_metrica(_sm4, _row2[0], _mets_s[_row2[0]])
-                _render_metrica(_sm5, _row2[1], _mets_s[_row2[1]])
-                _render_metrica(_sm6, _row2[2], _mets_s[_row2[2]])
-
-                # Recomendaciones
-                _recomendaciones = get_recomendaciones(_mets_s, _det_s)
-                if _recomendaciones:
-                    st.markdown('<div style="height:0.8rem;"></div>', unsafe_allow_html=True)
-                    st.markdown(
-                        "<div style='background:#FFFBEB;border:1px solid #F59E0B;"
-                        "border-radius:8px;padding:14px 18px;'>"
-                        "<div style='font-weight:600;font-size:14px;color:#92400E;"
-                        "margin-bottom:10px;'>💡 Recomendaciones</div>"
-                        + "".join(
-                            f"<div style='color:#1F2937;font-size:13px;"
-                            f"margin-bottom:7px;line-height:1.45;'>{r}</div>"
-                            for r in _recomendaciones
-                        )
-                        + "</div>",
-                        unsafe_allow_html=True,
-                    )
-
-            except Exception as _e_salud:
-                st.warning(f"No se pudo calcular la salud del portfolio: {_e_salud}")
-
-            st.divider()
-
-            # ========== BENCHMARK ==========
-            st.markdown("### 📊 Benchmark")
-            try:
-                from src.benchmark import (
-                    get_benchmark_data,
-                    calcular_rendimiento_portfolio,
-                    comparar_benchmarks,
-                )
-                import plotly.graph_objects as _go_bm
-
-                _rend_pf = calcular_rendimiento_portfolio(
-                    portfolio_live.get("posiciones", [])
-                )
-                _fecha_ini_bm = _rend_pf.get("fecha_inicio")
-                _hoy_bm       = __import__("datetime").date.today()
-
-                if _fecha_ini_bm is None:
-                    st.info("Sin fecha de compra registrada — no se puede calcular benchmark.")
-                else:
-                    _rend_bms = get_benchmark_data(_fecha_ini_bm, _hoy_bm)
-                    _comp     = comparar_benchmarks(
-                        _rend_pf.get("rendimiento_pct"), _rend_bms
-                    )
-
-                    # ── 4 tarjetas métricas ────────────────────────────────
-                    _bm_c1, _bm_c2, _bm_c3, _bm_c4 = st.columns(4)
-                    _pf_rend = _rend_pf.get("rendimiento_pct")
-                    _pf_color = "#16A34A" if (_pf_rend or 0) >= 0 else "#DC2626"
-
-                    _bm_c1.markdown(
-                        f"<div style='background:#F0F9FF;border:1px solid #BAE6FD;"
-                        f"border-radius:8px;padding:12px 14px;text-align:center;'>"
-                        f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
-                        f"margin-bottom:4px;'>💼 Tu Portfolio</div>"
-                        f"<div style='font-size:22px;font-weight:700;color:{_pf_color};'>"
-                        f"{_pf_rend:+.1f}%</div>"
-                        f"<div style='font-size:10px;color:#6B7280;margin-top:3px;'>"
-                        f"desde {_fecha_ini_bm.strftime('%b %Y')}</div>"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-
-                    _bm_cols_data = [
-                        (_bm_c2, "S&P 500"),
-                        (_bm_c3, "Nasdaq"),
-                        (_bm_c4, "Merval"),
-                    ]
-                    for _col_bm, _nm_bm in _bm_cols_data:
-                        _rb = _rend_bms.get(_nm_bm, {}).get("rendimiento_pct")
-                        _alpha_bm = _comp["alphas"].get(_nm_bm)
-                        if _rb is not None:
-                            _rb_color = "#16A34A" if _rb >= 0 else "#DC2626"
-                            if _alpha_bm is not None:
-                                _alpha_color = "#16A34A" if _alpha_bm >= 0 else "#DC2626"
-                                _alpha_txt = (f"<div style='font-size:10px;"
-                                              f"color:{_alpha_color};margin-top:3px;'>"
-                                              f"alpha: {_alpha_bm:+.1f}pp</div>")
-                            else:
-                                _alpha_txt = ""
-                            _col_bm.markdown(
-                                f"<div style='background:#F9FAFB;border:1px solid #E1E4E8;"
-                                f"border-radius:8px;padding:12px 14px;text-align:center;'>"
-                                f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
-                                f"margin-bottom:4px;'>{_nm_bm}</div>"
-                                f"<div style='font-size:22px;font-weight:700;"
-                                f"color:{_rb_color};'>{_rb:+.1f}%</div>"
-                                f"{_alpha_txt}</div>",
-                                unsafe_allow_html=True,
-                            )
-                        else:
-                            _col_bm.markdown(
-                                f"<div style='background:#F9FAFB;border:1px solid #E1E4E8;"
-                                f"border-radius:8px;padding:12px 14px;text-align:center;'>"
-                                f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
-                                f"margin-bottom:4px;'>{_nm_bm}</div>"
-                                f"<div style='font-size:14px;color:#9CA3AF;'>Sin datos</div>"
-                                f"</div>",
-                                unsafe_allow_html=True,
-                            )
-
-                    st.markdown('<div style="height:1rem;"></div>', unsafe_allow_html=True)
-
-                    # ── Gráfico de barras horizontal ──────────────────────
-                    _bar_labels  = ["Tu Portfolio", "S&P 500", "Nasdaq", "Merval"]
-                    _bar_vals = [
-                        _rend_pf.get("rendimiento_pct"),
-                        _rend_bms.get("S&P 500",  {}).get("rendimiento_pct"),
-                        _rend_bms.get("Nasdaq",   {}).get("rendimiento_pct"),
-                        _rend_bms.get("Merval",   {}).get("rendimiento_pct"),
-                    ]
-                    _bar_colors = []
-                    for i, (lbl, val) in enumerate(zip(_bar_labels, _bar_vals)):
-                        if val is None:
-                            _bar_colors.append("#D1D5DB")
-                        elif lbl == "Tu Portfolio":
-                            _bar_colors.append("#2563EB" if val >= 0 else "#DC2626")
-                        else:
-                            _bar_colors.append("#6EE7B7" if val >= 0 else "#FCA5A5")
-
-                    _bar_vals_plot = [v if v is not None else 0 for v in _bar_vals]
-
-                    _fig_bm = _go_bm.Figure(_go_bm.Bar(
-                        x=_bar_vals_plot,
-                        y=_bar_labels,
-                        orientation="h",
-                        marker_color=_bar_colors,
-                        text=[f"{v:+.1f}%" if v is not None else "N/D"
-                              for v in _bar_vals],
-                        textposition="outside",
-                        textfont={"size": 12},
-                        cliponaxis=False,
-                    ))
-                    _fig_bm.update_layout(
-                        height=220,
-                        margin=dict(l=10, r=60, t=10, b=10),
-                        paper_bgcolor="#FFFFFF",
-                        plot_bgcolor="#FFFFFF",
-                        xaxis=dict(
-                            showgrid=True, gridcolor="#F3F4F6",
-                            zeroline=True, zerolinecolor="#9CA3AF",
-                            ticksuffix="%",
-                        ),
-                        yaxis=dict(showgrid=False),
-                        showlegend=False,
-                    )
-                    st.plotly_chart(_fig_bm, use_container_width=True)
-
-                    # ── Análisis automático ───────────────────────────────
-                    _veredictos = _comp.get("veredictos", {})
-                    if _veredictos:
-                        _txt_lines = list(_veredictos.values())
-                        _rend_an = _rend_pf.get("rendimiento_anualizado")
-                        if _rend_an is not None:
-                            _txt_lines.append(
-                                f"📅 CAGR del portfolio: **{_rend_an:+.1f}% anual**"
-                            )
-                        st.markdown(
-                            "<div style='background:#F0F9FF;border:1px solid #BAE6FD;"
-                            "border-radius:8px;padding:14px 18px;'>"
-                            "<div style='font-weight:600;font-size:14px;color:#1E40AF;"
-                            "margin-bottom:10px;'>🔍 Análisis</div>"
-                            + "".join(
-                                f"<div style='color:#1F2937;font-size:13px;"
-                                f"margin-bottom:6px;line-height:1.45;'>{t}</div>"
-                                for t in _txt_lines
-                            )
-                            + "</div>",
-                            unsafe_allow_html=True,
-                        )
-
-            except Exception as _e_bm:
-                st.warning(f"No se pudo calcular el benchmark: {_e_bm}")
 
             st.divider()
 
@@ -2717,136 +1717,22 @@ with tab4:
                         )
                         st.rerun()
 
-# ── SECCIÓN: MIS ALERTAS (al final de Mi Portfolio) ───────────────
-with tab4:
-    from src.alertas import (
-        cargar_alertas as _cal4, guardar_alertas as _gal4,
-        get_precios_para_alertas as _gppa4, nueva_alerta as _na4,
-    )
-
-    st.divider()
-    st.subheader("🔔 Mis Alertas")
-
-    _alertas4 = _cal4("pato")
-
-    # ── Sub-sección A: tabla de alertas ──────────────────────────
-    st.markdown("**Alertas configuradas**")
-
-    if not _alertas4:
-        st.info("No tenés alertas configuradas. Creá una abajo.")
-    else:
-        _tipo_lbl = {
-            "take_profit":   "Take Profit 🎯",
-            "stop_loss":     "Stop Loss 🛑",
-            "variacion_dia": "Variación día ⚡",
-        }
-        # Encabezado de tabla
-        _h1, _h2, _h3, _h4, _h5 = st.columns([2, 3, 2, 3, 1])
-        _h1.markdown("**Ticker**")
-        _h2.markdown("**Tipo**")
-        _h3.markdown("**Valor**")
-        _h4.markdown("**Estado**")
-        _h5.markdown("**Del.**")
-
-        for _a4 in _alertas4:
-            _c1, _c2, _c3, _c4, _c5 = st.columns([2, 3, 2, 3, 1])
-            _c1.markdown(_a4["ticker"])
-            _c2.markdown(_tipo_lbl.get(_a4["tipo"], _a4["tipo"]))
-            _unidad4 = "%" if _a4["tipo"] == "variacion_dia" else "$"
-            _c3.markdown(f"{_unidad4}{_a4['valor']:,.2f}")
-            if not _a4.get("activa"):
-                _c4.markdown("💤 Inactiva")
-            elif _a4.get("disparada"):
-                _c4.markdown("✅ Disparada")
-            else:
-                _c4.markdown("⏳ Pendiente")
-            if _c5.button("🗑️", key=f"del4_{_a4['id']}"):
-                _gal4("pato", [x for x in _alertas4 if x["id"] != _a4["id"]])
-                st.rerun()
-
-    st.markdown("")
-
-    # ── Sub-sección B: nueva alerta ───────────────────────────────
-    st.markdown("**➕ Nueva alerta**")
-
-    try:
-        _port4_al = cargar_portfolio("pato")
-        _tks_port4 = [p["ticker"] for p in _port4_al.get("posiciones", [])]
-    except Exception:
-        _tks_port4 = []
-
-    if not _tks_port4:
-        st.warning("No hay tickers en el portfolio para configurar alertas.")
-    else:
-        _nf_c1, _nf_c2 = st.columns(2)
-        with _nf_c1:
-            _nf_ticker4 = st.selectbox("Ticker", _tks_port4, key="nf_tk4")
-        with _nf_c2:
-            _nf_tipo_disp4 = st.radio(
-                "Tipo",
-                ["Take Profit 🎯", "Stop Loss 🛑", "Variación día ⚡"],
-                horizontal=True,
-                key="nf_tipo4",
-            )
-        _nf_tipo4 = {
-            "Take Profit 🎯":   "take_profit",
-            "Stop Loss 🛑":     "stop_loss",
-            "Variación día ⚡": "variacion_dia",
-        }[_nf_tipo_disp4]
-
-        if _nf_tipo4 == "variacion_dia":
-            _nf_val4 = st.number_input(
-                "Umbral %",
-                min_value=0.1, max_value=50.0,
-                value=5.0, step=0.5,
-                help="Alerta si el precio varía más de este % en el día (sube o baja)",
-                key="nf_val_var4",
-            )
-        else:
-            _pp4 = _gppa4((_nf_ticker4,)).get(_nf_ticker4, {})
-            _pa4 = _pp4.get("precio")
-            _nf_val4 = st.number_input(
-                "Precio objetivo ($)",
-                min_value=0.01,
-                value=round(float(_pa4), 2) if _pa4 else 1.0,
-                step=1.0,
-                help=f"Precio actual: ${_pa4:,.2f}" if _pa4 else "Precio no disponible",
-                key="nf_val_precio4",
-            )
-
-        if st.button("➕ Crear alerta", key="btn_crear4", use_container_width=True):
-            _dup4 = any(
-                a["ticker"] == _nf_ticker4 and a["tipo"] == _nf_tipo4 and a.get("activa")
-                for a in _alertas4
-            )
-            if _dup4:
-                st.error(
-                    f"Ya existe una alerta activa '{_nf_tipo_disp4}' para {_nf_ticker4}. "
-                    "Eliminá la anterior antes de crear una nueva."
-                )
-            else:
-                _alertas4.append(_na4(_nf_ticker4, _nf_tipo4, _nf_val4))
-                _gal4("pato", _alertas4)
-                st.success(
-                    f"✅ Alerta creada: **{_nf_ticker4}** | {_nf_tipo_disp4} | "
-                    f"{'%' if _nf_tipo4 == 'variacion_dia' else '$'}{_nf_val4:,.2f}"
-                )
-                st.rerun()
-
 # TAB 5: CALCULADORAS
 with tab5:
     import plotly.graph_objects as go
     from src.calculadoras import (
         calc_billetera, calc_plazo_fijo, calc_fci, calc_bono,
-        comparar_todas, evolucion_diaria, simular_inversion_mensual,
+        comparar_todas, evolucion_diaria,
+        RATIO_CEDEARS, calcular_ccl_implicito,
     )
+    from src.dolar import get_cotizacion_by_casa as _get_dolar_casa
 
     csub1, csub2, csub3, csub4, csub5 = st.tabs([
         "💵 Billetera Virtual",
         "📅 Plazo Fijo / FCI",
         "📊 Bono / TIR",
         "⚖️ Comparador",
-        "📈 Simulador",
+        "💱 CCL & CEDEARs",
     ])
 
     # ── SUB-TAB 1: BILLETERA VIRTUAL ──────────────────────────────────────────
@@ -3222,168 +2108,203 @@ with tab5:
             "Siempre compara contra la inflacion esperada del periodo."
         )
 
-    # ── SUB-TAB 5: SIMULADOR DE INVERSIÓN ────────────────────────────────────
+    # ── SUB-TAB 5: CCL & CEDEARs ──────────────────────────────────────────────
     with csub5:
-        st.markdown("#### 📈 Simulador de Inversión — Interés Compuesto")
-        st.caption(
-            "Proyectá el crecimiento de tu capital con aportes mensuales fijos. "
-            "Defaults ajustados al contexto argentino actual."
+        st.info(
+            "💱 El **CCL implícito** se calcula dividiendo el precio del CEDEAR en BYMA "
+            "por el precio del ADR en NYSE multiplicado por el ratio de conversión. "
+            "Si el CCL implícito es menor al CCL oficial, el CEDEAR puede estar barato en ARS."
         )
 
-        _sc1, _sc2 = st.columns(2)
-        with _sc1:
-            _sim_capital = st.number_input(
-                "Capital inicial (ARS)", min_value=0.0, value=100_000.0,
-                step=10_000.0, format="%.0f", key="sim_capital",
-            )
-            _sim_aporte = st.number_input(
-                "Aporte mensual (ARS)", min_value=0.0, value=50_000.0,
-                step=5_000.0, format="%.0f", key="sim_aporte",
-            )
-            _sim_años = st.slider(
-                "Plazo (años)", min_value=1, max_value=40, value=10, key="sim_años",
-            )
-        with _sc2:
-            _sim_tasa = st.slider(
-                "Retorno anual esperado %", min_value=5, max_value=100,
-                value=30, key="sim_tasa",
-            )
-            _sim_inflacion = st.slider(
-                "Inflación anual esperada %", min_value=0, max_value=200,
-                value=60, key="sim_inflacion",
-            )
-            _sim_mostrar_real = st.checkbox(
-                "Mostrar valor real (ajustado por inflación)",
-                value=True, key="sim_mostrar_real",
-            )
+        # ── SECCIÓN 1: TABLA EN TIEMPO REAL ───────────────────────────────────
+        st.markdown("### 📊 CCL implícito por CEDEAR — tiempo real")
 
-        _sim = simular_inversion_mensual(
-            capital_inicial=_sim_capital,
-            aporte_mensual=_sim_aporte,
-            tasa_anual=float(_sim_tasa),
-            años=_sim_años,
-            inflacion_anual=float(_sim_inflacion) if _sim_mostrar_real else 0,
-        )
+        _ccl_oficial_data = _get_dolar_casa("contadoconliqui")
+        _ccl_oficial_v = _ccl_oficial_data.get("venta") if _ccl_oficial_data else None
+        _mep_data = _get_dolar_casa("bolsa")
+        _mep_v = _mep_data.get("venta") if _mep_data else None
+        _blue_data = _get_dolar_casa("blue")
+        _blue_v = _blue_data.get("venta") if _blue_data else None
 
-        # ── 4 cards de resultados ─────────────────────────────────────────
-        st.markdown('<div style="height:0.6rem;"></div>', unsafe_allow_html=True)
-        _rc1, _rc2, _rc3, _rc4 = st.columns(4)
-
-        def _sim_card(col, titulo, valor, color="#1F2937", sub=None):
-            sub_html = f"<div style='font-size:10px;color:#6B7280;margin-top:2px;'>{sub}</div>" if sub else ""
-            col.markdown(
-                f"<div style='background:#F9FAFB;border:1px solid #E1E4E8;"
-                f"border-radius:8px;padding:12px 14px;text-align:center;'>"
-                f"<div style='font-size:11px;color:#6B7280;font-weight:500;"
-                f"margin-bottom:4px;'>{titulo}</div>"
-                f"<div style='font-size:18px;font-weight:700;color:{color};'>{valor}</div>"
-                f"{sub_html}</div>",
-                unsafe_allow_html=True,
-            )
-
-        def _fmt_ars(n):
-            return f"$ {n:,.0f}".replace(",", ".")
-
-        _sim_card(_rc1, "💰 Saldo final", _fmt_ars(_sim["saldo_final"]), "#16A34A")
-        if _sim_mostrar_real:
-            _sim_card(_rc2, "📉 Valor real (ARS hoy)",
-                      _fmt_ars(_sim["saldo_real"]), "#F59E0B",
-                      sub=f"inflación {_sim_inflacion}% anual")
+        if _ccl_oficial_v:
+            _ref_cols = st.columns(3)
+            _ref_cols[0].metric("CCL Oficial (venta)", f"$ {_ccl_oficial_v:,.0f}")
+            _ref_cols[1].metric("MEP (venta)", f"$ {_mep_v:,.0f}" if _mep_v else "—")
+            _ref_cols[2].metric("Blue (venta)", f"$ {_blue_v:,.0f}" if _blue_v else "—")
         else:
-            _sim_card(_rc2, "📥 Total aportado", _fmt_ars(_sim["total_aportado"]), "#2563EB")
-        _sim_card(_rc3, "📥 Total aportado", _fmt_ars(_sim["total_aportado"]), "#2563EB")
-        _sim_card(_rc4, "✨ Rendimientos", _fmt_ars(_sim["total_intereses"]), "#7C3AED",
-                  sub=f"x{_sim['multiplicador']} tu dinero")
+            st.warning("No se pudo obtener la cotización del CCL oficial.")
 
-        st.markdown('<div style="height:0.8rem;"></div>', unsafe_allow_html=True)
+        st.divider()
 
-        # ── Gráfico área apilada ──────────────────────────────────────────
-        import plotly.graph_objects as _go_sim
+        _tabla_filas = []
+        _mejor_diff = None
+        _mejor_ticker = None
 
-        _hist = _sim["historico"]
-        _años_x    = [h["año"] for h in _hist]
-        _aportado  = [h["aportado"] for h in _hist]
-        _intereses = [h["intereses"] for h in _hist]
+        for _sym, _info in RATIO_CEDEARS.items():
+            _res = calcular_ccl_implicito(_info["adr"], _info["local"], _info["ratio"])
+            _ccl_imp = _res["ccl_implicito"]
+            if _ccl_imp and _ccl_oficial_v:
+                _diff_pct = (_ccl_imp - _ccl_oficial_v) / _ccl_oficial_v * 100
+                if _mejor_diff is None or abs(_diff_pct) < abs(_mejor_diff):
+                    _mejor_diff = _diff_pct
+                    _mejor_ticker = _sym
+            else:
+                _diff_pct = None
+            _tabla_filas.append({
+                "Ticker": _sym,
+                "Precio NYSE (USD)": _res["precio_nyse"],
+                "Precio BYMA (ARS)": _res["precio_byma"],
+                "Ratio": _info["ratio"],
+                "CCL Implícito": _ccl_imp,
+                "vs CCL Oficial (%)": _diff_pct,
+            })
 
-        _fig_sim = _go_sim.Figure()
-        _fig_sim.add_trace(_go_sim.Scatter(
-            x=_años_x, y=_aportado,
-            name="Capital aportado",
-            fill="tozeroy",
-            mode="none",
-            fillcolor="rgba(37,99,235,0.35)",
-        ))
-        _fig_sim.add_trace(_go_sim.Scatter(
-            x=_años_x, y=[a + i for a, i in zip(_aportado, _intereses)],
-            name="Intereses acumulados",
-            fill="tonexty",
-            mode="none",
-            fillcolor="rgba(22,163,74,0.45)",
-        ))
+        _df_ccl = pd.DataFrame(_tabla_filas)
 
-        if _sim_mostrar_real and _sim_inflacion > 0:
-            _saldos_reales = []
-            for h in _hist:
-                _factor = (1 + _sim_inflacion / 100) ** h["año"]
-                _saldos_reales.append(round(h["saldo"] / _factor, 2))
-            _fig_sim.add_trace(_go_sim.Scatter(
-                x=_años_x, y=_saldos_reales,
-                name="Valor real (ARS hoy)",
-                mode="lines",
-                line=dict(color="#DC2626", width=2, dash="dot"),
-            ))
+        def _color_ccl_diff(val):
+            if val is None or (isinstance(val, float) and pd.isna(val)):
+                return ""
+            if val < 0:
+                return "color: #166534; font-weight: 600;"
+            if val > 0:
+                return "color: #991B1B; font-weight: 600;"
+            return ""
 
-        _fig_sim.update_layout(
-            title="Crecimiento de tu inversión en el tiempo",
-            template="plotly_white",
-            height=340,
-            margin=dict(l=20, r=20, t=40, b=20),
-            xaxis=dict(title="Año", dtick=max(1, _sim_años // 10)),
-            yaxis=dict(title="ARS", tickformat=",.0f"),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            hovermode="x unified",
+        def _bg_mejor(row):
+            if row["Ticker"] == _mejor_ticker:
+                return ["background-color: #FEF9C3;"] * len(row)
+            return [""] * len(row)
+
+        _fmt_ccl = {
+            "Precio NYSE (USD)": lambda x: f"USD {x:,.2f}" if x else "—",
+            "Precio BYMA (ARS)": lambda x: f"$ {x:,.1f}" if x else "—",
+            "CCL Implícito": lambda x: f"$ {x:,.2f}" if x else "—",
+            "vs CCL Oficial (%)": lambda x: f"{x:+.1f}%" if x is not None and not (isinstance(x, float) and pd.isna(x)) else "—",
+        }
+
+        _styled_ccl = (
+            _df_ccl.style
+            .apply(_bg_mejor, axis=1)
+            .map(_color_ccl_diff, subset=["vs CCL Oficial (%)"])
+            .format(_fmt_ccl)
         )
-        st.plotly_chart(_fig_sim, use_container_width=True)
+        st.dataframe(_styled_ccl, use_container_width=True, hide_index=True)
 
-        # ── Tabla anual ───────────────────────────────────────────────────
-        with st.expander("📋 Ver tabla anual detallada"):
-            import pandas as _pd_sim
-            _df_sim = _pd_sim.DataFrame(_hist)
-            _df_sim.columns = ["Año", "Saldo (ARS)", "Aportado (ARS)", "Intereses (ARS)"]
-            _df_sim["Crecim. %"] = _df_sim["Saldo (ARS)"].pct_change().mul(100).round(1)
-            _df_sim.loc[_df_sim.index[0], "Crecim. %"] = None
-            for _col_ars in ["Saldo (ARS)", "Aportado (ARS)", "Intereses (ARS)"]:
-                _df_sim[_col_ars] = _df_sim[_col_ars].apply(lambda v: f"$ {v:,.0f}".replace(",", "."))
-            _df_sim["Crecim. %"] = _df_sim["Crecim. %"].apply(
-                lambda v: f"{v:+.1f}%" if v == v else "—"
+        if _mejor_ticker:
+            _tag = "por debajo" if _mejor_diff < 0 else "por encima"
+            st.caption(
+                f"⭐ **{_mejor_ticker}** es el CEDEAR con menor diferencia vs CCL oficial "
+                f"({_mejor_diff:+.1f}% {_tag}). Fila amarilla en la tabla."
             )
-            st.dataframe(_df_sim, use_container_width=True, hide_index=True)
+        st.caption("🟢 Verde = CCL implícito < CCL oficial (CEDEAR barato en ARS) | "
+                   "🔴 Rojo = CCL implícito > CCL oficial (CEDEAR caro en ARS)")
 
-        # ── Mensaje educativo ─────────────────────────────────────────────
-        _mult = _sim["multiplicador"]
-        _msgs = []
-        if _mult >= 3:
-            _msgs.append(
-                f"🚀 Con este plan, tu dinero se multiplica **{_mult}x** en **{_sim_años} años**."
+        # ── SECCIÓN 2: CALCULADORA MANUAL ────────────────────────────────────
+        st.divider()
+        st.markdown("### 🧮 Calculadora manual de CCL")
+
+        _calc_c1, _calc_c2 = st.columns([1, 1])
+        with _calc_c1:
+            _modo_calc = st.radio(
+                "Modo de ingreso",
+                ["Elegir CEDEAR de la lista", "Ingresar manualmente"],
+                key="ccl_modo",
+                horizontal=True,
             )
-        if _sim_mostrar_real and _sim_inflacion > _sim_tasa:
-            _msgs.append(
-                "⚠️ Tu retorno no supera la inflación. Considerá instrumentos con mayor rendimiento."
+
+        if _modo_calc == "Elegir CEDEAR de la lista":
+            with _calc_c1:
+                _sel_ticker = st.selectbox(
+                    "CEDEAR", list(RATIO_CEDEARS.keys()), key="ccl_sel_ticker"
+                )
+            _sel_info = RATIO_CEDEARS[_sel_ticker]
+            _sel_res = calcular_ccl_implicito(
+                _sel_info["adr"], _sel_info["local"], _sel_info["ratio"]
             )
-        elif _sim_mostrar_real and _sim_inflacion > 0:
-            _poder_real = (_sim["saldo_real"] / _sim["total_aportado"] - 1) * 100
-            if _poder_real > 0:
-                _msgs.append(
-                    f"✅ En términos reales, tu poder adquisitivo **aumenta {_poder_real:.0f}%** "
-                    f"durante el período."
+            _inp_nyse = _sel_res["precio_nyse"] or 0.0
+            _inp_byma = _sel_res["precio_byma"] or 0.0
+            _inp_ratio = float(_sel_info["ratio"])
+        else:
+            with _calc_c1:
+                _inp_nyse = st.number_input(
+                    "Precio NYSE (USD)", min_value=0.01, value=10.0, step=0.01, key="ccl_nyse"
+                )
+                _inp_byma = st.number_input(
+                    "Precio BYMA (ARS)", min_value=0.01, value=10000.0, step=10.0, key="ccl_byma"
+                )
+                _inp_ratio = st.number_input(
+                    "Ratio de conversión", min_value=1, value=10, step=1, key="ccl_ratio"
+                )
+
+        _calc_ccl_imp = round(_inp_byma / (_inp_nyse * _inp_ratio), 2) if _inp_nyse and _inp_ratio else None
+
+        with _calc_c2:
+            st.markdown("**Resultado**")
+            if _calc_ccl_imp:
+                st.metric("CCL Implícito calculado", f"$ {_calc_ccl_imp:,.2f}")
+                _refs = {
+                    "CCL Oficial": _ccl_oficial_v,
+                    "MEP": _mep_v,
+                    "Blue": _blue_v,
+                }
+                for _nombre_ref, _val_ref in _refs.items():
+                    if _val_ref:
+                        _d = (_calc_ccl_imp - _val_ref) / _val_ref * 100
+                        _texto = f"{_d:+.1f}% {'sobre' if _d > 0 else 'bajo'} el {_nombre_ref}"
+                        st.caption(_texto)
+                if _ccl_oficial_v:
+                    _d_of = (_calc_ccl_imp - _ccl_oficial_v) / _ccl_oficial_v * 100
+                    if _d_of < -2:
+                        st.success(f"✅ Este CEDEAR cotiza {abs(_d_of):.1f}% **por debajo** del CCL oficial → posible oportunidad.")
+                    elif _d_of > 2:
+                        st.warning(f"⚠️ Este CEDEAR cotiza {_d_of:.1f}% **por encima** del CCL oficial → está caro en ARS.")
+                    else:
+                        st.info("↔️ Este CEDEAR cotiza alineado con el CCL oficial (diferencia < 2%).")
+            else:
+                st.warning("Completá los precios para calcular.")
+
+        # ── SECCIÓN 3: ¿CUÁNTOS CEDEARs NECESITO? ────────────────────────────
+        st.divider()
+        st.markdown("### 🔢 ¿Cuántos CEDEARs necesito?")
+
+        _need_c1, _need_c2 = st.columns([1, 1])
+        with _need_c1:
+            _need_ticker = st.selectbox(
+                "Empresa (CEDEAR)", list(RATIO_CEDEARS.keys()), key="ccl_need_ticker"
+            )
+            _need_monto_usd = st.number_input(
+                "Monto a invertir (USD)", min_value=1.0, value=1000.0, step=100.0, key="ccl_need_usd"
+            )
+
+        _need_info = RATIO_CEDEARS[_need_ticker]
+        _need_res = calcular_ccl_implicito(
+            _need_info["adr"], _need_info["local"], _need_info["ratio"]
+        )
+        _need_precio_byma = _need_res["precio_byma"]
+        _need_ccl = _calc_ccl_imp if _modo_calc == "Elegir CEDEAR de la lista" and _sel_ticker == _need_ticker else _need_res["ccl_implicito"]
+        _ccl_para_conv = _need_ccl or _ccl_oficial_v
+
+        with _need_c2:
+            st.markdown("**Resultado**")
+            if _need_precio_byma and _ccl_para_conv and _need_precio_byma > 0:
+                _monto_ars = _need_monto_usd * _ccl_para_conv
+                _cedears_necesarios = int(_monto_ars / _need_precio_byma)
+                _acciones_nyse = round(_cedears_necesarios / _need_info["ratio"], 4)
+                _costo_ars_real = _cedears_necesarios * _need_precio_byma
+                _costo_usd_real = round(_costo_ars_real / _ccl_para_conv, 2)
+
+                _r1, _r2 = st.columns(2)
+                _r1.metric("CEDEARs a comprar", f"{_cedears_necesarios:,}")
+                _r2.metric("Equivale a (NYSE)", f"{_acciones_nyse} acciones")
+                _r3, _r4 = st.columns(2)
+                _r3.metric("Costo en ARS", f"$ {_costo_ars_real:,.0f}")
+                _r4.metric("Costo en USD (al CCL)", f"USD {_costo_usd_real:,.2f}")
+                st.caption(
+                    f"Usando CCL {'implícito' if _need_ccl else 'oficial'}: $ {_ccl_para_conv:,.2f} | "
+                    f"Precio CEDEAR: $ {_need_precio_byma:,.1f} | Ratio: {_need_info['ratio']}:1"
                 )
             else:
-                _msgs.append(
-                    f"⚠️ En términos reales tu poder adquisitivo **cae {abs(_poder_real):.0f}%** "
-                    f"— la inflación supera al rendimiento."
-                )
-        if _msgs:
-            st.info("  \n".join(_msgs))
+                st.warning("No se pudo obtener el precio del CEDEAR. Intentá de nuevo en unos segundos.")
 
 # TAB 6: MACRO ARGENTINA
 with tab6:
@@ -4213,13 +3134,20 @@ with tab8:
                         )
                 with _c_badge:
                     st.markdown(_badge8(_sent8["label"]), unsafe_allow_html=True)
-                    _det8 = _sent8.get("detalle", {})
                     st.markdown(
                         f"<span style='font-size:11px;color:#9CA3AF;'>"
-                        f"score: {_sent8['score']:+.2f} · "
-                        f"pos={_det8.get('pos',0):.2f} neg={_det8.get('neg',0):.2f}</span>",
+                        f"score: {_sent8['score']:+.2f}</span>",
                         unsafe_allow_html=True,
                     )
+                    if _sent8["positivas"] or _sent8["negativas"]:
+                        _palabras_str = ", ".join(
+                            _sent8["positivas"][:3] + _sent8["negativas"][:3]
+                        )
+                        st.markdown(
+                            f"<span style='font-size:10px;color:#CBD5E1;'>"
+                            f"{_palabras_str}</span>",
+                            unsafe_allow_html=True,
+                        )
                 st.markdown("---")
 
     st.divider()
@@ -4327,693 +3255,6 @@ with tab8:
         st.info("Cargá el portfolio para ver el feed combinado.")
 
     st.caption(
-        "Fuente: Yahoo Finance · Sentimiento: VADER con léxico financiero AR · "
+        "Fuente: Yahoo Finance · Sentimiento: palabras clave financieras hardcodeadas · "
         "No es recomendación de inversión."
     )
-
-# TAB 9: MI PERFIL INVERSOR
-with tab9:
-    from src.perfil_inversor import (
-        PREGUNTAS, PORTFOLIOS_MODELO,
-        calcular_perfil, analizar_portfolio_actual,
-    )
-    import plotly.graph_objects as _go9
-
-    N_PREGUNTAS = len(PREGUNTAS)
-
-    # ── Inicializar session_state del quiz ────────────────────────────────────
-    if "pf_respuestas" not in st.session_state:
-        st.session_state["pf_respuestas"]  = [None] * N_PREGUNTAS
-    if "pf_pregunta" not in st.session_state:
-        st.session_state["pf_pregunta"]    = 0
-    if "pf_completado" not in st.session_state:
-        st.session_state["pf_completado"]  = False
-    if "pf_resultado" not in st.session_state:
-        st.session_state["pf_resultado"]   = None
-
-    # ── Cabecera ──────────────────────────────────────────────────────────────
-    st.markdown(
-        "<h2 style='color:#1E40AF;margin-bottom:0;'>🎯 Mi Perfil Inversor</h2>"
-        "<p style='color:#6B7280;margin-top:4px;'>Respondé 10 preguntas y descubrí "
-        "si tu portfolio está alineado con tu tolerancia al riesgo.</p>",
-        unsafe_allow_html=True,
-    )
-    st.markdown('<div style="border-bottom:1px solid #E1E4E8;margin:8px 0 18px 0;"></div>',
-                unsafe_allow_html=True)
-
-    # ── PASO 1: QUIZ ──────────────────────────────────────────────────────────
-    if not st.session_state["pf_completado"]:
-        _idx9 = st.session_state["pf_pregunta"]
-        _p9   = PREGUNTAS[_idx9]
-
-        # Barra de progreso
-        st.progress((_idx9) / N_PREGUNTAS,
-                    text=f"Pregunta {_idx9 + 1} de {N_PREGUNTAS}")
-
-        st.markdown(
-            f"<div style='background:#F0F4FF;border-left:4px solid #2563EB;"
-            f"border-radius:6px;padding:18px 20px;margin:12px 0 20px 0;"
-            f"font-size:18px;font-weight:600;color:#1E293B;'>"
-            f"{_p9['pregunta']}</div>",
-            unsafe_allow_html=True,
-        )
-
-        # Opciones como botones
-        for _op9 in _p9["opciones"]:
-            _ya_elegida = st.session_state["pf_respuestas"][_idx9] == _op9["puntaje"]
-            _btn_style  = "primary" if _ya_elegida else "secondary"
-            if st.button(
-                f"{'✓ ' if _ya_elegida else ''}{_op9['texto']}",
-                key=f"pf_q{_idx9}_p{_op9['puntaje']}",
-                use_container_width=True,
-                type=_btn_style,
-            ):
-                st.session_state["pf_respuestas"][_idx9] = _op9["puntaje"]
-                if _idx9 < N_PREGUNTAS - 1:
-                    st.session_state["pf_pregunta"] = _idx9 + 1
-                st.rerun()
-
-        # Navegación inferior
-        _nav_l, _nav_c, _nav_r = st.columns([2, 3, 2])
-        with _nav_l:
-            if _idx9 > 0 and st.button("← Anterior", key="pf_prev", use_container_width=True):
-                st.session_state["pf_pregunta"] = _idx9 - 1
-                st.rerun()
-        with _nav_r:
-            _resp_actual  = st.session_state["pf_respuestas"][_idx9]
-            _todas_ok     = all(r is not None for r in st.session_state["pf_respuestas"])
-            if _todas_ok:
-                if st.button("Ver mi perfil →", key="pf_ver", use_container_width=True, type="primary"):
-                    _puntajes = [r for r in st.session_state["pf_respuestas"] if r is not None]
-                    st.session_state["pf_resultado"]  = calcular_perfil(_puntajes)
-                    st.session_state["pf_completado"] = True
-                    st.rerun()
-            elif _resp_actual is not None and _idx9 < N_PREGUNTAS - 1:
-                if st.button("Siguiente →", key="pf_next", use_container_width=True):
-                    st.session_state["pf_pregunta"] = _idx9 + 1
-                    st.rerun()
-
-        # Respuestas completadas hasta ahora
-        _respondidas = sum(1 for r in st.session_state["pf_respuestas"] if r is not None)
-        if _respondidas > 0:
-            st.caption(f"{_respondidas} de {N_PREGUNTAS} preguntas respondidas")
-
-    # ── PASOS 2-4: RESULTADO + MODELO + COMPARACIÓN ───────────────────────────
-    else:
-        _res9 = st.session_state["pf_resultado"]
-
-        # ── PASO 2: Card de resultado ─────────────────────────────────────────
-        st.markdown(
-            f"<div style='background:#FFFFFF;border:2px solid {_res9['color']};"
-            f"border-radius:12px;padding:24px 28px;margin-bottom:1.5rem;'>"
-            f"<div style='font-size:42px;margin-bottom:8px;'>{_res9['emoji']}</div>"
-            f"<div style='font-size:28px;font-weight:800;color:{_res9['color']};'>"
-            f"{_res9['perfil']}</div>"
-            f"<div style='font-size:15px;color:#374151;margin:10px 0 14px 0;'>"
-            f"{_res9['descripcion']}</div>"
-            f"<div style='font-size:13px;color:#6B7280;margin-bottom:6px;'>"
-            f"Puntaje: {_res9['puntaje_total']} / {40} &nbsp;·&nbsp; "
-            f"{_res9['porcentaje']}%</div>"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
-        st.progress(_res9["porcentaje"] / 100)
-
-        if st.button("🔄 Repetir quiz", key="pf_reset"):
-            for _k in ("pf_respuestas", "pf_pregunta", "pf_completado", "pf_resultado"):
-                del st.session_state[_k]
-            st.rerun()
-
-        st.divider()
-
-        # ── PASO 3: Portfolio modelo ──────────────────────────────────────────
-        _modelo9 = PORTFOLIOS_MODELO[_res9["perfil"]]
-
-        st.markdown(f"### 📐 Portfolio ideal para tu perfil: {_res9['emoji']} {_res9['perfil']}")
-        st.caption(_modelo9["descripcion"])
-        st.warning(_modelo9["disclaimer"])
-
-        _alloc9     = _modelo9["allocacion"]
-        _labels9_m  = [a["activo"] for a in _alloc9]
-        _valores9_m = [a["porcentaje"] for a in _alloc9]
-        _colores9   = ["#2563EB", "#16A34A", "#F59E0B", "#8B5CF6",
-                       "#EC4899", "#06B6D4", "#84CC16", "#F97316"]
-
-        _fig9_modelo = _go9.Figure(_go9.Pie(
-            labels=_labels9_m, values=_valores9_m,
-            hole=0.5,
-            marker=dict(colors=_colores9[:len(_labels9_m)]),
-            textinfo="label+percent",
-            hovertemplate="<b>%{label}</b><br>%{percent}<extra></extra>",
-        ))
-        _fig9_modelo.update_layout(
-            title=f"Portfolio modelo — {_res9['perfil']}",
-            template="plotly_white", height=380,
-            margin=dict(l=20, r=20, t=50, b=20),
-            showlegend=False,
-        )
-        st.plotly_chart(_fig9_modelo, use_container_width=True)
-
-        # Tabla de allocación
-        import pandas as _pd9
-        _df9_modelo = _pd9.DataFrame([
-            {"Activo": a["activo"], "% sugerido": f"{a['porcentaje']}%", "Razón": a["razon"]}
-            for a in _alloc9
-        ])
-        st.dataframe(_df9_modelo, use_container_width=True, hide_index=True)
-
-        st.divider()
-
-        # ── PASO 4: Comparación con portfolio real ────────────────────────────
-        st.markdown("### 🔍 Tu portfolio vs tu perfil")
-
-        _port9 = None
-        try:
-            from src.portfolio import cargar_portfolio as _cp9
-            _port9 = _cp9("pato")
-        except Exception:
-            pass
-
-        if _port9 is None:
-            st.info("No se encontró un portfolio guardado. "
-                    "Cargá tu portfolio en la pestaña Mi Portfolio para ver la comparación.")
-        else:
-            _posiciones9 = _port9.get("posiciones", [])
-            _analisis9   = analizar_portfolio_actual(_posiciones9, _res9["perfil"])
-            _comp_real9  = _analisis9["composicion_real"]
-
-            if not _comp_real9:
-                st.info("No hay posiciones en el portfolio para comparar.")
-            else:
-                # Dos gráficos lado a lado
-                _cg1, _cg2 = st.columns(2)
-
-                with _cg1:
-                    _fig9_m2 = _go9.Figure(_go9.Pie(
-                        labels=_labels9_m, values=_valores9_m,
-                        hole=0.5,
-                        marker=dict(colors=_colores9[:len(_labels9_m)]),
-                        textinfo="percent",
-                        hovertemplate="<b>%{label}</b><br>%{percent}<extra></extra>",
-                    ))
-                    _fig9_m2.update_layout(
-                        title="Portfolio modelo", template="plotly_white",
-                        height=340, margin=dict(l=10, r=10, t=50, b=10),
-                        showlegend=False,
-                    )
-                    st.plotly_chart(_fig9_m2, use_container_width=True)
-
-                with _cg2:
-                    _cats_r  = list(_comp_real9.keys())
-                    _vals_r  = list(_comp_real9.values())
-                    _fig9_r  = _go9.Figure(_go9.Pie(
-                        labels=_cats_r, values=_vals_r,
-                        hole=0.5,
-                        marker=dict(colors=_colores9[:len(_cats_r)]),
-                        textinfo="percent",
-                        hovertemplate="<b>%{label}</b><br>%{percent:.1f}%<extra></extra>",
-                    ))
-                    _fig9_r.update_layout(
-                        title="Tu portfolio actual", template="plotly_white",
-                        height=340, margin=dict(l=10, r=10, t=50, b=10),
-                        showlegend=False,
-                    )
-                    st.plotly_chart(_fig9_r, use_container_width=True)
-
-                # Observaciones automáticas
-                st.markdown("#### 📋 Análisis automático")
-                for _obs9 in _analisis9["observaciones"]:
-                    if _obs9["tipo"] == "verde":
-                        st.success(_obs9["texto"])
-                    elif _obs9["tipo"] == "amarillo":
-                        st.warning(_obs9["texto"])
-                    else:
-                        st.error(_obs9["texto"])
-
-        st.warning(
-            "⚠️ Esta comparación es una referencia educativa general basada en "
-            "categorías amplias. No constituye asesoramiento financiero "
-            "personalizado. Consultá un asesor certificado antes de tomar "
-            "decisiones de inversión."
-        )
-
-# TAB 10: EARNINGS
-with tab10:
-    from src.earnings import (
-        finnhub_disponible, get_earnings_calendario,
-        get_earnings_historico, get_earnings_portfolio_yf,
-        clasificar_earnings,
-    )
-    from datetime import date as _date10
-    import pandas as _pd10
-    import plotly.graph_objects as _go10
-
-    st.markdown(
-        "<h2 style='color:#1E40AF;margin-bottom:0;'>📅 Calendario de Earnings</h2>"
-        "<p style='color:#6B7280;margin-top:4px;'>Próximos reportes trimestrales "
-        "de las empresas de tu portfolio.</p>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<div style="border-bottom:1px solid #E1E4E8;margin:8px 0 18px 0;"></div>',
-        unsafe_allow_html=True,
-    )
-
-    # Tickers del portfolio
-    _e10_tickers: tuple = ()
-    try:
-        from src.portfolio import cargar_portfolio as _cp10
-        _pf10      = _cp10("pato")
-        _e10_tickers = tuple(p["ticker"] for p in _pf10.get("posiciones", []))
-        _e10_nombres  = {p["ticker"]: p.get("activo", p["ticker"])
-                         for p in _pf10.get("posiciones", [])}
-    except Exception:
-        st.warning("No se pudo cargar el portfolio.")
-        _e10_nombres = {}
-
-    # ── Badge helpers ─────────────────────────────────────────────────────────
-    _BADGE10: dict = {
-        "HOY":               ("🔴", "#FEE2E2", "#991B1B"),
-        "ESTA SEMANA":       ("🟡", "#FEF3C7", "#92400E"),
-        "ESTE MES":          ("🟢", "#DCFCE7", "#166534"),
-        "PRÓXIMO TRIMESTRE": ("🔵", "#DBEAFE", "#1E40AF"),
-        "MÁS ADELANTE":      ("⚪", "#F3F4F6", "#374151"),
-        "SIN FECHA":         ("❔", "#F3F4F6", "#374151"),
-    }
-    _HOUR_LABEL = {"bmo": "BEFORE OPEN", "amc": "AFTER CLOSE", "dmh": "DURING MARKET"}
-
-    # ═════════════════════════════════════════════════════════════════════════
-    # RAMA FINNHUB
-    # ═════════════════════════════════════════════════════════════════════════
-    if finnhub_disponible():
-        st.caption("Fuente: Finnhub API · Cache 1 hora")
-
-        if _e10_tickers:
-            with st.spinner("Consultando Finnhub (cache 1 hora)..."):
-                try:
-                    _proximos10 = get_earnings_calendario(_e10_tickers)
-                except Exception as _ex10:
-                    st.error(f"Error Finnhub calendario: {_ex10}")
-                    _proximos10 = []
-
-            # ── SECCIÓN 1: Cards ──────────────────────────────────────────────
-            st.markdown("### 🔔 Próximos earnings del portfolio")
-            if not _proximos10:
-                st.info("No se encontraron earnings en los próximos 90 días para los tickers del portfolio.")
-            else:
-                _cpf = 3
-                for _i10 in range(0, len(_proximos10), _cpf):
-                    _fila10  = _proximos10[_i10: _i10 + _cpf]
-                    _cols10  = st.columns(len(_fila10))
-                    for _col10, _e10 in zip(_cols10, _fila10):
-                        _urg  = _e10["urgencia"]
-                        _em10, _bg10, _fg10 = _BADGE10.get(_urg, ("⚪", "#F3F4F6", "#374151"))
-                        _dias = _e10["dias"]
-                        _dias_txt10 = "Hoy" if _dias == 0 else f"En {_dias} día{'s' if _dias != 1 else ''}"
-                        _hour_lbl   = _HOUR_LABEL.get(_e10.get("hour", ""), "")
-                        _eps_txt10  = (
-                            f"EPS est.: <b>${_e10['eps_estimado']:.2f}</b>"
-                            if _e10.get("eps_estimado") is not None else ""
-                        )
-                        _col10.markdown(
-                            f"<div style='background:#FFFFFF;border:1px solid #E1E4E8;"
-                            f"border-radius:10px;padding:16px 18px;'>"
-                            f"<div style='font-size:24px;font-weight:800;color:#111827;'>"
-                            f"{_e10['ticker']}</div>"
-                            f"<div style='background:{_bg10};color:{_fg10};"
-                            f"padding:3px 10px;border-radius:12px;display:inline-block;"
-                            f"font-size:11px;font-weight:700;margin:6px 0 4px;'>"
-                            f"{_em10} {_urg}</div>"
-                            + (f"<span style='margin-left:6px;background:#F3F4F6;color:#374151;"
-                               f"padding:2px 8px;border-radius:10px;font-size:10px;"
-                               f"font-weight:600;'>{_hour_lbl}</span>" if _hour_lbl else "")
-                            + f"<br><div style='font-size:13px;color:#374151;margin-top:6px;'>"
-                            f"📆 {_e10['fecha'].strftime('%d/%m/%Y')} · {_dias_txt10}</div>"
-                            + (f"<div style='font-size:12px;color:#374151;margin-top:3px;'>{_eps_txt10}</div>" if _eps_txt10 else "")
-                            + "</div>",
-                            unsafe_allow_html=True,
-                        )
-                st.markdown('<div style="margin-bottom:1rem;"></div>', unsafe_allow_html=True)
-
-            # ── SECCIÓN 2: Tabla ──────────────────────────────────────────────
-            st.markdown("### 📋 Tabla completa")
-            if _proximos10:
-                _filas_t10 = []
-                for _e10 in _proximos10:
-                    _hl = _HOUR_LABEL.get(_e10.get("hour", ""), "—")
-                    _filas_t10.append({
-                        "Ticker":    _e10["ticker"],
-                        "Fecha":     _e10["fecha"].strftime("%d/%m/%Y"),
-                        "Días":      _e10["dias"],
-                        "Horario":   _hl,
-                        "EPS Est.":  f"${_e10['eps_estimado']:.2f}" if _e10.get("eps_estimado") is not None else "—",
-                        "Urgencia":  _e10["urgencia"],
-                    })
-                _df_t10 = _pd10.DataFrame(_filas_t10)
-
-                def _hl_sem10(row):
-                    if row["Urgencia"] in ("HOY", "ESTA SEMANA"):
-                        return ["background-color:#FEF3C7;"] * len(row)
-                    return [""] * len(row)
-
-                st.dataframe(
-                    _df_t10.style.apply(_hl_sem10, axis=1),
-                    use_container_width=True, hide_index=True,
-                )
-
-            st.divider()
-
-            # ── SECCIÓN 3: Historial EPS por ticker ───────────────────────────
-            st.markdown("### 📊 Historial EPS — últimos 4 trimestres")
-            if _e10_tickers:
-                _tk_sel10 = st.selectbox(
-                    "Seleccioná un ticker",
-                    options=list(_e10_tickers),
-                    key="earn_tk_sel",
-                )
-                with st.spinner(f"Cargando historial de {_tk_sel10}..."):
-                    try:
-                        _hist10 = get_earnings_historico(_tk_sel10)
-                    except Exception as _ex_h10:
-                        st.error(f"Error: {_ex_h10}")
-                        _hist10 = []
-
-                if not _hist10:
-                    st.info(f"No se encontraron datos históricos de EPS para {_tk_sel10}.")
-                else:
-                    # Gráfico barras EPS real vs estimado
-                    _periods10  = [h["period"] for h in _hist10]
-                    _eps_est10  = [h["eps_est"]  for h in _hist10]
-                    _eps_real10 = [h["eps_real"] for h in _hist10]
-                    _colors10   = [
-                        "#16A34A" if h["beat"] == "BEAT"
-                        else "#DC2626" if h["beat"] == "MISS"
-                        else "#6B7280"
-                        for h in _hist10
-                    ]
-
-                    _fig_eps = _go10.Figure()
-                    _fig_eps.add_trace(_go10.Bar(
-                        x=_periods10, y=_eps_est10,
-                        name="EPS Estimado",
-                        marker_color="#93C5FD",
-                        opacity=0.8,
-                    ))
-                    _fig_eps.add_trace(_go10.Bar(
-                        x=_periods10, y=_eps_real10,
-                        name="EPS Real",
-                        marker_color=_colors10,
-                    ))
-                    _fig_eps.update_layout(
-                        barmode="group",
-                        title=f"EPS real vs estimado — {_tk_sel10}",
-                        template="plotly_white",
-                        height=300,
-                        margin=dict(l=20, r=20, t=40, b=20),
-                        xaxis_title="Trimestre",
-                        yaxis_title="EPS (USD)",
-                        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
-                    )
-                    st.plotly_chart(_fig_eps, use_container_width=True)
-
-                    # Tabla historial
-                    _filas_h10 = []
-                    for _h10 in _hist10:
-                        _sor = _h10.get("sorpresa")
-                        _filas_h10.append({
-                            "Trimestre": _h10["period"],
-                            "EPS Est.":  f"${_h10['eps_est']:.2f}"  if _h10.get("eps_est")  is not None else "—",
-                            "EPS Real":  f"${_h10['eps_real']:.2f}" if _h10.get("eps_real") is not None else "—",
-                            "Sorpresa":  f"{_sor:+.1f}%"            if _sor is not None      else "—",
-                            "Resultado": _h10.get("beat") or "—",
-                        })
-                    _df_h10 = _pd10.DataFrame(_filas_h10)
-
-                    def _hl_beat10(row):
-                        if row["Resultado"] == "BEAT":
-                            return [""] * 4 + ["background-color:#DCFCE7;color:#166534;font-weight:700;"]
-                        if row["Resultado"] == "MISS":
-                            return [""] * 4 + ["background-color:#FEE2E2;color:#991B1B;font-weight:700;"]
-                        return [""] * len(row)
-
-                    st.dataframe(
-                        _df_h10.style.apply(_hl_beat10, axis=1),
-                        use_container_width=True, hide_index=True,
-                    )
-
-    # ═════════════════════════════════════════════════════════════════════════
-    # RAMA SIN API KEY — instrucciones + fallback yfinance
-    # ═════════════════════════════════════════════════════════════════════════
-    else:
-        st.warning(
-            "**API key de Finnhub no configurada.** "
-            "Para ver el calendario de earnings con fechas exactas necesitás configurarla. "
-            "Ver instrucciones abajo."
-        )
-
-        with st.expander("📋 Cómo configurar Finnhub (2 minutos)", expanded=True):
-            st.markdown("""
-**Paso 1 — Crear cuenta gratuita**
-1. Andá a [finnhub.io](https://finnhub.io) y registrate (es gratis)
-2. Copiá tu **API Key** desde el dashboard
-
-**Paso 2 — Configurar en Streamlit Cloud**
-1. Abrí tu app en [share.streamlit.io](https://share.streamlit.io)
-2. Hacé click en los **3 puntos** (⋮) → **Settings**
-3. Andá a la sección **Secrets**
-4. Agregá esta línea exactamente así:
-```
-FINNHUB_API_KEY = "tu_api_key_aqui"
-```
-5. Guardá — la app se reinicia automáticamente
-
-**Paso 3 — Uso local (opcional)**
-Creá un archivo `.env` en la raíz del proyecto:
-```
-FINNHUB_API_KEY=tu_api_key_aqui
-```
-(instalá `python-dotenv` y cargalo en `app.py` con `load_dotenv()`)
-
-> Plan gratuito: 60 llamadas/minuto — más que suficiente para este portfolio.
-""")
-
-        st.divider()
-        st.markdown("### 📜 Historial reciente (fuente: Yahoo Finance)")
-        st.caption("Fallback sin Finnhub — no garantiza fechas futuras.")
-
-        if _e10_tickers:
-            with st.spinner("Consultando Yahoo Finance..."):
-                try:
-                    _prox_yf, _hist_yf = get_earnings_portfolio_yf(_e10_tickers)
-                except Exception as _exyf:
-                    st.error(f"Error yfinance: {_exyf}")
-                    _prox_yf, _hist_yf = [], []
-
-            if _prox_yf:
-                st.markdown("#### Próximos (si los hay)")
-                for _e10 in _prox_yf:
-                    _urg  = _e10["urgencia"]
-                    _em10, _bg10, _fg10 = _BADGE10.get(_urg, ("⚪", "#F3F4F6", "#374151"))
-                    _eps_t = f" · EPS est: ${_e10['eps_estimado']:.2f}" if _e10.get("eps_estimado") is not None else ""
-                    st.markdown(
-                        f"<div style='background:{_bg10};color:{_fg10};"
-                        f"padding:6px 12px;border-radius:8px;margin-bottom:5px;"
-                        f"font-size:13px;'>"
-                        f"<b>{_e10['ticker']}</b> — {_e10['fecha'].strftime('%d/%m/%Y')}"
-                        f" · {_em10} {_urg}{_eps_t}</div>",
-                        unsafe_allow_html=True,
-                    )
-
-            if _hist_yf:
-                st.markdown("#### Últimos 90 días reportados")
-                _filas_yf = []
-                for _h10 in _hist_yf:
-                    _sor = _h10.get("sorpresa")
-                    _filas_yf.append({
-                        "Ticker":    _h10["ticker"],
-                        "Fecha":     _h10["fecha"].strftime("%d/%m/%Y"),
-                        "EPS Est.":  f"${_h10['eps_est']:.2f}"  if _h10.get("eps_est")  is not None else "—",
-                        "EPS Real":  f"${_h10['eps_real']:.2f}" if _h10.get("eps_real") is not None else "—",
-                        "Sorpresa":  f"{_sor:+.1f}%"            if _sor is not None      else "—",
-                        "Resultado": _h10.get("beat") or "—",
-                    })
-                _df_yf = _pd10.DataFrame(_filas_yf)
-
-                def _hl_yf(row):
-                    if row["Resultado"] == "BEAT":
-                        return [""] * 5 + ["background-color:#DCFCE7;color:#166534;font-weight:700;"]
-                    if row["Resultado"] == "MISS":
-                        return [""] * 5 + ["background-color:#FEE2E2;color:#991B1B;font-weight:700;"]
-                    return [""] * len(row)
-
-                st.dataframe(
-                    _df_yf.style.apply(_hl_yf, axis=1),
-                    use_container_width=True, hide_index=True,
-                )
-            elif not _prox_yf:
-                st.info("No se encontraron datos de earnings en Yahoo Finance.")
-
-# TAB 11: SCREENER
-with tab11:
-    try:
-        import pandas as _pd_scr
-        from src.screener import UNIVERSO_ACCIONES as _SCR_UNI, get_datos_screener, aplicar_filtros as _aplicar_scr
-
-        st.markdown("### 🔎 Screener de Acciones")
-        st.caption(f"Universo: {len(_SCR_UNI)} acciones · Ratios fundamentales vía yfinance · Cache 1h")
-
-        # ── Carga lazy ────────────────────────────────────────────────────────
-        if not st.session_state.get("screener_cargado"):
-            _sl1, _sl2, _sl3 = st.columns([1, 2, 1])
-            with _sl2:
-                if st.button(
-                    f"🔎 Cargar Screener ({len(_SCR_UNI)} acciones)",
-                    use_container_width=True, type="primary", key="btn_scr_load",
-                ):
-                    st.session_state["screener_cargado"] = True
-                    st.rerun()
-                st.caption("Primera carga ~30 s · cacheado 1 hora")
-        else:
-            with st.spinner(f"Descargando datos de {len(_SCR_UNI)} acciones..."):
-                _df_scr_raw = get_datos_screener(tuple(_SCR_UNI))
-
-            if _df_scr_raw is None or _df_scr_raw.empty:
-                st.error("No se pudieron cargar los datos del screener.")
-            else:
-                # ── SECCIÓN 1: Filtros ────────────────────────────────────────
-                with st.expander("⚙️ Filtros", expanded=True):
-                    _fc1, _fc2, _fc3 = st.columns(3)
-
-                    with _fc1:
-                        st.markdown("**📊 Valuación**")
-                        _pe_rng  = st.slider("PE Trailing",   0,    100,  (0,  50),       key="scr_pe")
-                        _pb_rng  = st.slider("P/B",           0.0,  20.0, (0.0, 5.0),  step=0.5, key="scr_pb")
-
-                    with _fc2:
-                        st.markdown("**📈 Rentabilidad**")
-                        _roe_rng = st.slider("ROE %",         0,    100,  (0,  100),       key="scr_roe")
-                        _mg_rng  = st.slider("Margen Neto %", -50,  100,  (0,  100),       key="scr_mg")
-                        _div_rng = st.slider("Div Yield %",   0.0,  20.0, (0.0, 20.0), step=0.5, key="scr_div")
-
-                    with _fc3:
-                        st.markdown("**⚠️ Riesgo**")
-                        _beta_rng = st.slider("Beta",          0.0, 3.0,  (0.0, 2.0),  step=0.1, key="scr_beta")
-                        _de_rng   = st.slider("Debt/Equity x", 0.0, 5.0,  (0.0, 3.0),  step=0.1, key="scr_de")
-                        _mcap_sel = st.selectbox(
-                            "Market Cap",
-                            ["Todas", "Small (<$2B)", "Mid ($2-10B)", "Large (>$10B)"],
-                            key="scr_mcap",
-                        )
-
-                    _btn1, _btn2, _btn3 = st.columns([2, 1, 3])
-                    with _btn1:
-                        _aplicar  = st.button("🔎 Aplicar filtros", type="primary",
-                                              key="scr_aplicar", use_container_width=True)
-                    with _btn2:
-                        _resetear = st.button("↺ Resetear", key="scr_reset", use_container_width=True)
-
-                # Reset: borra keys de widgets + filtros guardados y reruns
-                if _resetear:
-                    for _k in ["scr_pe", "scr_pb", "scr_roe", "scr_mg", "scr_div",
-                                "scr_beta", "scr_de", "scr_mcap", "scr_filtros_guardados"]:
-                        st.session_state.pop(_k, None)
-                    st.rerun()
-
-                # Guardar filtros al aplicar; usar los guardados si no se vuelve a aplicar
-                _filtros_actuales = {
-                    "pe_min":   _pe_rng[0],  "pe_max":   _pe_rng[1],
-                    "pb_min":   _pb_rng[0],  "pb_max":   _pb_rng[1],
-                    "roe_min":  _roe_rng[0], "roe_max":  _roe_rng[1],
-                    "mg_min":   _mg_rng[0],  "mg_max":   _mg_rng[1],
-                    "div_min":  _div_rng[0], "div_max":  _div_rng[1],
-                    "beta_min": _beta_rng[0],"beta_max": _beta_rng[1],
-                    "de_min":   _de_rng[0],  "de_max":   _de_rng[1],
-                    "mcap":     _mcap_sel,
-                }
-                if _aplicar:
-                    st.session_state["scr_filtros_guardados"] = _filtros_actuales
-                _filtros_a_usar = st.session_state.get("scr_filtros_guardados", {})
-                _df_result = _aplicar_scr(_df_scr_raw, _filtros_a_usar)
-
-                # ── SECCIÓN 2: Resultados ─────────────────────────────────────
-                st.markdown(f"### 📋 Resultados — **{len(_df_result)}** acciones")
-
-                if _df_result.empty:
-                    st.info("Ninguna acción cumple los filtros. Ampliá los rangos y volvé a aplicar.")
-                else:
-                    _COL_MAP = {
-                        "Ticker": "Ticker", "Empresa": "Empresa",
-                        "PE": "PE", "PB": "P/B",
-                        "ROE_%": "ROE %", "Mg_Neto_%": "Mg Neto %",
-                        "Beta": "Beta", "Market_Cap_B": "Mkt Cap $B",
-                        "Var_Dia_%": "Var Hoy %",
-                    }
-                    _cols_pres = [c for c in _COL_MAP if c in _df_result.columns]
-                    _df_show = _df_result[_cols_pres].rename(columns=_COL_MAP)
-
-                    def _hl_scr(row):
-                        styles = [""] * len(row)
-                        if "Var Hoy %" in row.index:
-                            _i = list(row.index).index("Var Hoy %")
-                            _v = row["Var Hoy %"]
-                            if _pd_scr.notna(_v):
-                                styles[_i] = "color:#16A34A;font-weight:600;" if _v > 0 \
-                                             else "color:#DC2626;font-weight:600;" if _v < 0 else ""
-                        return styles
-
-                    _fmt_scr = {k: v for k, v in {
-                        "PE": "{:.1f}", "P/B": "{:.2f}", "ROE %": "{:.1f}",
-                        "Mg Neto %": "{:.1f}", "Beta": "{:.2f}",
-                        "Mkt Cap $B": "{:.1f}", "Var Hoy %": "{:+.2f}",
-                    }.items() if k in _df_show.columns}
-
-                    st.dataframe(
-                        _df_show.style.apply(_hl_scr, axis=1).format(_fmt_scr, na_rep="—"),
-                        use_container_width=True, hide_index=True,
-                    )
-
-                    # Navegación → ficha del ticker
-                    st.markdown("---")
-                    _nav_tks = _df_result["Ticker"].tolist()
-                    _nc1, _nc2 = st.columns([4, 1])
-                    with _nc1:
-                        _nav_sel = st.selectbox("Abrir ficha de:", _nav_tks, key="scr_nav_sel")
-                    with _nc2:
-                        st.write("")
-                        st.write("")
-                        if st.button("📊 Ver ficha", key="scr_nav_btn", use_container_width=True):
-                            st.session_state["buscador_principal"] = _nav_sel
-                            st.rerun()
-
-                    # ── SECCIÓN 3: Comparar seleccionados ────────────────────
-                    st.markdown("### 🆚 Comparar tickers")
-                    try:
-                        _comp_sel = st.multiselect(
-                            "Seleccioná 2–4 tickers para comparar lado a lado:",
-                            options=_nav_tks,
-                            max_selections=4,
-                            key="scr_comp_sel",
-                        )
-                    except TypeError:
-                        # max_selections no disponible en versiones antiguas de Streamlit
-                        _comp_sel = st.multiselect(
-                            "Seleccioná 2–4 tickers para comparar lado a lado:",
-                            options=_nav_tks,
-                            key="scr_comp_sel",
-                        )
-                        _comp_sel = _comp_sel[:4]
-
-                    if len(_comp_sel) >= 2:
-                        _df_comp = (
-                            _df_result[_df_result["Ticker"].isin(_comp_sel)][_cols_pres]
-                            .rename(columns=_COL_MAP)
-                            .set_index("Ticker")
-                            .T
-                        )
-                        st.dataframe(_df_comp.style.format("{}", na_rep="—"),
-                                     use_container_width=True)
-                    elif len(_comp_sel) == 1:
-                        st.caption("Seleccioná al menos 2 tickers para comparar.")
-
-    except Exception as _e_scr:
-        st.error(f"❌ Error en el Screener: {_e_scr}")

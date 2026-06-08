@@ -1,5 +1,43 @@
 """Calculadoras financieras para el mercado argentino."""
 import pandas as pd
+import yfinance as yf
+
+
+RATIO_CEDEARS = {
+    "GGAL":  {"adr": "GGAL",  "local": "GGAL.BA",  "ratio": 10},
+    "YPF":   {"adr": "YPF",   "local": "YPF.BA",   "ratio": 1},
+    "PAM":   {"adr": "PAM",   "local": "PAMP.BA",  "ratio": 25},
+    "TGS":   {"adr": "TGS",   "local": "TGS.BA",   "ratio": 5},
+    "BMA":   {"adr": "BMA",   "local": "BMA.BA",   "ratio": 10},
+    "CEPU":  {"adr": "CEPU",  "local": "CEPU.BA",  "ratio": 10},
+    "LOMA":  {"adr": "LOMA",  "local": "LOMA.BA",  "ratio": 5},
+    "SUPV":  {"adr": "SUPV",  "local": "SUPV.BA",  "ratio": 5},
+    "MELI":  {"adr": "MELI",  "local": "MELI.BA",  "ratio": 1},
+}
+
+
+def calcular_ccl_implicito(ticker_adr: str, ticker_local: str, ratio: int) -> dict:
+    """CCL implícito = precio_BYMA / (precio_NYSE * ratio)."""
+    try:
+        precio_nyse = yf.Ticker(ticker_adr).fast_info["lastPrice"]
+    except Exception:
+        precio_nyse = None
+    try:
+        precio_byma = yf.Ticker(ticker_local).fast_info["lastPrice"]
+    except Exception:
+        precio_byma = None
+
+    if precio_nyse and precio_byma and ratio:
+        ccl_implicito = round(precio_byma / (precio_nyse * ratio), 2)
+    else:
+        ccl_implicito = None
+
+    return {
+        "precio_nyse": precio_nyse,
+        "precio_byma": precio_byma,
+        "ratio": ratio,
+        "ccl_implicito": ccl_implicito,
+    }
 
 
 def calc_billetera(monto: float, tna: float, dias: int, inflacion_mensual: float) -> dict:
