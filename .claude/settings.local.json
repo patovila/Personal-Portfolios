@@ -36,7 +36,16 @@
       "Bash(python -c \"import ast; ast.parse\\(open\\('src/calculadoras.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
       "Bash(git commit *)",
       "Bash(python -c \"import ast; ast.parse\\(open\\('src/earnings.py', encoding='utf-8'\\).read\\(\\)\\); print\\('earnings.py OK'\\)\")",
-      "Bash(python -c \"import ast; ast.parse\\(open\\('src/fundamentals.py', encoding='utf-8'\\).read\\(\\)\\); print\\('fundamentals.py OK'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('src/fundamentals.py', encoding='utf-8'\\).read\\(\\)\\); print\\('fundamentals.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('app.py'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(python -c \"lines = open\\('app.py', encoding='utf-8'\\).readlines\\(\\); print\\(f'Total lines: {len\\(lines\\)}'\\)\")",
+      "Bash(python -c \"import sys; lines = sys.stdin.readlines\\(\\); print\\(f'Previous: {len\\(lines\\)} lines'\\)\")",
+      "Bash(python -c \"lines = open\\('app.py', encoding='utf-8'\\).readlines\\(\\); print\\('Last 5 lines:'\\); [print\\(repr\\(l\\)\\) for l in lines[-5:]]\")",
+      "Bash(python -c \"import sys; lines = sys.stdin.readlines\\(\\); print\\('Old last 5:'\\); [print\\(repr\\(l\\)\\) for l in lines[-5:]]\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('src/mercado.py', encoding='utf-8'\\).read\\(\\)\\); print\\('mercado.py OK'\\)\")",
+      "Bash(python -c \"print\\(sum\\(1 for _ in open\\('C:/Users/PC/Documents/Proyecto_mi bloomberg/app.py', encoding='utf-8'\\)\\)\\)\")",
+      "Bash(python *)",
+      "Bash(pip show *)"
     ]
   }
 }
