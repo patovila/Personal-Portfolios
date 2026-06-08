@@ -365,6 +365,38 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# ── ONBOARDING (primera visita por sesión) ────────────────────────────────────
+if "onboarding_completado" not in st.session_state:
+    st.session_state["onboarding_completado"] = False
+
+if not st.session_state["onboarding_completado"]:
+    with st.container():
+        st.markdown("""
+## 👋 Bienvenido a Mi Bloomberg Personal
+
+Tu herramienta de análisis financiero para el inversor argentino.
+
+**¿Qué podés hacer?**
+
+🔍 **Buscar cualquier acción** — escribí el ticker o el nombre de la empresa
+
+📊 **Analizar fundamentals** — PE, ROE, DCF, Fair Value en un click
+
+💼 **Gestionar tu portfolio** — cargá tus posiciones y seguí tu P&L en tiempo real
+
+🇦🇷 **Datos argentinos** — dólar, riesgo país, CEDEARs con CCL implícito
+""")
+        _ob_c1, _ob_c2 = st.columns(2)
+        with _ob_c1:
+            if st.button("🚀 Empezar", use_container_width=True, type="primary"):
+                st.session_state["onboarding_completado"] = True
+                st.rerun()
+        with _ob_c2:
+            if st.button("⏭️ Saltar", use_container_width=True):
+                st.session_state["onboarding_completado"] = True
+                st.rerun()
+    st.stop()
+
 # SIDEBAR
 with st.sidebar:
     st.header("Buscador")
@@ -481,11 +513,32 @@ ticker_error = None
 if not ticker:
     ticker_error = "Escribe un ticker en el buscador para ver Ficha/Fundamental/Tecnico"
 else:
+    _sk_slot = st.empty()
+    _sk_slot.markdown("""
+<style>
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 8px;
+  height: 80px;
+  margin: 8px 0;
+}
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+</style>
+<div class="skeleton"></div>
+<div class="skeleton"></div>
+<div class="skeleton"></div>
+""", unsafe_allow_html=True)
     try:
-        with st.spinner(f"Cargando datos de {ticker}..."):
-            datos = cargar_ticker(ticker)
+        datos = cargar_ticker(ticker)
     except Exception as e:
         ticker_error = f"Error al cargar {ticker}: {e}"
+    finally:
+        _sk_slot.empty()
 
 if datos:
     st.header(f"{datos['nombre']} ({datos['ticker']})")
@@ -742,6 +795,37 @@ with tab1:
                     st.error("🔴 Negativo")
             else:
                 st.write("Sin datos")
+
+        # ── COMPARTIR ANÁLISIS ───────────────────────────────────────────────
+        st.divider()
+        if st.button(f"📤 Compartir análisis de {ticker}", key="ficha_share_btn"):
+            st.session_state["ficha_show_share"] = True
+
+        if st.session_state.get("ficha_show_share"):
+            _sh_precio = datos.get("precio_actual")
+            _sh_pe     = datos.get("pe")
+            _sh_roe    = datos.get("roe")
+            _sh_mg     = datos.get("margen_op")
+            _sh_nombre = datos.get("nombre", ticker)
+
+            _sh_lineas = [
+                f"📊 {_sh_nombre} ({ticker}) — Mi Bloomberg Personal",
+            ]
+            if _sh_precio:
+                _sh_lineas.append(f"💰 Precio: ${_sh_precio:.2f}")
+            _sh_meta = []
+            if _sh_pe:
+                _sh_meta.append(f"PE: {_sh_pe:.1f}")
+            if _sh_roe:
+                _sh_meta.append(f"ROE: {_sh_roe*100:.1f}%")
+            if _sh_mg:
+                _sh_meta.append(f"Mg. Op.: {_sh_mg*100:.1f}%")
+            if _sh_meta:
+                _sh_lineas.append("📈 " + " | ".join(_sh_meta))
+            _sh_lineas.append("🇦🇷 Analizalo vos: personalfinances.streamlit.app")
+
+            st.code("\n".join(_sh_lineas), language=None)
+            st.caption("Copiá y compartí en WhatsApp o Instagram")
 
 # TAB 2: FUNDAMENTAL
 with tab2:
