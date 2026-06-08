@@ -527,6 +527,56 @@ hr { border-color: #30363d !important; }
 .stSelectbox > div { background-color: #1c2128 !important; color: #e6edf3 !important; }
 </style>""", unsafe_allow_html=True)
 
+def show_skeleton(rows=3):
+    st.markdown(f"""
+    <style>
+    .skeleton {{
+        background: linear-gradient(
+            90deg,
+            #f0f0f0 25%,
+            #e8e8e8 50%,
+            #f0f0f0 75%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 8px;
+        margin: 8px 0;
+    }}
+    .skeleton-title {{
+        height: 24px;
+        width: 40%;
+    }}
+    .skeleton-card {{
+        height: 80px;
+        width: 100%;
+    }}
+    .skeleton-text {{
+        height: 16px;
+        width: 70%;
+    }}
+    .skeleton-text-short {{
+        height: 16px;
+        width: 40%;
+    }}
+    @keyframes shimmer {{
+        0% {{ background-position: 200% 0; }}
+        100% {{ background-position: -200% 0; }}
+    }}
+    </style>
+    {"".join([f'''
+    <div class="skeleton skeleton-title"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin:12px 0">
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+    </div>
+    <div class="skeleton skeleton-text"></div>
+    <div class="skeleton skeleton-text-short"></div>
+    ''' for _ in range(rows)])}
+    """, unsafe_allow_html=True)
+
+
 # CONTENIDO PRINCIPAL
 # Cargamos el ticker del sidebar pero NO abortamos si falla:
 # el tab Mi Portfolio funciona aunque el ticker sea invalido.
@@ -536,25 +586,8 @@ if not ticker:
     ticker_error = "Escribe un ticker en el buscador para ver Ficha/Fundamental/Tecnico"
 else:
     _sk_slot = st.empty()
-    _sk_slot.markdown("""
-<style>
-.skeleton {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: skeleton-loading 1.5s infinite;
-  border-radius: 8px;
-  height: 80px;
-  margin: 8px 0;
-}
-@keyframes skeleton-loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-</style>
-<div class="skeleton"></div>
-<div class="skeleton"></div>
-<div class="skeleton"></div>
-""", unsafe_allow_html=True)
+    with _sk_slot:
+        show_skeleton()
     try:
         datos = cargar_ticker(ticker)
     except Exception as e:
@@ -705,8 +738,12 @@ try:
         get_indices_globales   as _get_idx_sp,
         get_sparklines_indices as _get_spark,
     )
+    _idx_sk = st.empty()
+    with _idx_sk:
+        show_skeleton(rows=1)
     _idx_sp   = _get_idx_sp()
     _spark_sp = _get_spark()
+    _idx_sk.empty()
 
     _sp_cols1 = st.columns(4)
     _sp_cols2 = st.columns(4)
@@ -1552,12 +1589,16 @@ if tab4 is not None:
                     st.rerun()
 
             # --- Actualizar precios desde yfinance (con cache) ---
-            with st.spinner("Refrescando precios..."):
-                try:
-                    portfolio_live = actualizar_precios_actuales(portfolio)
-                except Exception as e:
-                    st.warning(f"No se pudo refrescar precios desde yfinance: {e}")
-                    portfolio_live = portfolio
+            _port_sk = st.empty()
+            with _port_sk:
+                show_skeleton(rows=2)
+            try:
+                portfolio_live = actualizar_precios_actuales(portfolio)
+            except Exception as e:
+                st.warning(f"No se pudo refrescar precios desde yfinance: {e}")
+                portfolio_live = portfolio
+            finally:
+                _port_sk.empty()
 
             def _fmt_money(valor_ars: float, moneda_ui: str) -> str:
                 """Formatea un monto en ARS o USD segun el toggle."""
