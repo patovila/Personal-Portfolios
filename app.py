@@ -463,6 +463,94 @@ else:
     st.header("Mi Bloomberg Personal")
     st.caption(ticker_error or "")
 
+# ── CARD "BUENOS DÍAS" (home screen) ──────────────────────────────────────────
+try:
+    from src.mercado import (
+        get_movers_portfolio as _get_movers_bd,
+        get_indices_globales as _get_idx_bd,
+        generar_resumen_dia  as _gen_resumen,
+    )
+    from src.dolar import get_cotizaciones as _get_cots_bd
+
+    # Carga portfolio para obtener tickers
+    try:
+        from src.portfolio import cargar_portfolio as _cp_bd
+        _port_bd  = _cp_bd("pato")
+        _tks_bd   = tuple(p["ticker"] for p in _port_bd.get("posiciones", []))
+        _movers_bd = _get_movers_bd(_tks_bd) if _tks_bd else {}
+    except Exception:
+        _movers_bd = {}
+
+    _idx_bd  = _get_idx_bd()
+    _cots_bd = _get_cots_bd()
+    _res     = _gen_resumen(_movers_bd, _idx_bd, _cots_bd)
+
+    # Colores de fondo según estado del portfolio
+    _var_p = _res["var_total_pct"]
+    if _var_p is not None and _var_p >= 0:
+        _bg_grad = "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)"
+        _border  = "#86efac"
+    elif _var_p is not None and _var_p < 0:
+        _bg_grad = "linear-gradient(135deg, #fff1f2 0%, #fee2e2 100%)"
+        _border  = "#fca5a5"
+    else:
+        _bg_grad = "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)"
+        _border  = "#cbd5e1"
+
+    # Badges
+    _port_badge   = f"{_var_p:+.1f}% hoy" if _var_p is not None else "Sin datos"
+    _blue_badge   = f"${_res['blue_precio']:,.0f}" if _res["blue_precio"] else "—"
+    _sp500_var    = _res["sp500_var"]
+    _sp500_badge  = f"{_sp500_var:+.1f}%" if _sp500_var is not None else "—"
+
+    _port_color  = "#16A34A" if (_var_p or 0) >= 0 and _var_p is not None else "#DC2626"
+    _sp500_color = "#16A34A" if (_sp500_var or 0) >= 0 and _sp500_var is not None else "#DC2626"
+
+    # Alertas contextuales
+    _alertas = ""
+    if _res["fin_de_semana"]:
+        _reabre = "lunes" if _res["weekday"] == 5 else "mañana lunes"
+        _alertas = (
+            f'<div style="margin-top:10px;font-size:13px;color:#92400E;">'
+            f'📅 Mercado cerrado — reabre el {_reabre}</div>'
+        )
+    elif _res["pre_market"]:
+        _h = _res["horas_apertura"]
+        _alertas = (
+            f'<div style="margin-top:10px;font-size:13px;color:#1D4ED8;">'
+            f'⏰ Mercado abre en {_h} hora{"s" if _h != 1 else ""}</div>'
+        )
+
+    _html_card = f"""
+<div style="background:{_bg_grad};border-radius:16px;padding:20px 24px;
+            margin-bottom:16px;border:1px solid {_border};">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <span style="font-size:20px;font-weight:700;color:#1E293B;">{_res['saludo']}</span>
+    <span style="font-size:13px;color:#64748B;">{_res['fecha_str']}</span>
+  </div>
+  <p style="margin:0 0 14px 0;font-size:15px;color:#374151;line-height:1.6;">
+    {_res['texto']}
+  </p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <span style="background:#fff;border:1px solid #E2E8F0;border-radius:20px;
+                 padding:4px 14px;font-size:13px;">
+      📊 Portfolio hoy:&nbsp;<strong style="color:{_port_color};">{_port_badge}</strong>
+    </span>
+    <span style="background:#fff;border:1px solid #E2E8F0;border-radius:20px;
+                 padding:4px 14px;font-size:13px;">
+      💵 Dólar blue:&nbsp;<strong style="color:#1E293B;">{_blue_badge}</strong>
+    </span>
+    <span style="background:#fff;border:1px solid #E2E8F0;border-radius:20px;
+                 padding:4px 14px;font-size:13px;">
+      🇺🇸 S&amp;P500:&nbsp;<strong style="color:{_sp500_color};">{_sp500_badge}</strong>
+    </span>
+  </div>
+  {_alertas}
+</div>"""
+    st.markdown(_html_card, unsafe_allow_html=True)
+except Exception as _e_bd:
+    pass  # La card es decorativa; si falla, la app sigue funcionando
+
 # ── HEATMAP MERCADO (home screen) ─────────────────────────────────────────────
 try:
     import plotly.express as _px_hm

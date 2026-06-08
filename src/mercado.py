@@ -117,6 +117,91 @@ def get_movers_portfolio(tickers: tuple) -> dict:
     return {"gainers": gainers, "losers": losers}
 
 
+def generar_resumen_dia(portfolio_data: dict, indices: list, dolar) -> dict:
+    """Genera el resumen diario personalizado para la home screen.
+
+    portfolio_data: {"gainers": [...], "losers": [...]} de get_movers_portfolio()
+    indices:        lista de get_indices_globales()
+    dolar:          lista de get_cotizaciones() o None
+    """
+    from datetime import datetime
+    ahora   = datetime.now()
+    hora    = ahora.hour
+    weekday = ahora.weekday()  # 0=lunes … 6=domingo
+
+    if 6 <= hora < 12:
+        saludo = "Buenos días"
+    elif 12 <= hora < 19:
+        saludo = "Buenas tardes"
+    else:
+        saludo = "Buenas noches"
+
+    gainers = (portfolio_data or {}).get("gainers", [])
+    losers  = (portfolio_data or {}).get("losers", [])
+    todos   = gainers + losers
+
+    mejor      = gainers[0] if gainers else None
+    peor       = losers[0]  if losers  else None
+    var_total  = sum(i["variacion_pct"] for i in todos) / len(todos) if todos else None
+
+    def _idx(nombre_parcial):
+        return next((i for i in (indices or []) if nombre_parcial in i["ticker"]), None)
+
+    sp500  = _idx("GSPC")
+    merval = _idx("MERV")
+    blue   = next((i for i in (dolar or []) if i.get("casa", "").lower() == "blue"), None)
+
+    # Texto principal
+    partes = [f"{saludo} 👋"]
+    if var_total is not None:
+        dir_p = "subió" if var_total >= 0 else "bajó"
+        partes.append(f"Tu portfolio {dir_p} {abs(var_total):.1f}% hoy.")
+    if mejor and peor:
+        partes.append(
+            f"{mejor['ticker']} lidera con {mejor['variacion_pct']:+.1f}%"
+            f" y {peor['ticker']} es la más débil ({peor['variacion_pct']:+.1f}%)."
+        )
+    elif mejor:
+        partes.append(f"{mejor['ticker']} lidera con {mejor['variacion_pct']:+.1f}%.")
+
+    if blue and blue.get("venta"):
+        partes.append(f"El dólar blue cotiza a ${blue['venta']:,.0f}.")
+
+    sp500_var  = sp500.get("variacion_pct")  if sp500  else None
+    merval_var = merval.get("variacion_pct") if merval else None
+
+    if sp500_var is not None and abs(sp500_var) > 1:
+        dir_sp = "sube" if sp500_var >= 0 else "baja"
+        partes.append(f"El S&P500 {dir_sp} {abs(sp500_var):.1f}%.")
+    if merval_var is not None and abs(merval_var) > 2:
+        dir_m = "sube" if merval_var >= 0 else "baja"
+        partes.append(f"El Merval {dir_m} {abs(merval_var):.1f}%.")
+
+    fin_de_semana  = weekday >= 5
+    pre_market     = not fin_de_semana and hora < 10
+    horas_apertura = (10 - hora) if pre_market else None
+
+    _dias  = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"]
+    _meses = ["enero","febrero","marzo","abril","mayo","junio",
+              "julio","agosto","septiembre","octubre","noviembre","diciembre"]
+    fecha_str = f"{_dias[weekday]} {ahora.day} de {_meses[ahora.month - 1]}"
+
+    return {
+        "saludo":          saludo,
+        "fecha_str":       fecha_str,
+        "texto":           " ".join(partes),
+        "var_total_pct":   var_total,
+        "mejor":           mejor,
+        "peor":            peor,
+        "sp500_var":       sp500_var,
+        "blue_precio":     blue.get("venta") if blue else None,
+        "pre_market":      pre_market,
+        "fin_de_semana":   fin_de_semana,
+        "horas_apertura":  horas_apertura,
+        "weekday":         weekday,
+    }
+
+
 @st.cache_data(ttl=300)
 def get_heatmap_data() -> list:
     """Precios y variaciones para el treemap de mercado. Cache 5 min."""
