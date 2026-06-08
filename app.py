@@ -924,6 +924,8 @@ if tab1 is not None:
                 col4.metric("ROE", f"{roe*100:.1f}%" if roe else "N/A")
 
             # ── FAIR VALUE ───────────────────────────────────────────────────────
+            _fv = None
+            _upside = None
             try:
                 from src.fundamentals import calcular_fair_value as _calc_fv
 
@@ -987,34 +989,66 @@ if tab1 is not None:
 
             # ── COMPARTIR ANÁLISIS ───────────────────────────────────────────────
             st.divider()
-            if st.button(f"📤 Compartir análisis de {ticker}", key="ficha_share_btn"):
-                st.session_state["ficha_show_share"] = True
+            st.markdown("#### 📤 Compartir este análisis")
 
-            if st.session_state.get("ficha_show_share"):
-                _sh_precio = datos.get("precio_actual")
-                _sh_pe     = datos.get("pe")
-                _sh_roe    = datos.get("roe")
-                _sh_mg     = datos.get("margen_op")
-                _sh_nombre = datos.get("nombre", ticker)
+            import urllib.parse as _uparse
 
-                _sh_lineas = [
-                    f"📊 {_sh_nombre} ({ticker}) — Mi Bloomberg Personal",
-                ]
-                if _sh_precio:
-                    _sh_lineas.append(f"💰 Precio: ${_sh_precio:.2f}")
-                _sh_meta = []
-                if _sh_pe:
-                    _sh_meta.append(f"PE: {_sh_pe:.1f}")
-                if _sh_roe:
-                    _sh_meta.append(f"ROE: {_sh_roe*100:.1f}%")
-                if _sh_mg:
-                    _sh_meta.append(f"Mg. Op.: {_sh_mg*100:.1f}%")
-                if _sh_meta:
-                    _sh_lineas.append("📈 " + " | ".join(_sh_meta))
-                _sh_lineas.append("🇦🇷 Analizalo vos: personalfinances.streamlit.app")
+            _sh_nombre = datos.get("nombre", ticker)
+            _sh_precio = datos.get("precio_actual")
+            _sh_pe     = datos.get("pe")
+            _sh_roe    = datos.get("roe")
+            _sh_mg     = datos.get("margen_op")
 
-                st.code("\n".join(_sh_lineas), language=None)
-                st.caption("Copiá y compartí en WhatsApp o Instagram")
+            def _nd(v, fmt="{:.1f}"):
+                return fmt.format(v) if v is not None else "N/D"
+
+            _sh_lineas = [
+                f"📊 {_sh_nombre} ({ticker}) — Mi Bloomberg Personal",
+                "",
+                f"💰 Precio: ${_sh_precio:.2f}" if _sh_precio else "💰 Precio: N/D",
+                (
+                    f"📈 PE: {_nd(_sh_pe)} | "
+                    f"ROE: {_nd(_sh_roe * 100 if _sh_roe else None)}% | "
+                    f"Mg. Op.: {_nd(_sh_mg * 100 if _sh_mg else None)}%"
+                ),
+            ]
+            if _fv is not None and _upside is not None:
+                _sh_lineas.append(f"🎯 Fair Value: ${_fv:.2f} ({_upside:+.1f}% upside)")
+            _sh_lineas += [
+                "📉 Beta: N/D | Div Yield: N/D%",
+                "",
+                "🔍 Analizalo vos: personalfinances.streamlit.app",
+                "#InversionesAR #MiBloombergPersonal",
+            ]
+
+            _sh_texto = "\n".join(_sh_lineas)
+
+            _tweet_parts = [f"Analizando ${ticker} con Mi Bloomberg Personal 📊"]
+            if _sh_precio:
+                _tweet_parts.append(f"Precio: ${_sh_precio:.2f}")
+            if _fv is not None and _upside is not None:
+                _tweet_parts.append(f"Fair Value: ${_fv:.2f} | {_upside:+.1f}% upside")
+            _tweet_parts.append("personalfinances.streamlit.app #InversionesAR")
+            _tweet = " | ".join(_tweet_parts[:2]) + " " + " | ".join(_tweet_parts[2:]) if len(_tweet_parts) > 2 else " ".join(_tweet_parts)
+            _twitter_url = f"https://twitter.com/intent/tweet?text={_uparse.quote(_tweet)}"
+
+            _sh_col1, _sh_col2 = st.columns([3, 1])
+
+            with _sh_col1:
+                st.code(_sh_texto, language=None)
+                st.caption("📋 Copiá y compartí en WhatsApp, Twitter o Instagram")
+
+            with _sh_col2:
+                st.link_button(
+                    "🐦 Compartir en X/Twitter",
+                    _twitter_url,
+                    use_container_width=True,
+                )
+                st.link_button(
+                    "📱 Abrir app",
+                    "https://personalfinances.streamlit.app",
+                    use_container_width=True,
+                )
 
 # TAB 2: FUNDAMENTAL
 if tab2 is not None:
