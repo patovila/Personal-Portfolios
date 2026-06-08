@@ -644,7 +644,7 @@ except Exception as _e_hm:
 
 st.divider()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "🏢 Ficha",
     "📊 Fundamental",
     "📈 Tecnico",
@@ -653,6 +653,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "🇦🇷 Macro Argentina",
     "📐 DCF & Valuación",
     "📰 Noticias",
+    "👁️ Watchlist",
 ])
 
 # TAB 1: FICHA
@@ -3439,6 +3440,175 @@ with tab8:
         "Fuente: Yahoo Finance · Sentimiento: palabras clave financieras hardcodeadas · "
         "No es recomendación de inversión."
     )
+
+# TAB 9: WATCHLIST
+with tab9:
+    from src.watchlist import (
+        cargar_watchlist      as _cargar_wl,
+        guardar_watchlist     as _guardar_wl,
+        generar_link_compartir as _link_wl,
+        get_precios_watchlist  as _precios_wl,
+        WATCHLISTS_PREDEFINIDAS as _wl_predef,
+    )
+
+    # Detectar watchlist compartida via ?watchlist=nombre en la URL
+    _wl_param    = st.query_params.get("watchlist", None)
+    _wl_nombre   = _wl_param if _wl_param else "pato"
+    _wl_readonly = bool(_wl_param and _wl_param != "pato")
+
+    if _wl_readonly:
+        st.info(f"👁️ Viendo la watchlist compartida: **{_wl_nombre}** (solo lectura)")
+
+    # Inicializar en session_state (una sola vez por sesión)
+    if "wl_tickers" not in st.session_state or st.session_state.get("wl_nombre") != _wl_nombre:
+        st.session_state["wl_tickers"] = _cargar_wl(_wl_nombre)
+        st.session_state["wl_nombre"]  = _wl_nombre
+    _wl_tickers = st.session_state["wl_tickers"]
+
+    # ── SECCIÓN 1: MI WATCHLIST ──────────────────────────────────────────────
+    st.markdown("### 👁️ Mi Watchlist")
+
+    if not _wl_readonly:
+        _add_c1, _add_c2, _add_c3 = st.columns([3, 1, 3])
+        with _add_c1:
+            _new_tk = st.text_input(
+                "Agregar ticker:", placeholder="Ej: MELI, AAPL, YPF.BA",
+                key="wl_new_ticker", label_visibility="collapsed",
+            ).upper().strip()
+        with _add_c2:
+            if st.button("➕ Agregar", key="wl_add_btn", use_container_width=True):
+                if _new_tk and _new_tk not in _wl_tickers:
+                    _wl_tickers.append(_new_tk)
+                    st.session_state["wl_tickers"] = _wl_tickers
+                    _guardar_wl(_wl_nombre, _wl_tickers)
+                    st.rerun()
+                elif _new_tk in _wl_tickers:
+                    st.warning(f"{_new_tk} ya está en la watchlist.")
+
+    # Cargar precios (siempre, aunque el bloque de edición esté oculto)
+    _wl_precios_raw = _precios_wl(tuple(_wl_tickers)) if _wl_tickers else []
+    _precios_map_wl = {p["ticker"]: p for p in _wl_precios_raw}
+
+    if not _wl_tickers:
+        st.info("Tu watchlist está vacía. Agrega tickers arriba o cargá una watchlist predefinida.")
+    else:
+        _sort_wl = st.selectbox(
+            "Ordenar por:",
+            ["Variación % (desc)", "Variación % (asc)", "Nombre A–Z", "Precio (desc)"],
+            key="wl_sort",
+        )
+
+        _filas_wl = []
+        for _tk in _wl_tickers:
+            _p = _precios_map_wl.get(_tk, {"ticker": _tk, "precio": None, "variacion_pct": None})
+            _filas_wl.append({
+                "ticker": _tk,
+                "precio": _p["precio"],
+                "var_pct": _p["variacion_pct"],
+            })
+
+        if _sort_wl == "Variación % (desc)":
+            _filas_wl.sort(key=lambda x: (x["var_pct"] or -999), reverse=True)
+        elif _sort_wl == "Variación % (asc)":
+            _filas_wl.sort(key=lambda x: (x["var_pct"] or 999))
+        elif _sort_wl == "Nombre A–Z":
+            _filas_wl.sort(key=lambda x: x["ticker"])
+        else:
+            _filas_wl.sort(key=lambda x: (x["precio"] or -1), reverse=True)
+
+        # Cabecera
+        _hc1, _hc2, _hc3, _hc4 = st.columns([2, 2, 2, 1])
+        _hc1.markdown("**Ticker**")
+        _hc2.markdown("**Precio**")
+        _hc3.markdown("**Variación hoy**")
+        if not _wl_readonly:
+            _hc4.markdown("**Eliminar**")
+
+        st.markdown("<hr style='margin:4px 0 8px 0;'>", unsafe_allow_html=True)
+
+        for _f in _filas_wl:
+            _fc1, _fc2, _fc3, _fc4 = st.columns([2, 2, 2, 1])
+            with _fc1:
+                st.write(f"**{_f['ticker']}**")
+            with _fc2:
+                st.write(f"${_f['precio']:,.2f}" if _f["precio"] else "—")
+            with _fc3:
+                _v = _f["var_pct"]
+                if _v is not None:
+                    _col_v = "#16A34A" if _v >= 0 else "#DC2626"
+                    st.markdown(
+                        f"<span style='color:{_col_v};font-weight:700;'>{_v:+.2f}%</span>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.write("—")
+            with _fc4:
+                if not _wl_readonly:
+                    if st.button("🗑️", key=f"wl_del_{_f['ticker']}"):
+                        _wl_tickers.remove(_f["ticker"])
+                        st.session_state["wl_tickers"] = _wl_tickers
+                        _guardar_wl(_wl_nombre, _wl_tickers)
+                        st.rerun()
+
+    # ── SECCIÓN 2: MINI HEATMAP ──────────────────────────────────────────────
+    if _wl_tickers and _filas_wl if _wl_tickers else False:
+        st.divider()
+        st.markdown("### 🎨 Resumen visual")
+
+        def _wl_bg(v):
+            if v is None:   return "#64748B"
+            if v >= 2:      return "#15803D"
+            if v >= 0.5:    return "#16A34A"
+            if v >= 0:      return "#4ADE80"
+            if v > -0.5:    return "#F87171"
+            if v > -2:      return "#DC2626"
+            return "#991B1B"
+
+        _boxes = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">'
+        for _f in _filas_wl:
+            _v  = _f["var_pct"]
+            _bg = _wl_bg(_v)
+            _fg = "#1a1a1a" if (_v is not None and -0.5 <= _v < 0.5) else "#ffffff"
+            _lbl = f"{_v:+.1f}%" if _v is not None else "—"
+            _boxes += (
+                f'<div style="background:{_bg};color:{_fg};border-radius:10px;'
+                f'padding:14px 18px;min-width:88px;text-align:center;">'
+                f'<div style="font-weight:700;font-size:14px;">{_f["ticker"]}</div>'
+                f'<div style="font-size:13px;margin-top:2px;">{_lbl}</div>'
+                f'</div>'
+            )
+        _boxes += "</div>"
+        st.markdown(_boxes, unsafe_allow_html=True)
+
+    # ── SECCIÓN 3: COMPARTIR ─────────────────────────────────────────────────
+    st.divider()
+    st.markdown("### 🔗 Compartir watchlist")
+
+    if not _wl_readonly:
+        if st.button("🔗 Generar link para compartir", key="wl_share_btn"):
+            st.session_state["wl_show_link"] = True
+
+        if st.session_state.get("wl_show_link"):
+            _url_wl = _link_wl(_wl_nombre)
+            st.code(_url_wl, language=None)
+            st.caption("Cualquiera con este link puede ver tu watchlist (solo lectura)")
+    else:
+        st.info("Estás viendo una watchlist compartida. Para crear la tuya, accedé sin el parámetro `?watchlist=`.")
+
+    # ── SECCIÓN 4: WATCHLISTS PREDEFINIDAS ───────────────────────────────────
+    st.divider()
+    st.markdown("### 📋 Watchlists predefinidas")
+    st.caption("Cargá una como punto de partida y luego personalizala.")
+
+    for _wl_preset_nombre, _wl_preset_lista in _wl_predef.items():
+        with st.expander(_wl_preset_nombre):
+            st.write(", ".join(_wl_preset_lista))
+            if not _wl_readonly:
+                if st.button("Usar esta watchlist", key=f"wl_use_{_wl_preset_nombre}"):
+                    st.session_state["wl_tickers"] = list(_wl_preset_lista)
+                    _guardar_wl(_wl_nombre, list(_wl_preset_lista))
+                    st.success(f"✅ Watchlist cargada: {len(_wl_preset_lista)} tickers.")
+                    st.rerun()
 
 # ── AUTO-REFRESH (al final: la página ya renderizó todo el contenido) ─────────
 if st.session_state.get("auto_refresh"):
