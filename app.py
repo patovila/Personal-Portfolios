@@ -130,6 +130,16 @@ html, body, [class*="css"], .stApp, .main, [data-testid="stSidebar"],
     border-radius: 8px 8px 0 0;
     gap: 4px;
     padding: 0 8px;
+    overflow-x: auto !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: #1f77b4 #f0f0f0 !important;
+}
+.stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+    height: 3px !important;
+}
+.stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb {
+    background: #1f77b4 !important;
+    border-radius: 3px !important;
 }
 .stTabs [data-baseweb="tab"] {
     color: #6B7280;
@@ -360,15 +370,40 @@ a:hover {
 
 universo = cargar_universo()
 
-st.markdown("""
+import datetime as _hdr_dt
+import pytz as _hdr_pytz
+
+def get_market_status():
+    ny_tz = _hdr_pytz.timezone('America/New_York')
+    now_ny = _hdr_dt.datetime.now(ny_tz)
+    hora, minuto, dia = now_ny.hour, now_ny.minute, now_ny.weekday()
+    if dia >= 5:
+        return "cerrado", "⚫"
+    h = hora + minuto / 60
+    if 4 <= h < 9.5:
+        return "pre-market", "🟡"
+    elif 9.5 <= h < 16:
+        return "abierto", "🟢"
+    elif 16 <= h < 20:
+        return "after-hours", "🟠"
+    return "cerrado", "⚫"
+
+_mkt_estado, _mkt_emoji = get_market_status()
+
+st.markdown(f"""
 <div class="bloomberg-header">
     <div class="title-block">
         <h1>Mi Bloomberg Personal</h1>
         <div class="subtitle">Sistema de analisis financiero &middot; Educacion Financiera AR</div>
     </div>
-    <div class="live-indicator">
-        <span class="live-dot"></span>
-        <span>LIVE</span>
+    <div style="display:flex;align-items:center;gap:16px;">
+        <div style="font-size:13px;font-weight:600;color:#374151;">
+            {_mkt_emoji} NYSE: {_mkt_estado.upper()}
+        </div>
+        <div class="live-indicator">
+            <span class="live-dot"></span>
+            <span>LIVE</span>
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -596,7 +631,12 @@ else:
         _sk_slot.empty()
 
 if datos:
-    st.markdown(f"<title>{ticker} — Mi Bloomberg Personal</title>", unsafe_allow_html=True)
+    _precio_actual = datos.get('precio_actual')
+    _title_precio = f" ${_precio_actual:.2f}" if _precio_actual else ""
+    st.markdown(
+        f"<title>{ticker}{_title_precio} — Mi Bloomberg Personal</title>",
+        unsafe_allow_html=True,
+    )
     st.header(f"{datos['nombre']} ({datos['ticker']})")
     st.caption(f"{datos['sector']} | {datos['industria']} | {datos['pais']}")
 else:
@@ -3925,6 +3965,27 @@ with tab9:
                     _guardar_wl(_wl_nombre, list(_wl_preset_lista))
                     st.success(f"✅ Watchlist cargada: {len(_wl_preset_lista)} tickers.")
                     st.rerun()
+
+# ── FOOTER ───────────────────────────────────────────────────────────────────
+st.markdown("---")
+st.markdown("""
+<div style="text-align:center;color:#888;font-size:12px;padding:20px 0">
+    <p>
+    <b>Mi Bloomberg Personal</b> &middot;
+    Educación Financiera AR &middot;
+    <a href="https://personalfinances.streamlit.app" style="color:#1f77b4">personalfinances.streamlit.app</a>
+    </p>
+    <p>
+    Datos: Yahoo Finance &middot; DolarAPI &middot; ArgentinaDatos &middot;
+    Actualización: tiempo real
+    </p>
+    <p style="font-size:11px">
+    ⚠️ Solo fines educativos.
+    No constituye asesoramiento financiero.
+    Las inversiones conllevan riesgo de pérdida de capital.
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
 # ── AUTO-REFRESH (al final: la página ya renderizó todo el contenido) ─────────
 if st.session_state.get("auto_refresh"):
