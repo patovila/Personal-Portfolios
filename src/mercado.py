@@ -97,6 +97,37 @@ def get_indices_globales() -> list:
     return result
 
 
+@st.cache_data(ttl=300)
+def get_sparklines_indices() -> dict:
+    """Últimos 5 días de Close para cada índice. Cache 5 min."""
+    tickers = [i["ticker"] for i in INDICES]
+    try:
+        data = yf.download(
+            tickers=" ".join(tickers),
+            period="5d",
+            interval="1d",
+            group_by="ticker",
+            auto_adjust=True,
+            progress=False,
+            threads=True,
+        )
+    except Exception:
+        return {}
+    if data is None or data.empty:
+        return {}
+    result = {}
+    for tk in tickers:
+        try:
+            if len(tickers) == 1:
+                close = data["Close"].dropna()
+            else:
+                close = data[tk]["Close"].dropna()
+            result[tk] = close.tolist()
+        except Exception:
+            result[tk] = []
+    return result
+
+
 @st.cache_data(ttl=600)
 def get_movers_portfolio(tickers: tuple) -> dict:
     """Gainers y losers del portfolio en una sola request. Cache 5 min."""

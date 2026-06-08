@@ -547,6 +547,46 @@ else:
     st.header("Mi Bloomberg Personal")
     st.caption(ticker_error or "")
 
+# ── TICKER TAPE ANIMADO ───────────────────────────────────────────────────────
+try:
+    from src.mercado import get_ticker_tape as _get_tape
+    try:
+        from src.portfolio import cargar_portfolio as _cp_tape
+        _tks_tape = tuple(
+            p["ticker"] for p in _cp_tape("pato").get("posiciones", [])
+        )
+    except Exception:
+        _tks_tape = ()
+    _tape_data = _get_tape(_tks_tape)
+    if _tape_data:
+        _tape_items = "".join([
+            f'<span class="ticker-item">'
+            f'<span class="ticker-name">{_ti["ticker"]}</span>'
+            f'<span style="color:{"#00ff88" if _ti["variacion_pct"] >= 0 else "#ff4444"};">'
+            f'&nbsp;${_ti["precio"]:,.2f}&nbsp;{_ti["variacion_pct"]:+.2f}%</span>'
+            f'</span>'
+            for _ti in _tape_data
+        ])
+        st.markdown(f"""
+<style>
+.ticker-wrapper{{background:#1a1a2e;padding:8px 0;overflow:hidden;
+  width:100%;border-bottom:1px solid #333;margin-bottom:12px;}}
+.ticker-track{{display:flex;animation:scroll-left 30s linear infinite;width:max-content;}}
+.ticker-track:hover{{animation-play-state:paused;}}
+.ticker-item{{padding:0 24px;font-size:12px;font-weight:600;color:#fff;
+  white-space:nowrap;border-right:1px solid #333;}}
+.ticker-name{{color:#aaa;margin-right:6px;}}
+@keyframes scroll-left{{
+  0%{{transform:translateX(0);}}
+  100%{{transform:translateX(-50%);}}
+}}
+</style>
+<div class="ticker-wrapper">
+  <div class="ticker-track">{_tape_items}{_tape_items}</div>
+</div>""", unsafe_allow_html=True)
+except Exception:
+    pass
+
 # ── CARD "BUENOS DÍAS" (home screen) ──────────────────────────────────────────
 try:
     from src.mercado import (
@@ -634,6 +674,66 @@ try:
     st.markdown(_html_card, unsafe_allow_html=True)
 except Exception as _e_bd:
     pass  # La card es decorativa; si falla, la app sigue funcionando
+
+# ── ÍNDICES GLOBALES CON SPARKLINES ───────────────────────────────────────────
+try:
+    import plotly.graph_objects as _go_sp
+    from src.mercado import (
+        get_indices_globales   as _get_idx_sp,
+        get_sparklines_indices as _get_spark,
+    )
+    _idx_sp   = _get_idx_sp()
+    _spark_sp = _get_spark()
+
+    _sp_cols1 = st.columns(4)
+    _sp_cols2 = st.columns(4)
+
+    for _si, _sidx in enumerate(_idx_sp[:8]):
+        _scol = _sp_cols1[_si] if _si < 4 else _sp_cols2[_si - 4]
+        with _scol:
+            _stk   = _sidx["ticker"]
+            _spx   = _sidx.get("precio")
+            _svar  = _sidx.get("variacion_pct")
+            _spxs  = _spark_sp.get(_stk, [])
+            _scol_v = "#16A34A" if (_svar or 0) >= 0 else "#DC2626"
+            _svar_t = f"{_svar:+.2f}%" if _svar is not None else "—"
+            _spx_t  = f"${_spx:,.2f}" if _spx else "—"
+            st.markdown(
+                f"<div style='background:#F8FAFC;border:1px solid #E2E8F0;"
+                f"border-radius:10px;padding:10px 12px;margin-bottom:4px;'>"
+                f"<div style='font-size:11px;color:#64748B;font-weight:600;'>{_sidx['nombre']}</div>"
+                f"<div style='font-size:15px;font-weight:700;margin:2px 0;'>{_spx_t}</div>"
+                f"<div style='font-size:13px;color:{_scol_v};font-weight:600;'>{_svar_t}</div>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+            if len(_spxs) >= 2:
+                _positivo = _spxs[-1] >= _spxs[0]
+                _fig_sp = _go_sp.Figure(_go_sp.Scatter(
+                    y=_spxs,
+                    mode="lines",
+                    line=dict(
+                        color="#00cc66" if _positivo else "#ff3333",
+                        width=1.5,
+                    ),
+                    fill="tozeroy",
+                    fillcolor="rgba(0,204,102,0.08)" if _positivo else "rgba(255,51,51,0.08)",
+                ))
+                _fig_sp.update_layout(
+                    height=50,
+                    margin=dict(l=0, r=0, t=0, b=0),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    showlegend=False,
+                    xaxis=dict(visible=False),
+                    yaxis=dict(visible=False),
+                )
+                st.plotly_chart(
+                    _fig_sp, use_container_width=True,
+                    config={"displayModeBar": False},
+                )
+except Exception:
+    pass
 
 # ── HEATMAP MERCADO (home screen) ─────────────────────────────────────────────
 try:
