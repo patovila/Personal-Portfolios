@@ -3,6 +3,27 @@ import yfinance as yf
 import pandas as pd
 import streamlit as st
 
+_HEATMAP_TICKERS = [
+    {"ticker": "GGAL.BA", "nombre": "GGAL",  "sector": "Merval"},
+    {"ticker": "YPF.BA",  "nombre": "YPF",   "sector": "Merval"},
+    {"ticker": "PAMP.BA", "nombre": "PAMP",  "sector": "Merval"},
+    {"ticker": "TGS.BA",  "nombre": "TGS",   "sector": "Merval"},
+    {"ticker": "BMA.BA",  "nombre": "BMA",   "sector": "Merval"},
+    {"ticker": "ALUA.BA", "nombre": "ALUA",  "sector": "Merval"},
+    {"ticker": "TXAR.BA", "nombre": "TXAR",  "sector": "Merval"},
+    {"ticker": "SUPV.BA", "nombre": "SUPV",  "sector": "Merval"},
+    {"ticker": "CEPU.BA", "nombre": "CEPU",  "sector": "Merval"},
+    {"ticker": "GGAL",    "nombre": "GGAL",  "sector": "CEDEARs"},
+    {"ticker": "MELI",    "nombre": "MELI",  "sector": "CEDEARs"},
+    {"ticker": "AMZN",    "nombre": "AMZN",  "sector": "CEDEARs"},
+    {"ticker": "GOOGL",   "nombre": "GOOGL", "sector": "CEDEARs"},
+    {"ticker": "NVDA",    "nombre": "NVDA",  "sector": "CEDEARs"},
+    {"ticker": "META",    "nombre": "META",  "sector": "CEDEARs"},
+    {"ticker": "AAPL",    "nombre": "AAPL",  "sector": "CEDEARs"},
+    {"ticker": "MSFT",    "nombre": "MSFT",  "sector": "CEDEARs"},
+    {"ticker": "TSLA",    "nombre": "TSLA",  "sector": "CEDEARs"},
+]
+
 INDICES = [
     {"ticker": "^GSPC",   "nombre": "S&P 500"},
     {"ticker": "^DJI",    "nombre": "Dow Jones"},
@@ -94,6 +115,34 @@ def get_movers_portfolio(tickers: tuple) -> dict:
     losers  = sorted([i for i in items if i["variacion_pct"] < 0],
                      key=lambda x: x["variacion_pct"])[:5]
     return {"gainers": gainers, "losers": losers}
+
+
+@st.cache_data(ttl=300)
+def get_heatmap_data() -> list:
+    """Precios y variaciones para el treemap de mercado. Cache 5 min."""
+    tickers = [t["ticker"] for t in _HEATMAP_TICKERS]
+    data = _batch_download(tickers)
+    result = []
+    for item in _HEATMAP_TICKERS:
+        tk = item["ticker"]
+        df = data.get(tk, pd.DataFrame())
+        if df.empty:
+            continue
+        precio = float(df["Close"].iloc[-1])
+        var = _var_pct(df) or 0.0
+        try:
+            info = yf.Ticker(tk).fast_info
+            mcap = info.get("marketCap") or info.get("market_cap") or 1e9
+        except Exception:
+            mcap = 1e9
+        result.append({
+            "ticker":      item["nombre"],
+            "sector":      item["sector"],
+            "precio":      round(precio, 2),
+            "variacion_%": round(var, 2),
+            "market_cap":  max(mcap, 1e6),
+        })
+    return result
 
 
 @st.cache_data(ttl=600)

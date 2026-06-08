@@ -463,6 +463,68 @@ else:
     st.header("Mi Bloomberg Personal")
     st.caption(ticker_error or "")
 
+# ── HEATMAP MERCADO (home screen) ─────────────────────────────────────────────
+try:
+    import plotly.express as _px_hm
+    from datetime import datetime as _dt_hm
+    from src.mercado import get_heatmap_data as _get_hm
+
+    _hm_header_c1, _hm_header_c2 = st.columns([6, 1])
+    with _hm_header_c1:
+        st.markdown("### 🗺️ Mapa del mercado — hoy")
+    with _hm_header_c2:
+        if st.button("🔄 Actualizar", key="hm_refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    _hm_data = _get_hm()
+
+    if _hm_data:
+        import pandas as _pd_hm
+        _df_hm = _pd_hm.DataFrame(_hm_data)
+
+        _fig_hm = _px_hm.treemap(
+            _df_hm,
+            path=["sector", "ticker"],
+            values="market_cap",
+            color="variacion_%",
+            color_continuous_scale=[
+                [0.00, "#8B0000"],
+                [0.30, "#FF4444"],
+                [0.45, "#882222"],
+                [0.50, "#1a1a2e"],
+                [0.55, "#224422"],
+                [0.70, "#00AA44"],
+                [1.00, "#006600"],
+            ],
+            color_continuous_midpoint=0,
+            custom_data=["variacion_%", "precio"],
+        )
+        _fig_hm.update_traces(
+            texttemplate="<b>%{label}</b><br>%{customdata[0]:.2f}%",
+            textfont_size=14,
+            hovertemplate=(
+                "<b>%{label}</b><br>"
+                "Variación: %{customdata[0]:.2f}%<br>"
+                "Precio: $%{customdata[1]:.2f}"
+                "<extra></extra>"
+            ),
+        )
+        _fig_hm.update_layout(
+            height=400,
+            margin=dict(l=0, r=0, t=30, b=0),
+            coloraxis_showscale=False,
+            paper_bgcolor="rgba(0,0,0,0)",
+        )
+        st.plotly_chart(_fig_hm, use_container_width=True)
+        st.caption(f"Última actualización: {_dt_hm.now().strftime('%H:%M:%S')} · Merval (BYMA) y CEDEARs principales · Fuente: Yahoo Finance")
+    else:
+        st.warning("No se pudieron cargar los datos del heatmap.")
+except Exception as _e_hm:
+    st.warning(f"Heatmap no disponible: {_e_hm}")
+
+st.divider()
+
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "🏢 Ficha",
     "📊 Fundamental",
