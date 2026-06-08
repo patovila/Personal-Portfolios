@@ -45,7 +45,8 @@
       "Bash(python -c \"import ast; ast.parse\\(open\\('src/mercado.py', encoding='utf-8'\\).read\\(\\)\\); print\\('mercado.py OK'\\)\")",
       "Bash(python -c \"print\\(sum\\(1 for _ in open\\('C:/Users/PC/Documents/Proyecto_mi bloomberg/app.py', encoding='utf-8'\\)\\)\\)\")",
       "Bash(python *)",
-      "Bash(pip show *)"
+      "Bash(pip show *)",
+      "Bash(del *)"
     ]
   }
 }
