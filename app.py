@@ -3677,9 +3677,9 @@ if tab8 is not None:
                             f"score: {_sent8['score']:+.2f}</span>",
                             unsafe_allow_html=True,
                         )
-                        if _sent8["positivas"] or _sent8["negativas"]:
+                        if _sent8.get("positivas") or _sent8.get("negativas"):
                             _palabras_str = ", ".join(
-                                _sent8["positivas"][:3] + _sent8["negativas"][:3]
+                                _sent8.get("positivas", [])[:3] + _sent8.get("negativas", [])[:3]
                             )
                             st.markdown(
                                 f"<span style='font-size:10px;color:#CBD5E1;'>"
