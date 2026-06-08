@@ -442,6 +442,37 @@ with st.sidebar:
     except Exception:
         st.caption("Sin conexión")
 
+    st.divider()
+    st.toggle(
+        "🌙 Modo oscuro",
+        value=st.session_state.get("modo_oscuro", False),
+        key="modo_oscuro",
+    )
+    st.toggle(
+        "🔄 Auto-refresh (5 min)",
+        value=False,
+        key="auto_refresh",
+    )
+    if st.session_state.get("auto_refresh"):
+        st.caption("⏱️ Actualizando cada 5 minutos")
+    _ar_countdown_slot = st.empty()
+
+# ── MODO OSCURO CSS ───────────────────────────────────────────────────────────
+if st.session_state.get("modo_oscuro"):
+    st.markdown("""
+<style>
+.stApp { background-color: #0d1117 !important; color: #e6edf3 !important; }
+section[data-testid="stSidebar"] { background-color: #161b22 !important; }
+[data-testid="stMetric"] { background-color: #1c2128 !important; border: 1px solid #30363d !important; border-radius: 8px !important; padding: 16px !important; }
+.stTabs [data-baseweb="tab"] { color: #8b949e !important; }
+.stTabs [aria-selected="true"] { color: #58a6ff !important; border-bottom-color: #58a6ff !important; }
+.stTextInput input, .stNumberInput input { background-color: #1c2128 !important; color: #e6edf3 !important; border-color: #30363d !important; }
+h1, h2, h3 { color: #e6edf3 !important; }
+hr { border-color: #30363d !important; }
+[data-testid="stDataFrame"] { background-color: #1c2128 !important; }
+.stSelectbox > div { background-color: #1c2128 !important; color: #e6edf3 !important; }
+</style>""", unsafe_allow_html=True)
+
 # CONTENIDO PRINCIPAL
 # Cargamos el ticker del sidebar pero NO abortamos si falla:
 # el tab Mi Portfolio funciona aunque el ticker sea invalido.
@@ -3408,3 +3439,12 @@ with tab8:
         "Fuente: Yahoo Finance · Sentimiento: palabras clave financieras hardcodeadas · "
         "No es recomendación de inversión."
     )
+
+# ── AUTO-REFRESH (al final: la página ya renderizó todo el contenido) ─────────
+if st.session_state.get("auto_refresh"):
+    import time as _ar_time
+    for _ar_rem in range(300, 0, -1):
+        _ar_m, _ar_s = divmod(_ar_rem, 60)
+        _ar_countdown_slot.caption(f"⏱️ Próxima actualización en: {_ar_m}:{_ar_s:02d}")
+        _ar_time.sleep(1)
+    st.rerun()
