@@ -400,6 +400,10 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+if "sidebar_hint_shown" not in st.session_state:
+    st.session_state["sidebar_hint_shown"] = True
+    st.caption("☰ Usá las flechas arriba a la izquierda para abrir el menú")
+
 # ── ONBOARDING (primera visita por sesión) ────────────────────────────────────
 if "onboarding_completado" not in st.session_state:
     st.session_state["onboarding_completado"] = False
