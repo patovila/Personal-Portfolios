@@ -28,21 +28,31 @@ WATCHLISTS_PREDEFINIDAS = {
 
 
 def cargar_watchlist(nombre: str) -> list:
-    """Lee data/watchlists/{nombre}.json. Retorna lista de tickers o []."""
+    """Carga watchlist: session_state → JSON → [].
+
+    session_state es la fuente de verdad durante la sesión.
+    """
+    ss_key = f"watchlist_{nombre}"
+    if ss_key in st.session_state:
+        return st.session_state[ss_key]
     os.makedirs(_DIR, exist_ok=True)
     path = os.path.join(_DIR, f"{nombre}.json")
-    if not os.path.exists(path):
-        return []
-    try:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, list) else []
-    except Exception:
-        return []
+    if os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            data = data if isinstance(data, list) else []
+        except Exception:
+            data = []
+    else:
+        data = []
+    st.session_state[ss_key] = data
+    return data
 
 
 def guardar_watchlist(nombre: str, tickers: list) -> bool:
-    """Guarda en data/watchlists/{nombre}.json. Retorna True si tuvo éxito."""
+    """Guarda watchlist: session_state primero, luego JSON como backup."""
+    st.session_state[f"watchlist_{nombre}"] = tickers
     os.makedirs(_DIR, exist_ok=True)
     path = os.path.join(_DIR, f"{nombre}.json")
     try:

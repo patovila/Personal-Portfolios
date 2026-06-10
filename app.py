@@ -1668,12 +1668,6 @@ if tab4 is not None:
         # --- Carga del portfolio ---
         try:
             portfolio = cargar_portfolio("pato")
-        except FileNotFoundError:
-            st.warning(
-                "📁 No se encontro un portfolio en `data/portfolio/pato.json`. "
-                "Cargá primero un portfolio para usar esta seccion."
-            )
-            portfolio = None
         except Exception as e:
             st.error(f"❌ Error cargando el portfolio: {e}")
             portfolio = None
@@ -2105,10 +2099,48 @@ if tab4 is not None:
                 import json as _json
                 from datetime import date as _date
 
-                st.info(
-                    "En Streamlit Cloud los cambios al portfolio **no persisten** al reiniciar la app. "
-                    "Para uso personal con datos permanentes, clona el repositorio y ejecutalo localmente."
-                )
+                # ── EXPORTAR / IMPORTAR ───────────────────────────────────────
+                st.markdown("#### 💾 Exportar / Importar cartera")
+                _io_c1, _io_c2 = st.columns(2)
+
+                with _io_c1:
+                    st.download_button(
+                        "📥 Exportar mi cartera",
+                        data=_json.dumps(portfolio, ensure_ascii=False, indent=2),
+                        file_name=f"portfolio_pato_{_date.today()}.json",
+                        mime="application/json",
+                        use_container_width=True,
+                        help="Descargá tu cartera como JSON para guardarlo localmente",
+                    )
+
+                with _io_c2:
+                    _uploaded_port = st.file_uploader(
+                        "📤 Importar cartera",
+                        type=["json"],
+                        key="upload_portfolio",
+                        label_visibility="collapsed",
+                        help="Subí un JSON exportado previamente para restaurar tu cartera",
+                    )
+                    if _uploaded_port is not None:
+                        try:
+                            _imp_data = _json.loads(_uploaded_port.read())
+                            if "posiciones" not in _imp_data:
+                                st.error("❌ Formato inválido: falta el campo 'posiciones'.")
+                            else:
+                                _n_imp = len(_imp_data["posiciones"])
+                                _n_act = len(portfolio.get("posiciones", []))
+                                st.warning(
+                                    f"⚠️ Importar **{_n_imp} posiciones** reemplazará "
+                                    f"la cartera actual ({_n_act} posiciones). ¿Confirmás?"
+                                )
+                                if st.button("✅ Confirmar importación", key="btn_import_port"):
+                                    guardar_portfolio("pato", _imp_data)
+                                    st.success("✅ Cartera importada exitosamente.")
+                                    st.rerun()
+                        except Exception:
+                            st.error("❌ Archivo JSON inválido.")
+
+                st.divider()
 
                 _pos_list = portfolio.get("posiciones", [])
 
@@ -3994,7 +4026,80 @@ with tab9:
     else:
         st.info("Estás viendo una watchlist compartida. Para crear la tuya, accedé sin el parámetro `?watchlist=`.")
 
-    # ── SECCIÓN 4: WATCHLISTS PREDEFINIDAS ───────────────────────────────────
+    # ── SECCIÓN 4: EXPORTAR / IMPORTAR ───────────────────────────────────────
+    st.divider()
+    st.markdown("### 💾 Exportar / Importar")
+
+    import json as _wl_json
+    from datetime import date as _wl_date
+    from src.alertas import (
+        cargar_alertas  as _cargar_alertas_io,
+        guardar_alertas as _guardar_alertas_io,
+    )
+
+    _io_wl_c1, _io_wl_c2 = st.columns(2)
+
+    with _io_wl_c1:
+        st.caption("**Watchlist**")
+        st.download_button(
+            "📥 Exportar watchlist",
+            data=_wl_json.dumps(_wl_tickers, ensure_ascii=False, indent=2),
+            file_name=f"watchlist_pato_{_wl_date.today()}.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+        _uploaded_wl = st.file_uploader(
+            "📤 Importar watchlist",
+            type=["json"],
+            key="upload_watchlist",
+            label_visibility="collapsed",
+        )
+        if _uploaded_wl is not None and not _wl_readonly:
+            try:
+                _wl_imp_data = _wl_json.loads(_uploaded_wl.read())
+                if not isinstance(_wl_imp_data, list):
+                    st.error("❌ Formato inválido: se esperaba lista de tickers.")
+                else:
+                    st.warning(f"⚠️ Importar **{len(_wl_imp_data)} tickers** reemplazará la watchlist actual.")
+                    if st.button("✅ Confirmar", key="btn_import_wl"):
+                        _guardar_wl(_wl_nombre, _wl_imp_data)
+                        st.session_state["wl_tickers"] = _wl_imp_data
+                        st.success("✅ Watchlist importada.")
+                        st.rerun()
+            except Exception:
+                st.error("❌ Archivo JSON inválido.")
+
+    with _io_wl_c2:
+        st.caption("**Alertas**")
+        _alertas_io = _cargar_alertas_io("pato")
+        st.download_button(
+            "📥 Exportar alertas",
+            data=_wl_json.dumps(_alertas_io, ensure_ascii=False, indent=2),
+            file_name=f"alertas_pato_{_wl_date.today()}.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+        _uploaded_al = st.file_uploader(
+            "📤 Importar alertas",
+            type=["json"],
+            key="upload_alertas",
+            label_visibility="collapsed",
+        )
+        if _uploaded_al is not None:
+            try:
+                _al_imp_data = _wl_json.loads(_uploaded_al.read())
+                if not isinstance(_al_imp_data, list):
+                    st.error("❌ Formato inválido: se esperaba lista de alertas.")
+                else:
+                    st.warning(f"⚠️ Importar **{len(_al_imp_data)} alertas** reemplazará las alertas actuales.")
+                    if st.button("✅ Confirmar", key="btn_import_al"):
+                        _guardar_alertas_io("pato", _al_imp_data)
+                        st.success("✅ Alertas importadas.")
+                        st.rerun()
+            except Exception:
+                st.error("❌ Archivo JSON inválido.")
+
+    # ── SECCIÓN 5: WATCHLISTS PREDEFINIDAS ───────────────────────────────────
     st.divider()
     st.markdown("### 📋 Watchlists predefinidas")
     st.caption("Cargá una como punto de partida y luego personalizala.")

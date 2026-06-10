@@ -21,14 +21,26 @@ import yfinance as yf
 
 # ---------- carga ----------
 
-@st.cache_data(ttl=3600, show_spinner=False)
 def cargar_portfolio(user_id: str = "pato") -> dict:
-    """Carga el portfolio desde data/portfolio/{user_id}.json."""
+    """Carga el portfolio: session_state → JSON → vacío.
+
+    session_state es la fuente de verdad durante la sesión.
+    El JSON en disco actúa como backup (se pierde en redeployment de Cloud).
+    """
+    ss_key = f"portfolio_{user_id}"
+    if ss_key in st.session_state:
+        return st.session_state[ss_key]
     ruta = Path("data/portfolio") / f"{user_id}.json"
-    if not ruta.exists():
-        raise FileNotFoundError(f"No se encontro {ruta}")
-    with open(ruta, "r", encoding="utf-8") as f:
-        return json.load(f)
+    if ruta.exists():
+        try:
+            with open(ruta, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            data = {"configuracion": {"tipo_cambio_ars_usd": 1000}, "posiciones": [], "metadata": {}}
+    else:
+        data = {"configuracion": {"tipo_cambio_ars_usd": 1000}, "posiciones": [], "metadata": {}}
+    st.session_state[ss_key] = data
+    return data
 
 
 # ---------- valuacion ----------
@@ -310,14 +322,18 @@ def comparar_vs_benchmark(
 # ---------- CRUD del portfolio ----------
 
 def guardar_portfolio(nombre: str, portfolio: dict) -> None:
-    """Guarda el portfolio en disco y limpia el cache de carga."""
+    """Guarda el portfolio: session_state primero, luego JSON como backup."""
     from datetime import date
-    ruta = Path("data/portfolio") / f"{nombre}.json"
     portfolio.setdefault("metadata", {})
     portfolio["metadata"]["fecha_actualizacion"] = date.today().isoformat()
-    with open(ruta, "w", encoding="utf-8") as f:
-        json.dump(portfolio, f, ensure_ascii=False, indent=2)
-    cargar_portfolio.clear()
+    st.session_state[f"portfolio_{nombre}"] = portfolio
+    try:
+        ruta = Path("data/portfolio") / f"{nombre}.json"
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        with open(ruta, "w", encoding="utf-8") as f:
+            json.dump(portfolio, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass  # Filesystem puede ser read-only en Streamlit Cloud
 
 
 def agregar_posicion(
