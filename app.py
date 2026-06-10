@@ -327,14 +327,16 @@ a:hover { text-decoration: underline; }
     .stTabs [data-baseweb="tab"] { padding: 8px 12px !important; font-size: 12px !important; }
 }
 
-/* ===== SIDEBAR TOGGLE BUTTON ===== */
+/* ===== SIDEBAR BUTTON ESTILO MENU ===== */
 [data-testid="collapsedControl"] {
     background-color: #2a2e39 !important;
     border: 1px solid #363a45 !important;
     border-radius: 6px !important;
-    color: #d1d4dc !important;
-    width: 36px !important;
-    height: 36px !important;
+    width: auto !important;
+    padding: 6px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
 }
 [data-testid="collapsedControl"]:hover {
     background-color: #2962ff !important;
@@ -342,6 +344,15 @@ a:hover { text-decoration: underline; }
 }
 [data-testid="collapsedControl"] svg {
     fill: #d1d4dc !important;
+    width: 16px !important;
+    height: 16px !important;
+}
+[data-testid="collapsedControl"]::after {
+    content: "MENU" !important;
+    color: #d1d4dc !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    letter-spacing: 1px !important;
 }
 </style>
 """, unsafe_allow_html=True)
