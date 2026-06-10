@@ -19,7 +19,7 @@ st.markdown("""
 <meta property="og:description" content="Tu herramienta de análisis financiero para el mercado argentino">
 """, unsafe_allow_html=True)
 
-# ============== ESTILO INVESTING / TRADINGVIEW ==============
+# ============== TRADINGVIEW DARK THEME ==============
 st.markdown("""
 <style>
 /* === IMPORT INTER === */
@@ -36,21 +36,38 @@ html, body, [class*="css"], .stApp, .main, [data-testid="stSidebar"],
     font-variant-numeric: tabular-nums;
 }
 
-/* === FONDO === */
-.stApp { background: #FAFBFC; }
+/* ===== BASE ===== */
+.stApp {
+    background-color: #131722 !important;
+    color: #d1d4dc !important;
+}
 .main .block-container {
-    background: #FAFBFC;
+    background: #131722;
     padding-top: 1.5rem;
     max-width: 1400px;
 }
 
-/* === HEADER === */
+/* ===== SIDEBAR ===== */
+section[data-testid="stSidebar"] {
+    background-color: #1e222d !important;
+    border-right: 1px solid #2a2e39 !important;
+}
+section[data-testid="stSidebar"] * {
+    color: #d1d4dc !important;
+}
+section[data-testid="stSidebar"] .stTextInput input {
+    background-color: #2a2e39 !important;
+    border-color: #363a45 !important;
+    color: #d1d4dc !important;
+    border-radius: 6px !important;
+}
+
+/* ===== HEADER ===== */
 .bloomberg-header {
-    background: #FFFFFF;
-    border: 1px solid #E1E4E8;
+    background: #1e222d !important;
+    border: 1px solid #2a2e39 !important;
     border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-    padding: 24px 28px;
+    padding: 16px 24px;
     margin-bottom: 1.5rem;
     display: flex;
     align-items: center;
@@ -58,34 +75,33 @@ html, body, [class*="css"], .stApp, .main, [data-testid="stSidebar"],
     flex-wrap: wrap;
 }
 .bloomberg-header .title-block h1 {
-    color: #1E40AF;
-    font-size: 32px;
+    color: #d1d4dc;
+    font-size: 28px;
     font-weight: 700;
     letter-spacing: -0.02em;
     margin: 0;
     line-height: 1.15;
 }
 .bloomberg-header .subtitle {
-    color: #6B7280;
-    font-size: 14px;
+    color: #787b86;
+    font-size: 13px;
     margin-top: 4px;
-    letter-spacing: 0;
 }
 .live-indicator {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #16A34A;
+    color: #26a69a;
     font-weight: 600;
     font-size: 13px;
-    background: #DCFCE7;
+    background: rgba(38,166,154,0.15);
     padding: 6px 12px;
     border-radius: 20px;
 }
 .live-dot {
     width: 8px;
     height: 8px;
-    background: #16A34A;
+    background: #26a69a;
     border-radius: 50%;
     display: inline-block;
     animation: pulse 1.6s infinite;
@@ -95,274 +111,220 @@ html, body, [class*="css"], .stApp, .main, [data-testid="stSidebar"],
     50%      { opacity: 0.5; transform: scale(0.85); }
 }
 
-/* === METRIC CARDS === */
+/* ===== MÉTRICAS / CARDS ===== */
 [data-testid="stMetric"] {
-    background: #FFFFFF;
-    border: 1px solid #E1E4E8;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    transition: all 0.15s ease;
+    background-color: #1e222d !important;
+    border: 1px solid #2a2e39 !important;
+    border-radius: 8px !important;
+    padding: 16px !important;
 }
-[data-testid="stMetric"]:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    border-color: #CBD5E1;
-}
-[data-testid="stMetricLabel"],
-[data-testid="stMetricLabel"] p {
-    color: #6B7280 !important;
-    font-size: 13px !important;
-    font-weight: 500 !important;
-    letter-spacing: 0;
-    text-transform: none;
+[data-testid="stMetricLabel"] {
+    color: #787b86 !important;
+    font-size: 11px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
 }
 [data-testid="stMetricValue"] {
-    color: #111827 !important;
-    font-size: 28px !important;
+    color: #d1d4dc !important;
     font-weight: 700 !important;
-    letter-spacing: -0.02em;
 }
+[data-testid="stMetricDelta"] svg { display: none !important; }
 
-/* === TABS === */
+/* ===== TABS ===== */
 .stTabs [data-baseweb="tab-list"] {
-    background: #FFFFFF;
-    border-bottom: 1px solid #E1E4E8;
-    border-radius: 8px 8px 0 0;
-    gap: 4px;
-    padding: 0 8px;
+    background-color: #1e222d !important;
+    border-bottom: 1px solid #2a2e39 !important;
+    gap: 0 !important;
     overflow-x: auto !important;
     scrollbar-width: thin !important;
-    scrollbar-color: #1f77b4 #f0f0f0 !important;
+    scrollbar-color: #2962ff #1e222d !important;
 }
 .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
     height: 3px !important;
 }
 .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb {
-    background: #1f77b4 !important;
+    background: #2962ff !important;
     border-radius: 3px !important;
 }
 .stTabs [data-baseweb="tab"] {
-    color: #6B7280;
-    font-weight: 500;
-    font-size: 15px;
-    padding: 14px 22px;
-    background: transparent !important;
-    border-bottom: 2px solid transparent !important;
+    background-color: transparent !important;
+    color: #787b86 !important;
     border-radius: 0 !important;
-    text-transform: none !important;
-    letter-spacing: 0;
-}
-.stTabs [data-baseweb="tab"]:hover {
-    color: #2563EB !important;
+    padding: 10px 16px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    border-bottom: 2px solid transparent !important;
 }
 .stTabs [aria-selected="true"] {
-    color: #2563EB !important;
-    font-weight: 600 !important;
-    border-bottom: 2px solid #2563EB !important;
-    background: transparent !important;
+    color: #d1d4dc !important;
+    border-bottom: 2px solid #2962ff !important;
+    background-color: transparent !important;
+}
+.stTabs [data-baseweb="tab"]:hover {
+    color: #d1d4dc !important;
+    background-color: #2a2e39 !important;
+}
+.stTabs [data-baseweb="tab-panel"] {
+    background-color: #131722 !important;
+    padding-top: 16px !important;
 }
 
-/* === SIDEBAR === */
-[data-testid="stSidebar"] {
-    background: #F0F2F5;
-    border-right: 1px solid #E1E4E8;
+/* ===== INPUTS ===== */
+.stTextInput input,
+.stNumberInput input,
+.stSelectbox > div > div {
+    background-color: #1e222d !important;
+    border: 1px solid #2a2e39 !important;
+    border-radius: 6px !important;
+    color: #d1d4dc !important;
 }
-[data-testid="stSidebar"] h1,
-[data-testid="stSidebar"] h2 {
-    color: #1E40AF !important;
-    font-weight: 600;
-    font-size: 18px !important;
-    letter-spacing: -0.01em;
-    margin-bottom: 0.8rem;
-    text-transform: none;
-    border: none;
+.stTextInput input:focus,
+.stNumberInput input:focus {
+    border-color: #2962ff !important;
+    box-shadow: 0 0 0 2px rgba(41,98,255,0.2) !important;
 }
-[data-testid="stSidebar"] h3 {
-    color: #374151 !important;
-    font-weight: 600;
-    font-size: 14px !important;
-    margin-top: 1.2rem;
-    text-transform: none;
-    letter-spacing: 0;
-}
-[data-testid="stSidebar"] label {
-    color: #374151 !important;
+
+/* ===== BOTONES ===== */
+.stButton > button {
+    background-color: #2a2e39 !important;
+    color: #d1d4dc !important;
+    border: 1px solid #363a45 !important;
+    border-radius: 6px !important;
     font-weight: 500 !important;
-    font-size: 13px !important;
-    text-transform: none;
-    letter-spacing: 0;
+    transition: all 0.15s !important;
 }
-[data-testid="stSidebar"] input,
-[data-testid="stSidebar"] [data-baseweb="select"] > div {
-    background: #FFFFFF !important;
-    color: #111827 !important;
-    border: 1px solid #E1E4E8 !important;
-    border-radius: 6px !important;
-}
-[data-testid="stSidebar"] input:focus,
-[data-testid="stSidebar"] [data-baseweb="select"] > div:focus-within {
-    border-color: #2563EB !important;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.15) !important;
-}
-[data-testid="stSidebar"] [data-testid="stExpander"] {
-    background: #FFFFFF;
-    border: 1px solid #E1E4E8;
-    border-radius: 6px;
-}
-[data-testid="stSidebar"] [data-testid="stExpander"]:hover {
-    background: #F9FAFB;
-}
-[data-testid="stSidebar"] [data-testid="stExpander"] summary {
-    color: #1F2937 !important;
-    font-weight: 500;
-    text-transform: none;
-    letter-spacing: 0;
-    font-size: 14px;
-}
-[data-testid="stSidebar"] hr {
-    border-color: #E1E4E8 !important;
+.stButton > button:hover {
+    background-color: #2962ff !important;
+    border-color: #2962ff !important;
+    color: #fff !important;
 }
 
-/* === ENCABEZADOS MAIN === */
-.main h1 {
-    color: #1E40AF !important;
-    font-weight: 700;
-    font-size: 28px !important;
-    letter-spacing: -0.02em;
-    text-transform: none;
+/* ===== DATAFRAMES / TABLAS ===== */
+[data-testid="stDataFrame"] {
+    background-color: #1e222d !important;
+    border: 1px solid #2a2e39 !important;
+    border-radius: 8px !important;
 }
-.main h2 {
-    color: #111827 !important;
-    font-weight: 600;
-    font-size: 22px !important;
-    letter-spacing: -0.02em;
-    text-transform: none;
+.stDataFrame th {
+    background-color: #2a2e39 !important;
+    color: #787b86 !important;
+    font-size: 11px !important;
+    text-transform: uppercase !important;
 }
-.main h3, [data-testid="stMarkdownContainer"] h3 {
-    color: #374151 !important;
-    font-weight: 600;
-    font-size: 16px !important;
-    margin-top: 1.6rem;
-    margin-bottom: 0.8rem;
-    text-transform: none;
-    border: none;
-    letter-spacing: 0;
-    padding-bottom: 0;
+.stDataFrame td {
+    color: #d1d4dc !important;
+    border-color: #2a2e39 !important;
 }
 
-/* === CAPTION === */
-[data-testid="stCaptionContainer"],
-.main [data-testid="stCaptionContainer"] p {
-    color: #6B7280 !important;
-    font-size: 13px !important;
-    text-transform: none;
-    letter-spacing: 0;
+/* ===== SLIDERS ===== */
+.stSlider [data-baseweb="slider"] div {
+    background-color: #2962ff !important;
+}
+.stSlider [data-baseweb="slider"] [role="slider"] {
+    background-color: #2962ff !important;
+    border-color: #2962ff !important;
 }
 
-/* === ALERTAS === */
+/* ===== EXPANDERS ===== */
+.streamlit-expanderHeader {
+    background-color: #1e222d !important;
+    border: 1px solid #2a2e39 !important;
+    border-radius: 8px !important;
+    color: #d1d4dc !important;
+}
+.streamlit-expanderContent {
+    background-color: #1e222d !important;
+    border: 1px solid #2a2e39 !important;
+    border-top: none !important;
+}
+
+/* ===== ALERTS / INFO BOXES ===== */
 [data-testid="stAlert"] {
-    border-radius: 6px !important;
-    padding: 12px 16px !important;
+    background-color: #1e222d !important;
+    border-radius: 8px !important;
     border-left: 4px solid !important;
     border-top: none !important;
     border-right: none !important;
     border-bottom: none !important;
-    box-shadow: none !important;
 }
-[data-testid="stAlert"] p,
-[data-testid="stAlert"] div {
-    letter-spacing: 0;
-}
-div[data-baseweb="notification"][kind="positive"],
-[data-testid="stAlert"][data-baseweb="notification"][kind="positive"] {
-    background: #DCFCE7 !important;
-    border-left-color: #16A34A !important;
-    color: #166534 !important;
-}
-div[data-baseweb="notification"][kind="warning"],
-[data-testid="stAlert"][data-baseweb="notification"][kind="warning"] {
-    background: #FEF3C7 !important;
-    border-left-color: #F59E0B !important;
-    color: #92400E !important;
-}
-div[data-baseweb="notification"][kind="negative"],
-[data-testid="stAlert"][data-baseweb="notification"][kind="negative"] {
-    background: #FEE2E2 !important;
-    border-left-color: #DC2626 !important;
-    color: #991B1B !important;
-}
-div[data-baseweb="notification"][kind="info"],
-[data-testid="stAlert"][data-baseweb="notification"][kind="info"] {
-    background: #DBEAFE !important;
-    border-left-color: #2563EB !important;
-    color: #1E40AF !important;
+.stAlert [data-testid="stMarkdownContainer"] {
+    color: #d1d4dc !important;
 }
 
-/* === DIVIDERS === */
+/* ===== DIVIDERS ===== */
 hr {
-    border-color: #E1E4E8 !important;
+    border-color: #2a2e39 !important;
     margin: 1.8rem 0 !important;
 }
 
-/* === PROGRESS BAR === */
-[data-testid="stProgress"] > div > div {
-    background: #E5E7EB !important;
-    border-radius: 4px;
-    height: 8px;
+/* ===== TEXTO ===== */
+h1, h2, h3, h4, h5, h6 {
+    color: #d1d4dc !important;
 }
-[data-testid="stProgress"] > div > div > div {
-    background: linear-gradient(90deg, #4ADE80 0%, #16A34A 100%) !important;
-    border-radius: 4px;
+p, li, span {
+    color: #d1d4dc !important;
 }
-
-/* === DATAFRAMES === */
-[data-testid="stDataFrame"] thead th,
-[data-testid="stTable"] thead th {
-    background: #F3F4F6 !important;
-    color: #374151 !important;
-    font-weight: 600 !important;
-    text-transform: none;
-    letter-spacing: 0;
-    border-color: #E5E7EB !important;
-}
-[data-testid="stDataFrame"] tbody tr:nth-child(even),
-[data-testid="stTable"] tbody tr:nth-child(even) {
-    background: #FAFBFC !important;
-}
-[data-testid="stDataFrame"] tbody tr:nth-child(odd),
-[data-testid="stTable"] tbody tr:nth-child(odd) {
-    background: #FFFFFF !important;
-}
-[data-testid="stDataFrame"] td,
-[data-testid="stTable"] td {
-    border-color: #E5E7EB !important;
-    color: #1F2937 !important;
-    padding: 10px 12px;
+.stMarkdown {
+    color: #d1d4dc !important;
 }
 
-/* === LINKS === */
-a, a:visited {
-    color: #2563EB !important;
-    text-decoration: none;
-}
-a:hover {
-    text-decoration: underline;
+/* ===== CAPTION ===== */
+[data-testid="stCaptionContainer"],
+.main [data-testid="stCaptionContainer"] p {
+    color: #787b86 !important;
+    font-size: 13px !important;
 }
 
-/* === SCROLLBAR === */
-::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+/* ===== SELECTBOX ===== */
+.stSelectbox [data-baseweb="select"] div {
+    background-color: #1e222d !important;
+    border-color: #2a2e39 !important;
+    color: #d1d4dc !important;
 }
-::-webkit-scrollbar-track {
-    background: #F0F2F5;
+
+/* ===== RADIO BUTTONS ===== */
+.stRadio label {
+    color: #d1d4dc !important;
 }
-::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
-    border-radius: 5px;
+.stRadio [data-baseweb="radio"] div {
+    border-color: #2962ff !important;
 }
-::-webkit-scrollbar-thumb:hover {
-    background: #94A3B8;
+
+/* ===== CHECKBOXES ===== */
+.stCheckbox label {
+    color: #d1d4dc !important;
+}
+
+/* ===== PROGRESS BAR ===== */
+.stProgress > div > div {
+    background-color: #2962ff !important;
+}
+
+/* ===== TICKER TAPE ===== */
+.ticker-wrapper {
+    background: #1e222d !important;
+    border-bottom: 1px solid #2a2e39 !important;
+}
+
+/* ===== COLORES POSITIVO/NEGATIVO ===== */
+.positive { color: #26a69a !important; }
+.negative { color: #ef5350 !important; }
+.neutral { color: #787b86 !important; }
+
+/* ===== LINKS ===== */
+a, a:visited { color: #2962ff !important; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #1e222d; }
+::-webkit-scrollbar-thumb { background: #363a45; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #4a4f5e; }
+
+/* ===== MOBILE ===== */
+@media (max-width: 768px) {
+    [data-testid="stMetricValue"] { font-size: 1.2rem !important; }
+    .stTabs [data-baseweb="tab"] { padding: 8px 12px !important; font-size: 12px !important; }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -389,6 +351,7 @@ def get_market_status():
     return "cerrado", "⚫"
 
 _mkt_estado, _mkt_emoji = get_market_status()
+_mkt_color = {"abierto": "#26a69a", "pre-market": "#ff9800", "after-hours": "#ff9800"}.get(_mkt_estado, "#ef5350")
 
 st.markdown(f"""
 <div class="bloomberg-header">
@@ -397,7 +360,7 @@ st.markdown(f"""
         <div class="subtitle">Sistema de analisis financiero &middot; Educacion Financiera AR</div>
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
-        <div style="font-size:13px;font-weight:600;color:#374151;">
+        <div style="font-size:13px;font-weight:600;color:{_mkt_color};">
             {_mkt_emoji} NYSE: {_mkt_estado.upper()}
         </div>
         <div class="live-indicator">
@@ -725,15 +688,8 @@ try:
 
     # Colores de fondo según estado del portfolio
     _var_p = _res["var_total_pct"]
-    if _var_p is not None and _var_p >= 0:
-        _bg_grad = "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)"
-        _border  = "#86efac"
-    elif _var_p is not None and _var_p < 0:
-        _bg_grad = "linear-gradient(135deg, #fff1f2 0%, #fee2e2 100%)"
-        _border  = "#fca5a5"
-    else:
-        _bg_grad = "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)"
-        _border  = "#cbd5e1"
+    _bg_grad = "#1e222d"
+    _border  = "#2a2e39"
 
     # Badges
     _port_badge   = f"{_var_p:+.1f}% hoy" if _var_p is not None else "Sin datos"
@@ -741,45 +697,45 @@ try:
     _sp500_var    = _res["sp500_var"]
     _sp500_badge  = f"{_sp500_var:+.1f}%" if _sp500_var is not None else "—"
 
-    _port_color  = "#16A34A" if (_var_p or 0) >= 0 and _var_p is not None else "#DC2626"
-    _sp500_color = "#16A34A" if (_sp500_var or 0) >= 0 and _sp500_var is not None else "#DC2626"
+    _port_color  = "#26a69a" if (_var_p or 0) >= 0 and _var_p is not None else "#ef5350"
+    _sp500_color = "#26a69a" if (_sp500_var or 0) >= 0 and _sp500_var is not None else "#ef5350"
 
     # Alertas contextuales
     _alertas = ""
     if _res["fin_de_semana"]:
         _reabre = "lunes" if _res["weekday"] == 5 else "mañana lunes"
         _alertas = (
-            f'<div style="margin-top:10px;font-size:13px;color:#92400E;">'
+            f'<div style="margin-top:10px;font-size:13px;color:#ff9800;">'
             f'📅 Mercado cerrado — reabre el {_reabre}</div>'
         )
     elif _res["pre_market"]:
         _h = _res["horas_apertura"]
         _alertas = (
-            f'<div style="margin-top:10px;font-size:13px;color:#1D4ED8;">'
+            f'<div style="margin-top:10px;font-size:13px;color:#787b86;">'
             f'⏰ Mercado abre en {_h} hora{"s" if _h != 1 else ""}</div>'
         )
 
     _html_card = f"""
-<div style="background:{_bg_grad};border-radius:16px;padding:20px 24px;
-            margin-bottom:16px;border:1px solid {_border};">
+<div style="background:{_bg_grad};border-radius:12px;padding:20px 24px;
+            margin-bottom:16px;border:1px solid {_border};border-left:3px solid #2962ff;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-    <span style="font-size:20px;font-weight:700;color:#1E293B;">{_res['saludo']}</span>
-    <span style="font-size:13px;color:#64748B;">{_res['fecha_str']}</span>
+    <span style="font-size:20px;font-weight:700;color:#d1d4dc;">{_res['saludo']}</span>
+    <span style="font-size:13px;color:#787b86;">{_res['fecha_str']}</span>
   </div>
-  <p style="margin:0 0 14px 0;font-size:15px;color:#374151;line-height:1.6;">
+  <p style="margin:0 0 14px 0;font-size:15px;color:#d1d4dc;line-height:1.6;">
     {_res['texto']}
   </p>
   <div style="display:flex;gap:10px;flex-wrap:wrap;">
-    <span style="background:#fff;border:1px solid #E2E8F0;border-radius:20px;
-                 padding:4px 14px;font-size:13px;">
+    <span style="background:#2a2e39;border:1px solid #363a45;border-radius:20px;
+                 padding:4px 14px;font-size:13px;color:#d1d4dc;">
       📊 Portfolio hoy:&nbsp;<strong style="color:{_port_color};">{_port_badge}</strong>
     </span>
-    <span style="background:#fff;border:1px solid #E2E8F0;border-radius:20px;
-                 padding:4px 14px;font-size:13px;">
-      💵 Dólar blue:&nbsp;<strong style="color:#1E293B;">{_blue_badge}</strong>
+    <span style="background:#2a2e39;border:1px solid #363a45;border-radius:20px;
+                 padding:4px 14px;font-size:13px;color:#d1d4dc;">
+      💵 Dólar blue:&nbsp;<strong style="color:#d1d4dc;">{_blue_badge}</strong>
     </span>
-    <span style="background:#fff;border:1px solid #E2E8F0;border-radius:20px;
-                 padding:4px 14px;font-size:13px;">
+    <span style="background:#2a2e39;border:1px solid #363a45;border-radius:20px;
+                 padding:4px 14px;font-size:13px;color:#d1d4dc;">
       🇺🇸 S&amp;P500:&nbsp;<strong style="color:{_sp500_color};">{_sp500_badge}</strong>
     </span>
   </div>
@@ -813,14 +769,14 @@ try:
             _spx   = _sidx.get("precio")
             _svar  = _sidx.get("variacion_pct")
             _spxs  = _spark_sp.get(_stk, [])
-            _scol_v = "#16A34A" if (_svar or 0) >= 0 else "#DC2626"
+            _scol_v = "#26a69a" if (_svar or 0) >= 0 else "#ef5350"
             _svar_t = f"{_svar:+.2f}%" if _svar is not None else "—"
             _spx_t  = f"${_spx:,.2f}" if _spx else "—"
             st.markdown(
-                f"<div style='background:#F8FAFC;border:1px solid #E2E8F0;"
+                f"<div style='background:#1e222d;border:1px solid #2a2e39;"
                 f"border-radius:10px;padding:10px 12px;margin-bottom:4px;'>"
-                f"<div style='font-size:11px;color:#64748B;font-weight:600;'>{_sidx['nombre']}</div>"
-                f"<div style='font-size:15px;font-weight:700;margin:2px 0;'>{_spx_t}</div>"
+                f"<div style='font-size:11px;color:#787b86;font-weight:600;'>{_sidx['nombre']}</div>"
+                f"<div style='font-size:15px;font-weight:700;margin:2px 0;color:#d1d4dc;'>{_spx_t}</div>"
                 f"<div style='font-size:13px;color:{_scol_v};font-weight:600;'>{_svar_t}</div>"
                 f"</div>",
                 unsafe_allow_html=True,
@@ -1613,10 +1569,15 @@ if tab3 is not None:
 
                     fig.update_layout(
                         template='plotly_dark',
+                        paper_bgcolor='#131722',
+                        plot_bgcolor='#1e222d',
+                        font_color='#d1d4dc',
                         height=500,
                         hovermode='x unified',
                         xaxis_title='Fecha',
-                        yaxis_title='Precio'
+                        yaxis_title='Precio',
+                        xaxis=dict(gridcolor='#2a2e39', linecolor='#2a2e39'),
+                        yaxis=dict(gridcolor='#2a2e39', linecolor='#2a2e39'),
                     )
 
                     st.plotly_chart(fig, use_container_width=True)
@@ -1633,8 +1594,13 @@ if tab3 is not None:
                     fig_rsi.add_hline(y=30, line_dash='dash', line_color='green')
                     fig_rsi.update_layout(
                         template='plotly_dark',
+                        paper_bgcolor='#131722',
+                        plot_bgcolor='#1e222d',
+                        font_color='#d1d4dc',
                         height=300,
-                        yaxis_range=[0, 100]
+                        yaxis_range=[0, 100],
+                        xaxis=dict(gridcolor='#2a2e39', linecolor='#2a2e39'),
+                        yaxis=dict(gridcolor='#2a2e39', linecolor='#2a2e39'),
                     )
                     st.plotly_chart(fig_rsi, use_container_width=True)
 
@@ -1857,7 +1823,10 @@ if tab4 is not None:
                     )])
                     fig.update_layout(
                         title=titulo,
-                        template="plotly_white",
+                        template="plotly_dark",
+                        paper_bgcolor="#131722",
+                        plot_bgcolor="#1e222d",
+                        font_color="#d1d4dc",
                         height=380,
                         showlegend=True,
                         legend=dict(orientation="v", x=1.05, y=0.5),
@@ -1918,11 +1887,16 @@ if tab4 is not None:
                             name=comp["ticker_benchmark"],
                         ))
                         fig_b.update_layout(
-                            template="plotly_white",
+                            template="plotly_dark",
+                            paper_bgcolor="#131722",
+                            plot_bgcolor="#1e222d",
+                            font_color="#d1d4dc",
                             height=420,
                             hovermode="x unified",
                             xaxis_title="Fecha",
                             yaxis_title="Indice (base 100)",
+                            xaxis=dict(gridcolor="#2a2e39", linecolor="#2a2e39"),
+                            yaxis=dict(gridcolor="#2a2e39", linecolor="#2a2e39"),
                             margin=dict(l=20, r=20, t=30, b=20),
                         )
                         st.plotly_chart(fig_b, use_container_width=True)
