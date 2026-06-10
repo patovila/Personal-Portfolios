@@ -658,7 +658,6 @@ if datos:
     st.header(f"{datos['nombre']} ({datos['ticker']})")
     st.caption(f"{datos['sector']} | {datos['industria']} | {datos['pais']}")
 else:
-    st.header("Mi Bloomberg Personal")
     if ticker:
         st.caption(ticker_error or "")
 
