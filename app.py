@@ -327,47 +327,26 @@ a:hover { text-decoration: underline; }
     .stTabs [data-baseweb="tab"] { padding: 8px 12px !important; font-size: 12px !important; }
 }
 
-/* ===== HAMBURGER BUTTON ===== */
+/* ===== SIDEBAR TOGGLE BUTTON ===== */
 [data-testid="collapsedControl"] {
-    display: none !important;
+    background-color: #2a2e39 !important;
+    border: 1px solid #363a45 !important;
+    border-radius: 6px !important;
+    color: #d1d4dc !important;
+    width: 36px !important;
+    height: 36px !important;
 }
-.hamburger-btn {
-    position: fixed;
-    top: 14px;
-    left: 14px;
-    z-index: 999;
-    background: #2a2e39;
-    border: 1px solid #363a45;
-    border-radius: 6px;
-    padding: 6px 10px;
-    cursor: pointer;
-    color: #d1d4dc;
-    font-size: 18px;
-    line-height: 1;
-    transition: background 0.15s;
+[data-testid="collapsedControl"]:hover {
+    background-color: #2962ff !important;
+    border-color: #2962ff !important;
 }
-.hamburger-btn:hover {
-    background: #2962ff;
-    border-color: #2962ff;
+[data-testid="collapsedControl"] svg {
+    fill: #d1d4dc !important;
 }
 </style>
 """, unsafe_allow_html=True)
 # =================================================
 
-st.markdown("""
-<button class="hamburger-btn"
-onclick="
-  var sidebar = document.querySelector('[data-testid=stSidebar]');
-  var collapsed = sidebar.getAttribute('data-collapsed');
-  if(collapsed === 'true') {
-    sidebar.setAttribute('data-collapsed', 'false');
-    sidebar.style.transform = 'translateX(0)';
-  } else {
-    sidebar.setAttribute('data-collapsed', 'true');
-    sidebar.style.transform = 'translateX(-100%)';
-  }
-">☰</button>
-""", unsafe_allow_html=True)
 
 universo = cargar_universo()
 
