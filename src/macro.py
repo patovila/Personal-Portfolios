@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=1800)
 def get_riesgo_pais():
     """Riesgo pais historico completo desde argentinadatos.com. Cache 1 hora."""
     try:
@@ -21,7 +21,7 @@ def get_riesgo_pais():
         return None
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=1800)
 def get_tasas_bcra():
     """Tasas de referencia argentinas desde argentinadatos.com. Cache 1 hora.
 

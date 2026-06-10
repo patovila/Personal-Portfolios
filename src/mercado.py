@@ -1,7 +1,12 @@
 """Datos de mercado en tiempo real para la home screen."""
+from datetime import datetime, date as _date
+
 import yfinance as yf
 import pandas as pd
 import streamlit as st
+
+from src.dolar import get_cotizaciones
+from src.macro import get_riesgo_pais, get_dolar_historico
 
 _HEATMAP_TICKERS = [
     {"ticker": "GGAL.BA", "nombre": "GGAL",  "sector": "Merval"},
@@ -38,12 +43,15 @@ INDICES = [
 _TAPE_INDICES    = ["^GSPC", "^IXIC", "^MERV"]
 _INDICES_TICKERS = [i["ticker"] for i in INDICES]
 
+# Fallback module-level cache para mantener último dato válido en caso de error
+_LAST_VALID: dict = {}
+
 
 def _batch_download(tickers: list) -> dict:
     """Una sola request HTTP para N tickers. Retorna {ticker: DataFrame}."""
     if not tickers:
         return {}
-    unique = list(dict.fromkeys(tickers))  # deduplica preservando orden
+    unique = list(dict.fromkeys(tickers))
     try:
         data = yf.download(
             tickers=" ".join(unique),
@@ -62,7 +70,6 @@ def _batch_download(tickers: list) -> dict:
 
     result = {}
     if len(unique) == 1:
-        # Un solo ticker: yf.download devuelve DataFrame plano (sin MultiIndex)
         df = data.dropna(subset=["Close"]) if "Close" in data.columns else pd.DataFrame()
         result[unique[0]] = df
     else:
@@ -85,16 +92,21 @@ def _var_pct(df) -> float | None:
     return None
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=300)
 def get_indices_globales() -> list:
     """8 índices globales en una sola request. Cache 5 min."""
-    data = _batch_download(_INDICES_TICKERS)
-    result = []
-    for idx in INDICES:
-        df = data.get(idx["ticker"], pd.DataFrame())
-        precio = float(df["Close"].iloc[-1]) if not df.empty else None
-        result.append({**idx, "precio": precio, "variacion_pct": _var_pct(df)})
-    return result
+    try:
+        data = _batch_download(_INDICES_TICKERS)
+        result = []
+        for idx in INDICES:
+            df = data.get(idx["ticker"], pd.DataFrame())
+            precio = float(df["Close"].iloc[-1]) if not df.empty else None
+            result.append({**idx, "precio": precio, "variacion_pct": _var_pct(df)})
+        _LAST_VALID["indices_globales"] = {"data": result, "ts": datetime.now()}
+        return result
+    except Exception:
+        cached = _LAST_VALID.get("indices_globales")
+        return cached["data"] if cached else []
 
 
 @st.cache_data(ttl=300)
@@ -128,7 +140,7 @@ def get_sparklines_indices() -> dict:
     return result
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=300)
 def get_movers_portfolio(tickers: tuple) -> dict:
     """Gainers y losers del portfolio en una sola request. Cache 5 min."""
     data = _batch_download(list(tickers))
@@ -148,17 +160,91 @@ def get_movers_portfolio(tickers: tuple) -> dict:
     return {"gainers": gainers, "losers": losers}
 
 
+@st.cache_data(ttl=300)
+def get_metricas_macro() -> dict:
+    """6 métricas clave para el Brief Diario.
+
+    Combina: dólares (dolarapi), riesgo país (argentinadatos),
+    Merval + S&P500 (yfinance). Cache 5 min.
+    """
+    result = {
+        "blue_compra": None, "blue_venta": None, "blue_var": None,
+        "mep": None, "mep_var": None,
+        "ccl": None, "ccl_var": None,
+        "riesgo_pais": None, "riesgo_pais_var": None,
+        "merval": None, "merval_var": None,
+        "sp500": None, "sp500_var": None,
+    }
+    today = _date.today()
+
+    # 1. Dólares actuales (dolarapi.com)
+    try:
+        cots = get_cotizaciones()
+        if cots:
+            por_casa = {item["casa"]: item for item in cots}
+            blue = por_casa.get("blue") or {}
+            result["blue_compra"] = blue.get("compra")
+            result["blue_venta"]  = blue.get("venta")
+            mep = por_casa.get("bolsa") or {}
+            result["mep"] = mep.get("venta")
+            ccl = por_casa.get("contadoconliqui") or {}
+            result["ccl"] = ccl.get("venta")
+    except Exception:
+        pass
+
+    # 2. Variación dólares vs cierre de ayer (argentinadatos histórico)
+    def _var_dolar(casa_hist: str, precio_hoy):
+        try:
+            df = get_dolar_historico(casa_hist)
+            if df is None or "venta" not in df.columns:
+                return None
+            df_prev = df[df["fecha"].dt.date < today]
+            if df_prev.empty or precio_hoy is None:
+                return None
+            ayer = float(df_prev["venta"].iloc[-1])
+            return (precio_hoy - ayer) / ayer * 100 if ayer else None
+        except Exception:
+            return None
+
+    result["blue_var"] = _var_dolar("blue", result["blue_venta"])
+    result["mep_var"]  = _var_dolar("bolsa", result["mep"])
+    result["ccl_var"]  = _var_dolar("contadoconliqui", result["ccl"])
+
+    # 3. Riesgo país (argentinadatos)
+    try:
+        df_rp = get_riesgo_pais()
+        if df_rp is not None and len(df_rp) >= 2:
+            result["riesgo_pais"]     = int(df_rp["valor"].iloc[-1])
+            result["riesgo_pais_var"] = (
+                int(df_rp["valor"].iloc[-1]) - int(df_rp["valor"].iloc[-2])
+            )
+    except Exception:
+        pass
+
+    # 4. Merval + S&P500 (reutiliza índices ya cacheados)
+    try:
+        for idx in get_indices_globales():
+            if "MERV" in idx["ticker"]:
+                result["merval"]     = idx["precio"]
+                result["merval_var"] = idx["variacion_pct"]
+            elif "GSPC" in idx["ticker"]:
+                result["sp500"]     = idx["precio"]
+                result["sp500_var"] = idx["variacion_pct"]
+    except Exception:
+        pass
+
+    return result
+
+
 def generar_resumen_dia(portfolio_data: dict, indices: list, dolar) -> dict:
     """Genera el resumen diario personalizado para la home screen.
 
-    portfolio_data: {"gainers": [...], "losers": [...]} de get_movers_portfolio()
-    indices:        lista de get_indices_globales()
-    dolar:          lista de get_cotizaciones() o None
+    Mantenido por compatibilidad con código existente.
     """
     from datetime import datetime
     ahora   = datetime.now()
     hora    = ahora.hour
-    weekday = ahora.weekday()  # 0=lunes … 6=domingo
+    weekday = ahora.weekday()
 
     if 6 <= hora < 12:
         saludo = "Buenos días"
@@ -182,7 +268,6 @@ def generar_resumen_dia(portfolio_data: dict, indices: list, dolar) -> dict:
     merval = _idx("MERV")
     blue   = next((i for i in (dolar or []) if i.get("casa", "").lower() == "blue"), None)
 
-    # Texto principal
     partes = [f"{saludo} 👋"]
     if var_total is not None:
         dir_p = "subió" if var_total >= 0 else "bajó"
@@ -233,11 +318,27 @@ def generar_resumen_dia(portfolio_data: dict, indices: list, dolar) -> dict:
     }
 
 
+@st.cache_data(ttl=86400, show_spinner=False)
+def _get_heatmap_mcaps() -> dict:
+    """Market caps del heatmap. Cache 24h — cambian poco intradía."""
+    result = {}
+    for item in _HEATMAP_TICKERS:
+        tk = item["ticker"]
+        try:
+            fi = yf.Ticker(tk).fast_info
+            mcap = getattr(fi, "market_cap", None) or 1e9
+            result[tk] = max(float(mcap), 1e6)
+        except Exception:
+            result[tk] = 1e9
+    return result
+
+
 @st.cache_data(ttl=300)
 def get_heatmap_data() -> list:
     """Precios y variaciones para el treemap de mercado. Cache 5 min."""
     tickers = [t["ticker"] for t in _HEATMAP_TICKERS]
-    data = _batch_download(tickers)
+    data  = _batch_download(tickers)
+    mcaps = _get_heatmap_mcaps()
     result = []
     for item in _HEATMAP_TICKERS:
         tk = item["ticker"]
@@ -245,25 +346,21 @@ def get_heatmap_data() -> list:
         if df.empty:
             continue
         precio = float(df["Close"].iloc[-1])
-        var = _var_pct(df) or 0.0
-        try:
-            info = yf.Ticker(tk).fast_info
-            mcap = info.get("marketCap") or info.get("market_cap") or 1e9
-        except Exception:
-            mcap = 1e9
+        var    = _var_pct(df) or 0.0
+        mcap   = mcaps.get(tk, 1e9)
         result.append({
             "ticker":      item["nombre"],
             "sector":      item["sector"],
             "precio":      round(precio, 2),
             "variacion_%": round(var, 2),
-            "market_cap":  max(mcap, 1e6),
+            "market_cap":  mcap,
         })
     return result
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=300)
 def get_ticker_tape(portfolio_tickers: tuple) -> list:
-    """Banda de precios: portfolio + índices principales. Cache 3 min."""
+    """Banda de precios: portfolio + índices principales. Cache 5 min."""
     all_tks = list(portfolio_tickers) + [t for t in _TAPE_INDICES if t not in portfolio_tickers]
     data = _batch_download(all_tks)
     result = []

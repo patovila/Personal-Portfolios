@@ -142,7 +142,11 @@ def crecimiento_historico(ticker):
             fecha_act, fecha_ant = comunes[0], comunes[-1]
             rev_act, rev_ant = rev.loc[fecha_act], rev.loc[fecha_ant]
             ni_act, ni_ant = ni.loc[fecha_act], ni.loc[fecha_ant]
-            if rev_act and rev_ant:
+            _vals_ok = all(
+                v is not None and not pd.isna(v) and v != 0
+                for v in [rev_act, rev_ant]
+            )
+            if _vals_ok:
                 margen_actual = (ni_act / rev_act) * 100
                 margen_anterior = (ni_ant / rev_ant) * 100
                 resultados["margen_neto_actual_%"] = round(margen_actual, 2)

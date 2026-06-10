@@ -3,6 +3,19 @@ import json
 import time
 from pathlib import Path
 import yfinance as yf
+import streamlit as st
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def get_ticker_info_safe(ticker: str) -> dict:
+    """yf.Ticker.info con cache 24h y fallback vacío ante fallos de red."""
+    try:
+        info = yf.Ticker(ticker).info
+        if not info or len(info) < 5:
+            return {}
+        return info
+    except Exception:
+        return {}
 
 
 def _fetch_info(ticker: str) -> dict:

@@ -697,86 +697,179 @@ try:
 except Exception:
     pass
 
-# ── CARD "BUENOS DÍAS" (home screen) ──────────────────────────────────────────
+# ── BRIEF DIARIO ──────────────────────────────────────────────────────────────
 try:
-    from src.mercado import (
-        get_movers_portfolio as _get_movers_bd,
-        get_indices_globales as _get_idx_bd,
-        generar_resumen_dia  as _gen_resumen,
+    from src.mercado import get_metricas_macro as _get_macro_brief
+
+    _macro = _get_macro_brief()
+
+    # CSS grid para las 6 métricas
+    st.markdown("""
+<style>
+.brief-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:0 0 10px 0;}
+@media(max-width:768px){.brief-row{grid-template-columns:repeat(3,1fr);}}
+</style>""", unsafe_allow_html=True)
+
+    def _brief_card(label, main_val, sub_val, var, var_unidad="%", invert=False):
+        if var is not None:
+            good = (var >= 0) if not invert else (var <= 0)
+            var_color = "#26a69a" if good else "#ef5350"
+            if var_unidad == "bp":
+                var_txt = f"{var:+.0f}&nbsp;bp"
+            else:
+                var_txt = f"{var:+.1f}%"
+        else:
+            var_color, var_txt = "#787b86", "—"
+        sub_html = (f"<div style='font-size:10px;color:#787b86;margin-top:1px;'>{sub_val}</div>"
+                    if sub_val else "")
+        return (
+            f"<div style='background:#1e222d;border:1px solid #2a2e39;"
+            f"border-radius:8px;padding:10px 12px;'>"
+            f"<div style='font-size:10px;color:#787b86;font-weight:600;"
+            f"text-transform:uppercase;letter-spacing:.5px;'>{label}</div>"
+            f"<div style='font-size:13px;font-weight:700;color:#d1d4dc;"
+            f"margin-top:3px;line-height:1.25;white-space:nowrap;"
+            f"overflow:hidden;text-overflow:ellipsis;'>{main_val}</div>"
+            f"{sub_html}"
+            f"<div style='font-size:12px;color:{var_color};font-weight:600;"
+            f"margin-top:4px;'>{var_txt}</div>"
+            f"</div>"
+        )
+
+    def _ars(v):
+        return f"${v:,.0f}".replace(",", ".") if v is not None else "—"
+
+    def _usd(v):
+        return f"${v:,.0f}" if v is not None else "—"
+
+    _blue_main = (
+        f"{_ars(_macro['blue_compra'])} / {_ars(_macro['blue_venta'])}"
+        if _macro["blue_compra"] else _ars(_macro["blue_venta"])
     )
-    from src.dolar import get_cotizaciones as _get_cots_bd
 
-    # Carga portfolio para obtener tickers
-    try:
-        from src.portfolio import cargar_portfolio as _cp_bd
-        _port_bd  = _cp_bd("pato")
-        _tks_bd   = tuple(p["ticker"] for p in _port_bd.get("posiciones", []))
-        _movers_bd = _get_movers_bd(_tks_bd) if _tks_bd else {}
-    except Exception:
-        _movers_bd = {}
+    _cards = "".join([
+        _brief_card("Dólar Blue",    _blue_main,              "compra / venta",  _macro["blue_var"]),
+        _brief_card("Dólar MEP",     _ars(_macro["mep"]),     "venta",           _macro["mep_var"]),
+        _brief_card("Dólar CCL",     _ars(_macro["ccl"]),     "venta",           _macro["ccl_var"]),
+        _brief_card("Riesgo País",
+                    f"{_macro['riesgo_pais']:,}".replace(",", ".") if _macro["riesgo_pais"] else "—",
+                    "puntos básicos",  _macro["riesgo_pais_var"],
+                    var_unidad="bp", invert=True),
+        _brief_card("Merval",        _ars(_macro["merval"]),  "ARS",             _macro["merval_var"]),
+        _brief_card("S&amp;P 500",   _usd(_macro["sp500"]),   "USD",             _macro["sp500_var"]),
+    ])
 
-    _idx_bd  = _get_idx_bd()
-    _cots_bd = _get_cots_bd()
-    _res     = _gen_resumen(_movers_bd, _idx_bd, _cots_bd)
+    st.markdown(
+        f"<div style='font-size:10px;color:#787b86;font-weight:600;"
+        f"text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;'>"
+        f"📰 Brief del día</div>"
+        f"<div class='brief-row'>{_cards}</div>",
+        unsafe_allow_html=True,
+    )
 
-    # Colores de fondo según estado del portfolio
-    _var_p = _res["var_total_pct"]
-    _bg_grad = "#1e222d"
-    _border  = "#2a2e39"
+except Exception:
+    pass  # Sección decorativa; la app continúa si falla
 
-    # Badges
-    _port_badge   = f"{_var_p:+.1f}% hoy" if _var_p is not None else "Sin datos"
-    _blue_badge   = f"${_res['blue_precio']:,.0f}" if _res["blue_precio"] else "—"
-    _sp500_var    = _res["sp500_var"]
-    _sp500_badge  = f"{_sp500_var:+.1f}%" if _sp500_var is not None else "—"
+# ── CARD "TU CARTERA HOY" ─────────────────────────────────────────────────────
+try:
+    from src.portfolio import (
+        cargar_portfolio          as _cp_brief,
+        calcular_metricas_portfolio as _calc_met_brief,
+    )
+    from src.mercado import get_movers_portfolio as _get_mv_brief
 
-    _port_color  = "#26a69a" if (_var_p or 0) >= 0 and _var_p is not None else "#ef5350"
-    _sp500_color = "#26a69a" if (_sp500_var or 0) >= 0 and _sp500_var is not None else "#ef5350"
+    _port_brief = _cp_brief("pato")
+    _pos_brief  = _port_brief.get("posiciones", [])
 
-    # Alertas contextuales
-    _alertas = ""
-    if _res["fin_de_semana"]:
-        _reabre = "lunes" if _res["weekday"] == 5 else "mañana lunes"
-        _alertas = (
-            f'<div style="margin-top:10px;font-size:13px;color:#ff9800;">'
-            f'📅 Mercado cerrado — reabre el {_reabre}</div>'
-        )
-    elif _res["pre_market"]:
-        _h = _res["horas_apertura"]
-        _alertas = (
-            f'<div style="margin-top:10px;font-size:13px;color:#787b86;">'
-            f'⏰ Mercado abre en {_h} hora{"s" if _h != 1 else ""}</div>'
-        )
+    if _pos_brief:
+        _tks_brief = tuple(p["ticker"] for p in _pos_brief)
+        _met_brief = _calc_met_brief(_port_brief)
+        _val_total = _met_brief.get("valor_total_ars") or 0
 
-    _html_card = f"""
-<div style="background:{_bg_grad};border-radius:12px;padding:20px 24px;
-            margin-bottom:16px;border:1px solid {_border};border-left:3px solid #2962ff;">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-    <span style="font-size:20px;font-weight:700;color:#d1d4dc;">{_res['saludo']}</span>
-    <span style="font-size:13px;color:#787b86;">{_res['fecha_str']}</span>
+        # Variación del día ponderada por valor de posición
+        _movers_b  = _get_mv_brief(_tks_brief) if _tks_brief else {}
+        _todos_b   = _movers_b.get("gainers", []) + _movers_b.get("losers", [])
+        _var_dia_pct = None
+        if _todos_b and _val_total > 0:
+            _pos_map = {p["ticker"]: p for p in _pos_brief}
+            _num, _den = 0.0, 0.0
+            for _mv in _todos_b:
+                _pp = _pos_map.get(_mv["ticker"])
+                if _pp:
+                    _v = (_pp.get("precio_actual_ars") or 0) * (_pp.get("cantidad") or 0)
+                    _num += _mv["variacion_pct"] * _v
+                    _den += _v
+            if _den > 0:
+                _var_dia_pct = _num / _den
+
+        _var_dia_ars = (_val_total * _var_dia_pct / 100) if _var_dia_pct is not None else None
+
+        _gainers_b = _movers_b.get("gainers", [])
+        _losers_b  = _movers_b.get("losers", [])
+        _mejor_b   = _gainers_b[0] if _gainers_b else None
+        _peor_b    = _losers_b[0]  if _losers_b  else None
+
+        if _var_dia_pct is not None:
+            if _var_dia_pct > 0.5:
+                _badge, _badge_col = "📈 Subió", "#26a69a"
+            elif _var_dia_pct < -0.5:
+                _badge, _badge_col = "📉 Bajó", "#ef5350"
+            else:
+                _badge, _badge_col = "➡️ Estable", "#787b86"
+        else:
+            _badge, _badge_col = "—", "#787b86"
+
+        _vc   = "#26a69a" if (_var_dia_pct or 0) >= 0 else "#ef5350"
+        _vt   = f"{_var_dia_pct:+.2f}%" if _var_dia_pct is not None else "—"
+        _vart = (f"&nbsp;<span style='color:{_vc};font-size:12px;'>"
+                 f"${_var_dia_ars:+,.0f}".replace(",", ".") + "</span>"
+                 if _var_dia_ars is not None else "")
+        _v_total_fmt = f"ARS ${_val_total:,.0f}".replace(",", ".")
+
+        _pos_items = []
+        if _mejor_b:
+            _pos_items.append(
+                f"<span style='color:#26a69a;'>▲ {_mejor_b['ticker']} "
+                f"{_mejor_b['variacion_pct']:+.1f}%</span>"
+            )
+        if _peor_b:
+            _pos_items.append(
+                f"<span style='color:#ef5350;'>▼ {_peor_b['ticker']} "
+                f"{_peor_b['variacion_pct']:+.1f}%</span>"
+            )
+        _pos_html = (
+            f"<div style='margin-top:8px;font-size:12px;'>"
+            + "&nbsp;&nbsp;·&nbsp;&nbsp;".join(_pos_items)
+            + "</div>"
+        ) if _pos_items else ""
+
+        st.markdown(f"""
+<div style="background:#1e222d;border:1px solid #2a2e39;border-radius:10px;
+            padding:14px 18px;margin-bottom:12px;border-left:3px solid #2962ff;">
+  <div style="display:flex;justify-content:space-between;align-items:center;
+              margin-bottom:8px;">
+    <span style="font-size:13px;font-weight:700;color:#d1d4dc;">
+      💼 Tu cartera hoy
+    </span>
+    <span style="background:rgba(41,98,255,.12);color:{_badge_col};
+                 font-size:11px;font-weight:700;padding:3px 10px;
+                 border-radius:12px;border:1px solid {_badge_col}55;">
+      {_badge}
+    </span>
   </div>
-  <p style="margin:0 0 14px 0;font-size:15px;color:#d1d4dc;line-height:1.6;">
-    {_res['texto']}
-  </p>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;">
-    <span style="background:#2a2e39;border:1px solid #363a45;border-radius:20px;
-                 padding:4px 14px;font-size:13px;color:#d1d4dc;">
-      📊 Portfolio hoy:&nbsp;<strong style="color:{_port_color};">{_port_badge}</strong>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:baseline;">
+    <span style="color:#787b86;font-size:12px;">Valor total:&nbsp;
+      <strong style="color:#d1d4dc;font-size:15px;">{_v_total_fmt}</strong>
     </span>
-    <span style="background:#2a2e39;border:1px solid #363a45;border-radius:20px;
-                 padding:4px 14px;font-size:13px;color:#d1d4dc;">
-      💵 Dólar blue:&nbsp;<strong style="color:#d1d4dc;">{_blue_badge}</strong>
-    </span>
-    <span style="background:#2a2e39;border:1px solid #363a45;border-radius:20px;
-                 padding:4px 14px;font-size:13px;color:#d1d4dc;">
-      🇺🇸 S&amp;P500:&nbsp;<strong style="color:{_sp500_color};">{_sp500_badge}</strong>
+    <span style="color:#787b86;font-size:12px;">Variación:&nbsp;
+      <strong style="color:{_vc};font-size:14px;">{_vt}</strong>{_vart}
     </span>
   </div>
-  {_alertas}
-</div>"""
-    st.markdown(_html_card, unsafe_allow_html=True)
-except Exception as _e_bd:
-    pass  # La card es decorativa; si falla, la app sigue funcionando
+  {_pos_html}
+</div>""", unsafe_allow_html=True)
+
+except Exception:
+    pass  # Card decorativa; la app continúa si falla
 
 # ── ÍNDICES GLOBALES CON SPARKLINES ───────────────────────────────────────────
 try:

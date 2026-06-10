@@ -82,7 +82,7 @@ def _precio_actual_ars(posicion: dict, tipo_cambio: float) -> float | None:
     return precio * tipo_cambio
 
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def actualizar_precios_actuales(portfolio: dict) -> dict:
     """Devuelve una copia del portfolio con precio_actual_ars refrescado.
 
