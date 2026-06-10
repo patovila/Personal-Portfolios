@@ -469,6 +469,7 @@ with st.sidebar:
     _nav_secciones = [
         ("🧮 Calculadoras",    "calculadoras"),
         ("🇦🇷 Macro Argentina", "macro"),
+        ("⚖️ Comparar",         "comparar"),
         ("🎯 Perfil Inversor",  "perfil"),
         ("🔎 Screener",         "screener"),
         ("👁️ Watchlist",        "watchlist"),
@@ -1006,7 +1007,7 @@ if not ticker and not _seccion_activa:
 st.divider()
 
 if ticker:
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
         "🏢 Ficha",
         "📊 Fundamental",
         "📈 Tecnico",
@@ -1016,7 +1017,11 @@ if ticker:
         "📐 DCF & Valuación",
         "📰 Noticias",
         "👁️ Watchlist",
+        "⚖️ Comparar",
     ])
+elif _seccion_activa == "comparar":
+    (tab10,) = st.tabs(["⚖️ Comparar"])
+    tab1 = tab2 = tab3 = tab4 = tab5 = tab6 = tab7 = tab8 = tab9 = None
 elif _seccion_activa in ("calculadoras", "macro", "watchlist"):
     if _seccion_activa == "calculadoras":
         tab5, tab6, tab9 = st.tabs(["🧮 Calculadoras", "🇦🇷 Macro Argentina", "👁️ Watchlist"])
@@ -1024,7 +1029,7 @@ elif _seccion_activa in ("calculadoras", "macro", "watchlist"):
         tab6, tab5, tab9 = st.tabs(["🇦🇷 Macro Argentina", "🧮 Calculadoras", "👁️ Watchlist"])
     else:
         tab9, tab5, tab6 = st.tabs(["👁️ Watchlist", "🧮 Calculadoras", "🇦🇷 Macro Argentina"])
-    tab1 = tab2 = tab3 = tab4 = tab7 = tab8 = None
+    tab1 = tab2 = tab3 = tab4 = tab7 = tab8 = tab10 = None
 else:
     _TITULOS_NUEVA = {
         "perfil":   "🎯 Perfil Inversor",
@@ -4206,6 +4211,198 @@ with tab9:
                     _guardar_wl(_wl_nombre, list(_wl_preset_lista))
                     st.success(f"✅ Watchlist cargada: {len(_wl_preset_lista)} tickers.")
                     st.rerun()
+
+# TAB 10: COMPARAR
+if tab10 is not None:
+    with tab10:
+        import plotly.graph_objects as _go_cmp
+        import pandas as _pd_cmp
+        from src.comparador import (
+            get_datos_comparador  as _get_comp,
+            performance_relativa  as _perf_rel,
+            METRICAS              as _METRICAS_CMP,
+            _MENOR_ES_MEJOR       as _MEM_CMP,
+            _NEUTRAL              as _NEUT_CMP,
+        )
+
+        st.subheader("⚖️ Comparador de tickers")
+        st.caption("Compará 2 a 4 tickers en una sola vista: métricas, performance y resumen.")
+
+        # ── SECCIÓN 1: Selector ───────────────────────────────────────────────
+        _default_cmp = ticker if ticker else "YPF, PAM, TGS"
+        _input_cmp = st.text_input(
+            "Tickers (separados por coma, máx 4):",
+            value=st.session_state.get("comp_last_input", _default_cmp),
+            placeholder="Ej: YPF, PAM, TGS, CVX",
+            key="comp_input",
+        )
+        _periodos_cmp = {"1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y"}
+        _per_lbl_cmp = st.radio(
+            "Período de performance:",
+            list(_periodos_cmp.keys()),
+            index=3,
+            horizontal=True,
+            key="comp_periodo",
+        )
+        _per_code_cmp = _periodos_cmp[_per_lbl_cmp]
+
+        _btn_cmp = st.button("⚖️ Comparar", key="comp_btn", type="primary")
+
+        if _btn_cmp:
+            st.session_state["comp_last_input"]   = _input_cmp
+            st.session_state["comp_tickers_cache"] = None  # fuerza recarga
+
+        _tks_cmp_raw = st.session_state.get("comp_last_input", _default_cmp)
+        _tks_cmp = tuple(t.strip().upper() for t in _tks_cmp_raw.split(",") if t.strip())[:4]
+
+        if len(_tks_cmp) < 2:
+            st.info("Ingresá al menos 2 tickers y presioná ⚖️ Comparar.")
+        else:
+            with st.spinner(f"Cargando {', '.join(_tks_cmp)}..."):
+                _df_cmp = _get_comp(_tks_cmp)
+
+            if _df_cmp.empty:
+                st.warning("No se pudieron obtener datos. Verificá los tickers.")
+            else:
+                # ── SECCIÓN 2: Tabla comparativa ──────────────────────────────
+                st.markdown(f"### 📊 {' vs '.join(_tks_cmp)}")
+
+                # Función de estilo: verde mejor / rojo peor por fila (usa closure _df_cmp)
+                def _cmp_styles(display_df):
+                    styles = _pd_cmp.DataFrame(
+                        "", index=display_df.index, columns=display_df.columns
+                    )
+                    for _met in _df_cmp.index:
+                        if _met not in display_df.index or _met in _NEUT_CMP:
+                            continue
+                        _row = _pd_cmp.to_numeric(_df_cmp.loc[_met], errors="coerce")
+                        _v   = _row.dropna()
+                        if len(_v) < 2:
+                            continue
+                        _menor = _met in _MEM_CMP
+                        _bi = _v.idxmin() if _menor else _v.idxmax()
+                        _wi = _v.idxmax() if _menor else _v.idxmin()
+                        if _bi != _wi:
+                            styles.loc[_met, _bi] = (
+                                "background-color:#0d2318;color:#4ade80;font-weight:700;"
+                            )
+                            styles.loc[_met, _wi] = (
+                                "background-color:#2d1010;color:#f87171;"
+                            )
+                    return styles
+
+                # DataFrame formateado para display
+                def _fmt(v, met):
+                    if v is None or _pd_cmp.isna(v):
+                        return "N/D"
+                    if met == "Precio actual":
+                        return f"${v:,.2f}"
+                    if met == "Market Cap (B USD)":
+                        return f"${v:.2f}B"
+                    if "%" in met:
+                        return f"{v:+.2f}%" if "Var" in met else f"{v:.2f}%"
+                    return f"{v:.2f}"
+
+                _df_display = _df_cmp.copy().astype(object)
+                for _m in _df_display.index:
+                    for _col in _df_display.columns:
+                        _df_display.loc[_m, _col] = _fmt(_df_cmp.loc[_m, _col], _m)
+
+                st.dataframe(
+                    _df_display.style.apply(_cmp_styles, axis=None),
+                    use_container_width=True,
+                    height=590,
+                )
+                st.caption(
+                    "🟢 Mejor valor de la fila &nbsp;&nbsp; 🔴 Peor valor · "
+                    "Fundamentals: cache 24h · Variaciones: cache 5 min"
+                )
+
+                # ── SECCIÓN 3: Performance relativa ───────────────────────────
+                st.markdown("---")
+                st.markdown(f"### 📈 Performance relativa — base 100 ({_per_lbl_cmp})")
+
+                with st.spinner("Cargando historial de precios..."):
+                    _df_perf = _perf_rel(_tks_cmp, _per_code_cmp)
+
+                if not _df_perf.empty:
+                    _COLS_CMP = ["#2962ff", "#26a69a", "#ef5350", "#ff9800"]
+                    _fig_cmp = _go_cmp.Figure()
+                    for _i, _tk_p in enumerate(_tks_cmp):
+                        if _tk_p not in _df_perf.columns:
+                            continue
+                        _ret = float(_df_perf[_tk_p].iloc[-1]) - 100
+                        _color_p = _COLS_CMP[_i % len(_COLS_CMP)]
+                        _fig_cmp.add_trace(_go_cmp.Scatter(
+                            x=_df_perf.index,
+                            y=_df_perf[_tk_p],
+                            name=f"{_tk_p} ({_ret:+.1f}%)",
+                            mode="lines",
+                            line=dict(color=_color_p, width=2),
+                            hovertemplate="%{y:.1f}<extra>" + _tk_p + "</extra>",
+                        ))
+                    _fig_cmp.add_hline(
+                        y=100, line_dash="dot",
+                        line_color="#787b86", line_width=1,
+                    )
+                    _fig_cmp.update_layout(
+                        height=420,
+                        paper_bgcolor="#131722",
+                        plot_bgcolor="#1e222d",
+                        font_color="#d1d4dc",
+                        xaxis=dict(gridcolor="#2a2e39", linecolor="#2a2e39"),
+                        yaxis=dict(
+                            gridcolor="#2a2e39",
+                            tickformat=".0f",
+                            title="Base 100",
+                        ),
+                        legend=dict(
+                            bgcolor="#1e222d",
+                            bordercolor="#2a2e39",
+                            borderwidth=1,
+                        ),
+                        hovermode="x unified",
+                        margin=dict(l=10, r=10, t=20, b=10),
+                    )
+                    st.plotly_chart(
+                        _fig_cmp, use_container_width=True,
+                        config={"displayModeBar": False},
+                    )
+                else:
+                    st.info("No se pudo obtener historial de precios.")
+
+                # ── SECCIÓN 4: Resumen automático ─────────────────────────────
+                st.markdown("---")
+                st.markdown("### 🤖 Resumen automático")
+
+                _RESUMEN_CMP = {
+                    "PE Trailing":       ("📊", "mejor PE",            "mayor PE"),
+                    "ROE %":             ("🏆", "mejor ROE",           "menor ROE"),
+                    "Margen Neto %":     ("💹", "mejor margen neto",   "menor margen neto"),
+                    "Revenue CAGR 3a %": ("🚀", "mayor crecimiento",   "menor crecimiento"),
+                    "Deuda/Equity":      ("⚠️",  "menor deuda",         "mayor deuda"),
+                    "Var 1 año %":       ("📈", "mejor retorno 1 año", "peor retorno 1 año"),
+                }
+                for _met_r, (_emj, _lbl_b, _lbl_w) in _RESUMEN_CMP.items():
+                    if _met_r not in _df_cmp.index:
+                        continue
+                    _row_r = _pd_cmp.to_numeric(
+                        _df_cmp.loc[_met_r], errors="coerce"
+                    ).dropna()
+                    if _row_r.empty or len(_row_r) < 2:
+                        continue
+                    _menor_r  = _met_r in _MEM_CMP
+                    _best_tk  = _row_r.idxmin() if _menor_r else _row_r.idxmax()
+                    _worst_tk = _row_r.idxmax() if _menor_r else _row_r.idxmin()
+                    _bv = _row_r[_best_tk]
+                    _wv = _row_r[_worst_tk]
+                    _suf = "%" if "%" in _met_r else "x" if "Equity" in _met_r else ""
+                    st.caption(
+                        f"{_emj} **{_best_tk}** tiene el {_lbl_b} "
+                        f"({_bv:.2f}{_suf}) · "
+                        f"**{_worst_tk}** el {_lbl_w} "
+                        f"({_wv:.2f}{_suf})"
+                    )
 
 # ── FOOTER ───────────────────────────────────────────────────────────────────
 st.markdown("---")
