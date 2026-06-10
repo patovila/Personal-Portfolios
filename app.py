@@ -446,9 +446,11 @@ with st.sidebar:
     
     ticker = st.text_input(
         "Escribe un ticker:",
-        value="YPF",
-        placeholder="Ej: YPF, MELI, AAPL"
+        value="",
+        placeholder="Buscar empresa o ticker..."
     ).upper()
+    if ticker:
+        st.session_state.pop("seccion_activa", None)
     
     periodo = st.selectbox(
         "Periodo para graficos:",
@@ -458,12 +460,28 @@ with st.sidebar:
     
     st.divider()
     st.subheader("Atajos")
-    
+
     if universo and "portfolios" in universo:
         for nombre, tickers in universo["portfolios"].items():
             with st.expander(nombre.capitalize()):
                 st.write(f"{len(tickers)} tickers")
                 st.write(", ".join(tickers))
+
+    st.markdown("---")
+    st.markdown("### 🧭 Herramientas")
+
+    _nav_secciones = [
+        ("🧮 Calculadoras",    "calculadoras"),
+        ("🇦🇷 Macro Argentina", "macro"),
+        ("🎯 Perfil Inversor",  "perfil"),
+        ("🔎 Screener",         "screener"),
+        ("👁️ Watchlist",        "watchlist"),
+        ("📅 Earnings",         "earnings"),
+    ]
+    for _nav_label, _nav_key in _nav_secciones:
+        if st.button(_nav_label, key=f"nav_{_nav_key}", use_container_width=True):
+            st.session_state["seccion_activa"] = _nav_key
+            st.rerun()
 
     st.divider()
     st.subheader("💵 Dólar en vivo")
@@ -641,7 +659,8 @@ if datos:
     st.caption(f"{datos['sector']} | {datos['industria']} | {datos['pais']}")
 else:
     st.header("Mi Bloomberg Personal")
-    st.caption(ticker_error or "")
+    if ticker:
+        st.caption(ticker_error or "")
 
 # ── TICKER TAPE ANIMADO ───────────────────────────────────────────────────────
 try:
@@ -898,9 +917,14 @@ try:
 except Exception as _e_hm:
     st.warning(f"Heatmap no disponible: {_e_hm}")
 
+_seccion_activa = st.session_state.get("seccion_activa")
+
+if not ticker and not _seccion_activa:
+    st.stop()
+
 st.divider()
 
-if datos:
+if ticker:
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
         "🏢 Ficha",
         "📊 Fundamental",
@@ -912,10 +936,23 @@ if datos:
         "📰 Noticias",
         "👁️ Watchlist",
     ])
-else:
-    st.info("🔍 Buscá un ticker para ver análisis de empresas.")
-    tab5, tab6, tab9 = st.tabs(["🧮 Calculadoras", "🇦🇷 Macro Argentina", "👁️ Watchlist"])
+elif _seccion_activa in ("calculadoras", "macro", "watchlist"):
+    if _seccion_activa == "calculadoras":
+        tab5, tab6, tab9 = st.tabs(["🧮 Calculadoras", "🇦🇷 Macro Argentina", "👁️ Watchlist"])
+    elif _seccion_activa == "macro":
+        tab6, tab5, tab9 = st.tabs(["🇦🇷 Macro Argentina", "🧮 Calculadoras", "👁️ Watchlist"])
+    else:
+        tab9, tab5, tab6 = st.tabs(["👁️ Watchlist", "🧮 Calculadoras", "🇦🇷 Macro Argentina"])
     tab1 = tab2 = tab3 = tab4 = tab7 = tab8 = None
+else:
+    _TITULOS_NUEVA = {
+        "perfil":   "🎯 Perfil Inversor",
+        "screener": "🔎 Screener",
+        "earnings": "📅 Earnings",
+    }
+    _titulo_nueva = _TITULOS_NUEVA.get(_seccion_activa, str(_seccion_activa))
+    st.info(f"🚧 **{_titulo_nueva}** está en construcción. Próximamente disponible.")
+    st.stop()
 
 # TAB 1: FICHA
 if tab1 is not None:
