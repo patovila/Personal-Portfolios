@@ -443,10 +443,11 @@ with st.sidebar:
     ticker = st.text_input(
         "Escribe un ticker:",
         value="",
-        placeholder="Buscar empresa o ticker..."
+        placeholder="Buscar empresa o ticker...",
+        key="ticker_input",
     ).upper()
     if ticker:
-        st.session_state.pop("seccion_activa", None)
+        st.session_state["seccion_activa"] = ""
     
     periodo = st.selectbox(
         "Periodo para graficos:",
@@ -476,6 +477,7 @@ with st.sidebar:
     for _nav_label, _nav_key in _nav_secciones:
         if st.button(_nav_label, key=f"nav_{_nav_key}", use_container_width=True):
             st.session_state["seccion_activa"] = _nav_key
+            st.session_state["ticker_input"] = ""
             st.rerun()
 
     st.divider()
@@ -997,12 +999,17 @@ try:
 except Exception as _e_hm:
     st.warning(f"Heatmap no disponible: {_e_hm}")
 
-_seccion_activa = st.session_state.get("seccion_activa")
+_seccion_activa = st.session_state.get("seccion_activa", "")
 
 if not ticker and not _seccion_activa:
     st.stop()
 
 st.divider()
+
+if _seccion_activa and not ticker:
+    if st.button("← Inicio", key="btn_volver_inicio"):
+        st.session_state["seccion_activa"] = ""
+        st.rerun()
 
 if ticker:
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
