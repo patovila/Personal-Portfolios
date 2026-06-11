@@ -1,0 +1,82 @@
+name: Mi Bloomberg Bot
+
+on:
+  schedule:
+    # Alertas: cada 15 min, lun-vie 13:00-21:00 UTC = 10:00-18:00 ART
+    - cron: "*/15 13-21 * * 1-5"
+    # Brief diario: 12:00 UTC = 9:00 AM ART, lunes-viernes
+    - cron: "0 12 * * 1-5"
+  workflow_dispatch: # Permite ejecución manual desde GitHub Actions UI
+
+permissions:
+  contents: write # Necesario para commit-back del estado de alertas
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  check-alertas:
+    name: Verificar alertas de precio
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.schedule == '*/15 13-21 * * 1-5'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install requests yfinance pandas
+
+      - name: Ejecutar check_alertas.py
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python bot/check_alertas.py
+
+      - name: Persistir alertas disparadas
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/alertas/
+          if git diff --cached --quiet; then
+            echo "Sin cambios en alertas"
+          else
+            git commit -m "bot: marcar alertas disparadas [skip ci]"
+            git push
+          fi
+
+  # ────────────────────────────────────────────────────────────────────────────
+  brief-diario:
+    name: Brief financiero diario
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.schedule == '0 12 * * 1-5'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install requests yfinance pandas
+
+      - name: Enviar brief diario
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python bot/brief_diario.py
