@@ -1,15 +1,14 @@
 """Sistema de alertas de precio: take profit, stop loss, variación diaria."""
 from __future__ import annotations
 
-import json
 from datetime import datetime
-from pathlib import Path
 from uuid import uuid4
 
 import pandas as pd
 import streamlit as st
 
 from src.data_layer import get_precios
+from src import storage
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -21,32 +20,12 @@ def cargar_alertas(portfolio_name: str) -> list:
 
     session_state es la fuente de verdad durante la sesión.
     """
-    ss_key = f"alertas_{portfolio_name}"
-    if ss_key in st.session_state:
-        return st.session_state[ss_key]
-    ruta = Path("data/alertas") / f"{portfolio_name}.json"
-    if ruta.exists():
-        try:
-            with open(ruta, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except Exception:
-            data = []
-    else:
-        data = []
-    st.session_state[ss_key] = data
-    return data
+    return storage.load("alertas", portfolio_name, default=[])
 
 
 def guardar_alertas(portfolio_name: str, alertas: list) -> None:
     """Guarda alertas: session_state primero, luego JSON como backup."""
-    st.session_state[f"alertas_{portfolio_name}"] = alertas
-    try:
-        ruta = Path("data/alertas") / f"{portfolio_name}.json"
-        ruta.parent.mkdir(parents=True, exist_ok=True)
-        with open(ruta, "w", encoding="utf-8") as f:
-            json.dump(alertas, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass  # Filesystem puede ser read-only en Streamlit Cloud
+    storage.save("alertas", portfolio_name, alertas)
 
 
 def nueva_alerta(ticker: str, tipo: str, valor: float) -> dict:

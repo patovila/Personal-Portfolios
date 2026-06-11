@@ -10,14 +10,20 @@ Convenciones de tipos de activo (campo posicion["tipo"]):
 """
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import streamlit as st
 
 from src.data_layer import get_precios
+from src import storage
+
+
+_PORTFOLIO_VACIO: dict = {
+    "configuracion": {"tipo_cambio_ars_usd": 1000},
+    "posiciones": [],
+    "metadata": {},
+}
 
 
 # ---------- carga ----------
@@ -28,20 +34,9 @@ def cargar_portfolio(user_id: str = "pato") -> dict:
     session_state es la fuente de verdad durante la sesión.
     El JSON en disco actúa como backup (se pierde en redeployment de Cloud).
     """
-    ss_key = f"portfolio_{user_id}"
-    if ss_key in st.session_state:
-        return st.session_state[ss_key]
-    ruta = Path("data/portfolio") / f"{user_id}.json"
-    if ruta.exists():
-        try:
-            with open(ruta, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except Exception:
-            data = {"configuracion": {"tipo_cambio_ars_usd": 1000}, "posiciones": [], "metadata": {}}
-    else:
-        data = {"configuracion": {"tipo_cambio_ars_usd": 1000}, "posiciones": [], "metadata": {}}
-    st.session_state[ss_key] = data
-    return data
+    import json
+    default = json.loads(json.dumps(_PORTFOLIO_VACIO))  # deep copy
+    return storage.load("portfolio", user_id, default=default)
 
 
 # ---------- valuacion ----------
@@ -316,14 +311,7 @@ def guardar_portfolio(nombre: str, portfolio: dict) -> None:
     from datetime import date
     portfolio.setdefault("metadata", {})
     portfolio["metadata"]["fecha_actualizacion"] = date.today().isoformat()
-    st.session_state[f"portfolio_{nombre}"] = portfolio
-    try:
-        ruta = Path("data/portfolio") / f"{nombre}.json"
-        ruta.parent.mkdir(parents=True, exist_ok=True)
-        with open(ruta, "w", encoding="utf-8") as f:
-            json.dump(portfolio, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass  # Filesystem puede ser read-only en Streamlit Cloud
+    storage.save("portfolio", nombre, portfolio)
 
 
 def agregar_posicion(

@@ -1,16 +1,9 @@
 """Watchlist compartible — gestión, precios y links públicos."""
-import json
-import os
-
 import pandas as pd
 import streamlit as st
 
 from src.data_layer import get_precios
-
-_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "data", "watchlists",
-)
+from src import storage
 
 _BASE_URL = "https://personalfinances.streamlit.app"
 
@@ -33,35 +26,13 @@ def cargar_watchlist(nombre: str) -> list:
 
     session_state es la fuente de verdad durante la sesión.
     """
-    ss_key = f"watchlist_{nombre}"
-    if ss_key in st.session_state:
-        return st.session_state[ss_key]
-    os.makedirs(_DIR, exist_ok=True)
-    path = os.path.join(_DIR, f"{nombre}.json")
-    if os.path.exists(path):
-        try:
-            with open(path, encoding="utf-8") as f:
-                data = json.load(f)
-            data = data if isinstance(data, list) else []
-        except Exception:
-            data = []
-    else:
-        data = []
-    st.session_state[ss_key] = data
-    return data
+    data = storage.load("watchlist", nombre, default=[])
+    return data if isinstance(data, list) else []
 
 
 def guardar_watchlist(nombre: str, tickers: list) -> bool:
     """Guarda watchlist: session_state primero, luego JSON como backup."""
-    st.session_state[f"watchlist_{nombre}"] = tickers
-    os.makedirs(_DIR, exist_ok=True)
-    path = os.path.join(_DIR, f"{nombre}.json")
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(tickers, f)
-        return True
-    except Exception:
-        return False
+    return storage.save("watchlist", nombre, tickers)
 
 
 def generar_link_compartir(nombre: str) -> str:
