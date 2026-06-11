@@ -455,7 +455,7 @@ with st.sidebar:
     )
     
     st.divider()
-    st.subheader("Atajos")
+    st.subheader("💼 Portfolio")
 
     if universo and "portfolios" in universo:
         for nombre, tickers in universo["portfolios"].items():
@@ -463,16 +463,14 @@ with st.sidebar:
                 st.write(f"{len(tickers)} tickers")
                 st.write(", ".join(tickers))
 
-    st.markdown("---")
+    st.divider()
     st.markdown("### 🧭 Herramientas")
 
     _nav_secciones = [
         ("🧮 Calculadoras",    "calculadoras"),
         ("🇦🇷 Macro Argentina", "macro"),
-        ("⚖️ Comparar",         "comparar"),
         ("🎯 Perfil Inversor",  "perfil"),
         ("🔎 Screener",         "screener"),
-        ("👁️ Watchlist",        "watchlist"),
         ("📅 Earnings",         "earnings"),
     ]
     for _nav_label, _nav_key in _nav_secciones:
