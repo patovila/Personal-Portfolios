@@ -4,8 +4,9 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 import streamlit as st
-import yfinance as yf
 import pandas as pd
+
+from src.data_layer import get_precios_rango
 
 
 _BENCHMARKS = {
@@ -24,31 +25,18 @@ def get_benchmark_data(fecha_inicio: date, fecha_fin: date) -> dict:
     tickers = list(_BENCHMARKS.values())
     result: dict = {}
 
-    try:
-        data = yf.download(
-            tickers=" ".join(tickers),
-            start=fecha_inicio.strftime("%Y-%m-%d"),
-            end=(fecha_fin + timedelta(days=1)).strftime("%Y-%m-%d"),
-            interval="1d",
-            group_by="ticker",
-            auto_adjust=True,
-            progress=False,
-            threads=True,
-        )
-    except Exception:
-        for nombre, tk in _BENCHMARKS.items():
-            result[nombre] = {"ticker": tk, "rendimiento_pct": None}
-        return result
+    start_str = fecha_inicio.strftime("%Y-%m-%d")
+    end_str   = (fecha_fin + timedelta(days=1)).strftime("%Y-%m-%d")
+    data = get_precios_rango(tickers, start_str, end_str)
 
     for nombre, tk in _BENCHMARKS.items():
         rend = None
         try:
-            if len(tickers) == 1:
-                serie = data["Close"].dropna()
-            else:
-                serie = data[tk]["Close"].dropna()
-            if len(serie) >= 2:
-                rend = float((serie.iloc[-1] - serie.iloc[0]) / serie.iloc[0] * 100)
+            df = data.get(tk, None)
+            if df is not None and not df.empty and "Close" in df.columns:
+                serie = df["Close"].dropna()
+                if len(serie) >= 2:
+                    rend = float((serie.iloc[-1] - serie.iloc[0]) / serie.iloc[0] * 100)
         except Exception:
             pass
         result[nombre] = {"ticker": tk, "rendimiento_pct": rend}

@@ -8,7 +8,8 @@ from uuid import uuid4
 
 import pandas as pd
 import streamlit as st
-import yfinance as yf
+
+from src.data_layer import get_precios
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -73,16 +74,18 @@ def get_precios_para_alertas(tickers: tuple) -> dict:
     Recibe tuple (hashable) para compatibilidad con st.cache_data.
     Retorna {ticker: {"precio": float, "variacion_dia": float}}.
     """
+    batch = get_precios(list(tickers), "2d")
     resultado = {}
     for ticker in tickers:
         try:
-            hist = yf.Ticker(ticker).history(period="2d")
-            if hist.empty:
+            df = batch.get(ticker, pd.DataFrame())
+            if df.empty or "Close" not in df.columns:
                 continue
-            precio = float(hist["Close"].iloc[-1])
+            close = df["Close"].dropna()
+            precio = float(close.iloc[-1])
             variacion = 0.0
-            if len(hist) >= 2:
-                prev = float(hist["Close"].iloc[-2])
+            if len(close) >= 2:
+                prev = float(close.iloc[-2])
                 if prev:
                     variacion = (precio - prev) / prev * 100
             resultado[ticker] = {"precio": precio, "variacion_dia": variacion}

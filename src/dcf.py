@@ -1,8 +1,9 @@
 """DCF y valuación: descuento de flujos de caja para valor intrínseco."""
-import yfinance as yf
 import pandas as pd
 import streamlit as st
+
 from src.datos import get_ticker_adr, get_ticker_local, is_ticker_argentino
+from src.data_layer import get_info, get_fundamentals, get_precios
 
 
 @st.cache_data(ttl=3600)
@@ -19,15 +20,15 @@ def get_datos_base_dcf(ticker):
         tk_fund = get_ticker_adr(ticker)     # ADR para fundamentals
         tk_px   = get_ticker_local(ticker)   # .BA para precio local
 
-        t    = yf.Ticker(tk_fund)
-        info = t.info
+        info = get_info(tk_fund)
+        fund = get_fundamentals(tk_fund)
 
         # FCF desde cashflow statement
         fcf_base = None
         fcf_anio = None
         fcf_serie = {}
         try:
-            cf = t.cashflow
+            cf = fund["cashflow"]
             if not cf.empty and "Free Cash Flow" in cf.index:
                 serie = cf.loc["Free Cash Flow"].dropna()
                 if not serie.empty:
@@ -41,7 +42,7 @@ def get_datos_base_dcf(ticker):
         deuda = None
         cash = None
         try:
-            bs = t.balance_sheet
+            bs = fund["balance"]
             if not bs.empty:
                 if "Total Debt" in bs.index:
                     deuda = float(bs.loc["Total Debt"].iloc[0])
@@ -61,9 +62,9 @@ def get_datos_base_dcf(ticker):
         precio_moneda  = None
         if es_ar:
             try:
-                hist_local = yf.Ticker(tk_px).history(period="2d")
-                if not hist_local.empty:
-                    precio_actual = float(hist_local["Close"].iloc[-1])
+                df_local = get_precios([tk_px], "2d").get(tk_px)
+                if df_local is not None and not df_local.empty and "Close" in df_local.columns:
+                    precio_actual = float(df_local["Close"].dropna().iloc[-1])
                     precio_moneda = "ARS"
             except Exception:
                 pass

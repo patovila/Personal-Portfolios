@@ -1,6 +1,7 @@
 """Calculadoras financieras para el mercado argentino."""
 import pandas as pd
-import yfinance as yf
+
+from src.data_layer import get_precio_actual
 
 
 RATIO_CEDEARS = {
@@ -18,14 +19,8 @@ RATIO_CEDEARS = {
 
 def calcular_ccl_implicito(ticker_adr: str, ticker_local: str, ratio: int) -> dict:
     """CCL implícito = precio_BYMA / (precio_NYSE * ratio)."""
-    try:
-        precio_nyse = yf.Ticker(ticker_adr).fast_info["lastPrice"]
-    except Exception:
-        precio_nyse = None
-    try:
-        precio_byma = yf.Ticker(ticker_local).fast_info["lastPrice"]
-    except Exception:
-        precio_byma = None
+    precio_nyse = get_precio_actual(ticker_adr)
+    precio_byma = get_precio_actual(ticker_local)
 
     if precio_nyse and precio_byma and ratio:
         ccl_implicito = round(precio_byma / (precio_nyse * ratio), 2)

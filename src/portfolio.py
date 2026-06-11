@@ -16,7 +16,8 @@ from typing import Any
 
 import pandas as pd
 import streamlit as st
-import yfinance as yf
+
+from src.data_layer import get_precios
 
 
 # ---------- carga ----------
@@ -55,10 +56,10 @@ def _precio_actual_ars(posicion: dict, tipo_cambio: float) -> float | None:
         return None
 
     try:
-        hist = yf.Ticker(ticker).history(period="5d")
-        if hist.empty:
+        df = get_precios([ticker], "5d").get(ticker)
+        if df is None or df.empty or "Close" not in df.columns:
             return None
-        precio = float(hist["Close"].iloc[-1])
+        precio = float(df["Close"].dropna().iloc[-1])
     except Exception:
         return None
 
@@ -237,29 +238,18 @@ def comparar_vs_benchmark(
     tickers = list({_ticker_para_historico(p) for p in posiciones if p.get("ticker")})
     todos = tickers + [benchmark]
 
-    try:
-        data = yf.download(
-            todos,
-            period=periodo,
-            progress=False,
-            auto_adjust=True,
-            group_by="ticker",
-        )
-    except Exception as e:
-        return {"error": f"No se pudieron descargar precios: {e}"}
-
-    if data is None or data.empty:
+    data = get_precios(todos, periodo)
+    if not any(not v.empty for v in data.values()):
         return {"error": "Sin datos historicos"}
 
-    # Armar DataFrame de Close por ticker (yfinance varia el shape segun n)
+    # Armar DataFrame de Close por ticker
     closes = pd.DataFrame()
     for tk in todos:
         try:
-            if len(todos) == 1:
-                serie = data["Close"]
-            else:
-                serie = data[tk]["Close"]
-            closes[tk] = serie
+            df_tk = data.get(tk, pd.DataFrame())
+            if df_tk.empty or "Close" not in df_tk.columns:
+                continue
+            closes[tk] = df_tk["Close"]
         except Exception:
             continue
 

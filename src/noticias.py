@@ -1,7 +1,8 @@
 """Noticias financieras y análisis de sentimiento via yfinance + VADER."""
 import streamlit as st
-import yfinance as yf
 from datetime import datetime
+
+from src.data_layer import get_news
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # Léxico financiero argentino: VADER no conoce estos términos.
@@ -84,14 +85,10 @@ def _parsear_noticia(item: dict) -> dict:
     }
 
 
-@st.cache_data(ttl=1800)
 def get_noticias_ticker(ticker: str, max_noticias: int = 5) -> list:
-    """Noticias recientes de un ticker via yfinance. Cache 30 min."""
-    try:
-        raw = yf.Ticker(ticker).news or []
-        return [_parsear_noticia(item) for item in raw[:max_noticias]]
-    except Exception:
-        return []
+    """Noticias recientes de un ticker. Delega a data_layer.get_news (cache 30 min)."""
+    raw = get_news(ticker)
+    return [_parsear_noticia(item) for item in raw[:max_noticias]]
 
 
 def get_noticias_portfolio(tickers: list, max_por_ticker: int = 3) -> dict:

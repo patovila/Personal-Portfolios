@@ -4,7 +4,8 @@ import os
 
 import pandas as pd
 import streamlit as st
-import yfinance as yf
+
+from src.data_layer import get_precios
 
 _DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -68,41 +69,23 @@ def generar_link_compartir(nombre: str) -> str:
     return f"{_BASE_URL}/?watchlist={nombre}"
 
 
-@st.cache_data(ttl=300)
 def get_precios_watchlist(tickers: tuple) -> list:
-    """Precio actual y variación % del día para cada ticker. Cache 5 min."""
+    """Precio actual y variación % del día para cada ticker.
+
+    Delega a data_layer.get_precios (cache 5 min).
+    """
     if not tickers:
         return []
-    try:
-        data = yf.download(
-            tickers=" ".join(tickers),
-            period="2d",
-            interval="1d",
-            group_by="ticker",
-            auto_adjust=True,
-            progress=False,
-            threads=True,
-        )
-    except Exception:
-        return [{"ticker": tk, "precio": None, "variacion_pct": None} for tk in tickers]
 
-    if data is None or data.empty:
-        return [{"ticker": tk, "precio": None, "variacion_pct": None} for tk in tickers]
-
+    data = get_precios(list(tickers), "2d")
     result = []
-    if len(tickers) == 1:
-        tk = tickers[0]
-        close = data["Close"].dropna() if "Close" in data.columns else pd.Series(dtype=float)
-        precio = float(close.iloc[-1]) if len(close) >= 1 else None
-        var = float((close.iloc[-1] - close.iloc[-2]) / close.iloc[-2] * 100) if len(close) >= 2 else None
-        result.append({"ticker": tk, "precio": precio, "variacion_pct": var})
-    else:
-        for tk in tickers:
-            try:
-                close = data[tk]["Close"].dropna()
-                precio = float(close.iloc[-1]) if len(close) >= 1 else None
-                var = float((close.iloc[-1] - close.iloc[-2]) / close.iloc[-2] * 100) if len(close) >= 2 else None
-                result.append({"ticker": tk, "precio": precio, "variacion_pct": var})
-            except Exception:
-                result.append({"ticker": tk, "precio": None, "variacion_pct": None})
+    for tk in tickers:
+        df = data.get(tk, pd.DataFrame())
+        try:
+            close = df["Close"].dropna() if not df.empty and "Close" in df.columns else pd.Series(dtype=float)
+            precio = float(close.iloc[-1]) if len(close) >= 1 else None
+            var    = float((close.iloc[-1] - close.iloc[-2]) / close.iloc[-2] * 100) if len(close) >= 2 else None
+            result.append({"ticker": tk, "precio": precio, "variacion_pct": var})
+        except Exception:
+            result.append({"ticker": tk, "precio": None, "variacion_pct": None})
     return result

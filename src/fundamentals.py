@@ -1,8 +1,8 @@
 """Análisis fundamental: estados financieros, ratios avanzados y crecimiento."""
-import yfinance as yf
 import pandas as pd
 
 from src.datos import formatear, get_ticker_adr, is_ticker_argentino
+from src.data_layer import get_info, get_fundamentals, get_precios, normalize_debt_equity
 
 
 def _pct(info, key):
@@ -13,11 +13,10 @@ def _pct(info, key):
 
 def estados_financieros(ticker, formato="resumido"):
     """Devuelve los 3 estados financieros principales."""
-    t = yf.Ticker(get_ticker_adr(ticker))
-    
-    pl = t.financials
-    balance = t.balance_sheet
-    cashflow = t.cashflow
+    fund    = get_fundamentals(get_ticker_adr(ticker))
+    pl      = fund["pl"]
+    balance = fund["balance"]
+    cashflow = fund["cashflow"]
     
     if pl.empty:
         print(f"Sin datos financieros para {ticker}")
@@ -110,10 +109,9 @@ def _cagr_de_serie(serie):
 
 def crecimiento_historico(ticker):
     """Calcula crecimiento de revenue, net income y FCF."""
-    t = yf.Ticker(get_ticker_adr(ticker))
-
-    pl = t.financials
-    cf = t.cashflow
+    fund = get_fundamentals(get_ticker_adr(ticker))
+    pl   = fund["pl"]
+    cf   = fund["cashflow"]
 
     if pl.empty:
         return None
@@ -158,8 +156,7 @@ def crecimiento_historico(ticker):
 
 def ratios_avanzados(ticker):
     """15+ ratios organizados en 4 categorías."""
-    t = yf.Ticker(get_ticker_adr(ticker))
-    info = t.info
+    info = get_info(get_ticker_adr(ticker))
     
     # P/S y EV/Revenue: Yahoo Finance mezcla precio ARS con revenue USD para tickers AR
     # → calcular manualmente usando precio del ADR (USD) × shares / revenue
@@ -195,7 +192,7 @@ def ratios_avanzados(ticker):
         "Margen_Bruto_%": _pct(info, "grossMargins"),
         "Margen_Operativo_%": _pct(info, "operatingMargins"),
         "Margen_Neto_%": _pct(info, "profitMargins"),
-        "Debt_Equity": info.get("debtToEquity"),
+        "Debt_Equity": normalize_debt_equity(info.get("debtToEquity")),
         "Current_Ratio": info.get("currentRatio"),
         "Quick_Ratio": info.get("quickRatio"),
         "Beta": info.get("beta"),
@@ -264,8 +261,7 @@ def comparar_peers(tickers, ratios_seleccionados=None):
 
 def fcf_historico(ticker):
     """Devuelve el Free Cash Flow histórico."""
-    t = yf.Ticker(get_ticker_adr(ticker))
-    cf = t.cashflow
+    cf = get_fundamentals(get_ticker_adr(ticker))["cashflow"]
     
     if cf.empty or "Free Cash Flow" not in cf.index:
         if "Operating Cash Flow" in cf.index and "Capital Expenditure" in cf.index:
@@ -302,10 +298,9 @@ def get_revenue_eps_historico(ticker: str) -> dict:
     Valores de Revenue y Net Income en millones USD.
     """
     adr = get_ticker_adr(ticker)
-    t   = yf.Ticker(adr)
 
     try:
-        fin = t.financials
+        fin = get_fundamentals(adr)["pl"]
         if fin is None or fin.empty:
             return {}
 
@@ -316,7 +311,7 @@ def get_revenue_eps_historico(ticker: str) -> dict:
         if len(años) < 2:
             return {}
 
-        shares = (t.info or {}).get("sharesOutstanding") or 0
+        shares = get_info(adr).get("sharesOutstanding") or 0
 
         def _row(key):
             """Extrae fila como lista de millones, None si falta."""
@@ -397,8 +392,7 @@ def calcular_fair_value(ticker: str) -> dict:
 
     try:
         adr  = get_ticker_adr(ticker)
-        t    = yf.Ticker(adr)
-        info = t.info
+        info = get_info(adr)
 
         precio_actual = info.get("currentPrice") or info.get("regularMarketPrice")
         if not precio_actual:
@@ -416,8 +410,9 @@ def calcular_fair_value(ticker: str) -> dict:
 
         # Intento: PE anual de los últimos 4 años (precio / EPS calculado)
         try:
-            fin    = t.financials   # columnas = años, filas = P&L
-            hist   = t.history(period="5y", interval="1mo")
+            fin    = get_fundamentals(adr)["pl"]
+            hist_df = get_precios([adr], "5y", interval="1mo").get(adr, pd.DataFrame())
+            hist   = hist_df  # compatible con el código que sigue: usa hist["Close"].asof(ts)
             shares = info.get("sharesOutstanding") or 0
 
             if (fin is not None and not fin.empty and

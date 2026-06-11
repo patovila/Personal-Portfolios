@@ -163,11 +163,13 @@ def get_earnings_portfolio_yf(tickers: tuple) -> tuple[list, list]:
     proximos:  list = []
     historico: list = []
 
+    from src.data_layer import get_info
     for raw_ticker in tickers:
         adr = get_ticker_adr(raw_ticker)
         try:
+            import yfinance as yf
+            nombre = get_info(adr).get("shortName") or adr
             t      = yf.Ticker(adr)
-            nombre = (t.info or {}).get("shortName") or adr
             ed     = t.earnings_dates
             if ed is None or ed.empty:
                 continue

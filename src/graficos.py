@@ -1,15 +1,16 @@
 """Funciones de visualización."""
-import yfinance as yf
+import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
+
+from src.data_layer import get_precios, get_fundamentals
 from src.metricas import matriz_correlacion
 
 
 def graficar_precio(ticker, periodo="1y"):
     """Gráfico de precio con línea horizontal de precio actual."""
-    t = yf.Ticker(ticker)
-    hist = t.history(period=periodo)
+    hist = get_precios([ticker], periodo).get(ticker, pd.DataFrame())
     
     if hist.empty:
         print(f"No hay datos para {ticker}")
@@ -52,8 +53,9 @@ def comparar_tickers(tickers, periodo="1y", normalizar=True):
     fig = go.Figure()
     colores = ["#00CC96", "#EF553B", "#636EFA", "#FFA15A", "#AB63FA"]
     
+    batch = get_precios(list(tickers), periodo)
     for i, ticker in enumerate(tickers):
-        hist = yf.Ticker(ticker).history(period=periodo)
+        hist = batch.get(ticker, pd.DataFrame())
         if hist.empty:
             continue
         
@@ -83,8 +85,7 @@ def comparar_tickers(tickers, periodo="1y", normalizar=True):
 
 def grafico_candlestick(ticker, periodo="6mo"):
     """Gráfico de velas con volumen."""
-    t = yf.Ticker(ticker)
-    hist = t.history(period=periodo)
+    hist = get_precios([ticker], periodo).get(ticker, pd.DataFrame())
     
     if hist.empty:
         return
@@ -132,9 +133,8 @@ def heatmap_correlacion(tickers, periodo="2y"):
 
 def graficar_revenue_eps(ticker):
     """Revenue y Net Income en barras a través de los años."""
-    t = yf.Ticker(ticker)
-    pl = t.financials
-    
+    pl = get_fundamentals(ticker)["pl"]
+
     if pl.empty:
         print(f"Sin datos para {ticker}")
         return
@@ -205,9 +205,8 @@ def graficar_fcf_historico(ticker):
 
 def graficar_margenes(ticker):
     """Evolución de los márgenes en el tiempo."""
-    t = yf.Ticker(ticker)
-    pl = t.financials
-    
+    pl = get_fundamentals(ticker)["pl"]
+
     if pl.empty or "Total Revenue" not in pl.index:
         print(f"Sin datos para {ticker}")
         return

@@ -2,7 +2,8 @@
 import time
 import pandas as pd
 import streamlit as st
-import yfinance as yf
+
+from src.data_layer import get_precios, get_info
 
 UNIVERSO_ACCIONES = [
     "AAPL", "GOOGL", "MSFT", "NVDA", "META", "AMZN",
@@ -26,14 +27,8 @@ _NOMBRES = {
 @st.cache_data(ttl=3600)
 def get_datos_screener(tickers: tuple) -> pd.DataFrame:
     """Descarga ratios fundamentales en batches de 5. Cache 1h."""
-    # Batch price download para variacion diaria (una sola request)
-    try:
-        _price_raw = yf.download(
-            list(tickers), period="2d", interval="1d",
-            group_by="ticker", auto_adjust=True, progress=False, threads=True,
-        )
-    except Exception:
-        _price_raw = None
+    # Batch price download para variacion diaria
+    _price_data = get_precios(list(tickers), "2d")
 
     filas = []
     grupos = [list(tickers)[i:i + 5] for i in range(0, len(tickers), 5)]
@@ -45,7 +40,7 @@ def get_datos_screener(tickers: tuple) -> pd.DataFrame:
         for tk in grupo:
             fila = {"Ticker": tk, "Empresa": _NOMBRES.get(tk, tk)}
             try:
-                info = yf.Ticker(tk).info
+                info = get_info(tk)
                 pe   = info.get("trailingPE")
                 pb   = info.get("priceToBook")
                 roe  = info.get("returnOnEquity")
@@ -71,11 +66,9 @@ def get_datos_screener(tickers: tuple) -> pd.DataFrame:
 
             # Variación diaria desde batch download
             try:
-                if _price_raw is not None and not _price_raw.empty:
-                    if len(tickers) == 1:
-                        close = _price_raw["Close"].dropna()
-                    else:
-                        close = _price_raw[tk]["Close"].dropna()
+                df_tk = _price_data.get(tk)
+                if df_tk is not None and not df_tk.empty and "Close" in df_tk.columns:
+                    close = df_tk["Close"].dropna()
                     if len(close) >= 2:
                         fila["Var_Dia_%"] = round(
                             float((close.iloc[-1] - close.iloc[-2]) / close.iloc[-2] * 100), 2

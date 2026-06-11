@@ -3,9 +3,10 @@
 Convencion: todas las funciones reciben un ticker (str) o un DataFrame de
 precios con columna 'Close'. Las que reciben ticker bajan datos via yfinance.
 """
-import yfinance as yf
 import numpy as np
 import pandas as pd
+
+from src.data_layer import get_precios
 
 
 def _cargar_close(ticker_o_df, periodo="1y"):
@@ -20,7 +21,8 @@ def _cargar_close(ticker_o_df, periodo="1y"):
         return ticker_o_df["Close"]
     if isinstance(ticker_o_df, pd.Series):
         return ticker_o_df
-    hist = yf.Ticker(ticker_o_df).history(period=periodo)
+    data = get_precios([ticker_o_df], periodo)
+    hist = data.get(ticker_o_df, pd.DataFrame())
     if hist.empty:
         raise ValueError(f"Sin datos para {ticker_o_df}")
     return hist["Close"]
@@ -136,8 +138,9 @@ def señales_tecnicas(ticker, periodo="1y"):
     Devuelve un dict con interpretacion lista para mostrar. Util para chequear
     el estado tecnico de un papel en un vistazo.
     """
-    hist = yf.Ticker(ticker).history(period=periodo)
-    if hist.empty:
+    data = get_precios([ticker], periodo)
+    hist = data.get(ticker, pd.DataFrame())
+    if hist.empty or "Close" not in hist.columns:
         return None
 
     close = hist["Close"]
