@@ -46,7 +46,8 @@
       "Bash(python -c \"print\\(sum\\(1 for _ in open\\('C:/Users/PC/Documents/Proyecto_mi bloomberg/app.py', encoding='utf-8'\\)\\)\\)\")",
       "Bash(python *)",
       "Bash(pip show *)",
-      "Bash(del *)"
+      "Bash(del *)",
+      "Bash(Get-ChildItem *)"
     ]
   }
 }
