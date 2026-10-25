@@ -480,6 +480,13 @@ with st.sidebar:
             st.session_state["ticker_input"] = ""
             st.rerun()
 
+    # Botón ← Inicio en sidebar: visible siempre sin necesidad de hacer scroll
+    if st.session_state.get("seccion_activa", "") and not ticker:
+        if st.button("← Inicio", key="btn_sb_home", use_container_width=True):
+            st.session_state["seccion_activa"] = ""
+            st.session_state["ticker_input"] = ""
+            st.rerun()
+
     st.divider()
     st.subheader("💵 Dólar en vivo")
     try:
@@ -668,8 +675,14 @@ else:
     if ticker:
         st.caption(ticker_error or "")
 
+# Saltear contenido del home cuando hay una sección activa (calculadoras, macro, etc.)
+# Sin esto los tabs de sección quedan enterrados debajo del heatmap y no se ven.
+_seccion_activa = st.session_state.get("seccion_activa", "")
+_skip_home = bool(_seccion_activa) and not ticker
+
 # ── TICKER TAPE ANIMADO ───────────────────────────────────────────────────────
 try:
+    if _skip_home: raise Exception("__skip__")
     from src.mercado import get_ticker_tape as _get_tape
     # Tickers del tape: portfolio guardado en sesión, o fallback a watchlist del universo
     try:
@@ -717,6 +730,7 @@ except Exception:
 
 # ── BRIEF DIARIO ──────────────────────────────────────────────────────────────
 try:
+    if _skip_home: raise Exception("__skip__")
     from src.mercado import get_metricas_macro as _get_macro_brief
 
     _macro = _get_macro_brief()
@@ -790,6 +804,7 @@ except Exception:
 
 # ── CARD "TU CARTERA HOY" ─────────────────────────────────────────────────────
 try:
+    if _skip_home: raise Exception("__skip__")
     from src.portfolio import (
         cargar_portfolio          as _cp_brief,
         calcular_metricas_portfolio as _calc_met_brief,
@@ -891,6 +906,7 @@ except Exception:
 
 # ── ÍNDICES GLOBALES CON SPARKLINES ───────────────────────────────────────────
 try:
+    if _skip_home: raise Exception("__skip__")
     import plotly.graph_objects as _go_sp
     from src.mercado import (
         get_indices_globales   as _get_idx_sp,
@@ -958,6 +974,7 @@ except Exception:
 
 # ── HEATMAP MERCADO (home screen) ─────────────────────────────────────────────
 try:
+    if _skip_home: raise Exception("__skip__")
     import plotly.express as _px_hm
     from datetime import datetime as _dt_hm
     from src.mercado import get_heatmap_data as _get_hm
@@ -1014,10 +1031,10 @@ try:
     else:
         st.warning("No se pudieron cargar los datos del heatmap.")
 except Exception as _e_hm:
-    st.warning(f"Heatmap no disponible: {_e_hm}")
+    if str(_e_hm) != "__skip__":
+        st.warning(f"Heatmap no disponible: {_e_hm}")
 
-_seccion_activa = st.session_state.get("seccion_activa", "")
-
+# _seccion_activa ya fue leído arriba (al definir _skip_home)
 if not ticker and not _seccion_activa:
     st.stop()
 
@@ -1658,7 +1675,8 @@ if tab3 is not None:
                     banda_sup = boll_df['Banda_Superior'].iloc[-1]
                     banda_inf = boll_df['Banda_Inferior'].iloc[-1]
 
-                    posicion_banda = ((precio - banda_inf) / (banda_sup - banda_inf)) * 100
+                    _boll_ancho = banda_sup - banda_inf
+                    posicion_banda = ((precio - banda_inf) / _boll_ancho * 100) if _boll_ancho != 0 else 50.0
 
                     t1, t2, t3, t4 = st.columns(4)
                     t1.metric("Precio", f"${precio:.2f}")
@@ -4236,7 +4254,7 @@ with tab9:
                         st.rerun()
 
     # ── SECCIÓN 2: MINI HEATMAP ──────────────────────────────────────────────
-    if _wl_tickers and _filas_wl if _wl_tickers else False:
+    if _wl_tickers and _filas_wl:
         st.divider()
         st.markdown("### 🎨 Resumen visual")
 
