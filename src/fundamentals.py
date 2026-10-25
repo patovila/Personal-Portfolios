@@ -1,5 +1,6 @@
 """Análisis fundamental: estados financieros, ratios avanzados y crecimiento."""
 import pandas as pd
+import streamlit as st
 
 from src.datos import formatear, get_ticker_adr, is_ticker_argentino
 from src.data_layer import get_info, get_fundamentals, get_precios, normalize_debt_equity
@@ -373,6 +374,7 @@ _SECTOR_PB_TARGET: dict[str, float] = {
 }
 
 
+@st.cache_data(ttl=600, show_spinner=False)
 def calcular_fair_value(ticker: str) -> dict:
     """Fair value por PE histórico × EPS forward y PB sector × Book Value.
 

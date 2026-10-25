@@ -671,13 +671,20 @@ else:
 # ── TICKER TAPE ANIMADO ───────────────────────────────────────────────────────
 try:
     from src.mercado import get_ticker_tape as _get_tape
+    # Tickers del tape: portfolio guardado en sesión, o fallback a watchlist del universo
     try:
         from src.portfolio import cargar_portfolio as _cp_tape
-        _tks_tape = tuple(
-            p["ticker"] for p in _cp_tape("pato").get("posiciones", [])
-        )
+        _port_tape = _cp_tape("pato")
+        _tks_tape = tuple(p["ticker"] for p in _port_tape.get("posiciones", []))
+        if not _tks_tape and universo:
+            _tks_tape = tuple(
+                (universo.get("portfolios", {}).get("watchlist", []) or
+                 universo.get("categorias", {}).get("acciones_ar_adr", []))[:12]
+            )
     except Exception:
-        _tks_tape = ()
+        _tks_tape = tuple(
+            universo.get("portfolios", {}).get("watchlist", [])[:12]
+        ) if universo else ()
     _tape_data = _get_tape(_tks_tape)
     if _tape_data:
         _tape_items = "".join([
@@ -1105,13 +1112,9 @@ if tab1 is not None:
             _fv = None
             _upside = None
             try:
-                from src.fundamentals import calcular_fair_value as _calc_fv
+                from src.fundamentals import calcular_fair_value as _calc_fv_raw
 
-                @st.cache_data(ttl=600)
-                def _cached_fv(t):
-                    return _calc_fv(t)
-
-                _fv_data = _cached_fv(ticker)
+                _fv_data = _calc_fv_raw(ticker)
                 _fv      = _fv_data.get("fair_value_promedio")
                 _upside  = _fv_data.get("upside_downside")
                 _verdict = _fv_data.get("veredicto", "")

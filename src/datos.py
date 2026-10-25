@@ -177,17 +177,17 @@ def mostrar_ticker(ticker):
     print("=" * 50)
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def cargar_universo(ruta="data/tickers.json"):
-    """Carga el archivo JSON con todos los tickers organizados."""
+    """Carga el archivo JSON con todos los tickers organizados. Cache 1 h."""
     archivo = Path(ruta)
     if not archivo.exists():
-        print(f"No se encontro el archivo {ruta}")
         return None
-    
-    with open(archivo, "r", encoding="utf-8") as f:
-        universo = json.load(f)
-    
-    return universo
+    try:
+        with open(archivo, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
 
 
 def listar_categorias(universo):
