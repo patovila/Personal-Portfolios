@@ -3377,10 +3377,11 @@ if tab7 is not None:
             )
 
             # ── SECCIÓN 0: PRIMA DE RIESGO (input antes de cargar WACC) ─────────
+            if "dcf_erp" not in st.session_state:
+                st.session_state["dcf_erp"] = 4.5
             _erp7 = st.number_input(
                 "Prima de riesgo de mercado / ERP (%)",
                 min_value=1.0, max_value=15.0,
-                value=st.session_state.get("dcf_erp_val", 4.5),
                 step=0.5, format="%.1f",
                 key="dcf_erp",
                 help=(
@@ -3389,7 +3390,6 @@ if tab7 is not None:
                     "Para mercados emergentes puede usarse 6-8%."
                 ),
             ) / 100
-            st.session_state["dcf_erp_val"] = _erp7 * 100
 
             # ── SECCIÓN 1: DATOS BASE ─────────────────────────────────────────────
             st.markdown("### 📋 Datos base")
@@ -3516,8 +3516,9 @@ if tab7 is not None:
                 with _s2c2:
                     st.markdown("**WACC (Tasa de descuento)**")
 
-                    # Calcular WACC automático
-                    _wacc_data7 = _calc_wacc_auto(ticker, erp=_erp7)
+                    # Calcular WACC automático (cacheado 1 h)
+                    with st.spinner("Calculando WACC automático..."):
+                        _wacc_data7 = _calc_wacc_auto(ticker, erp=_erp7)
                     _wacc_auto7 = _wacc_data7.get("wacc")
 
                     # Advertencias de datos faltantes
@@ -3550,12 +3551,18 @@ if tab7 is not None:
                                 f"| **WACC calculado** | **{_wacc_auto7*100:.2f}%** |"
                             )
 
-                    # WACC editable: pre-llenado con el valor calculado
+                    # WACC editable: pre-llenado con el valor calculado.
+                    # Resetear al auto-WACC si cambió el ticker.
                     _wacc7_default = round(_wacc_auto7 * 100, 1) if _wacc_auto7 else 10.0
+                    if st.session_state.get("dcf_wacc_ticker") != ticker:
+                        st.session_state["dcf_wacc_ticker"] = ticker
+                        st.session_state["dcf_wacc"] = _wacc7_default
+                    elif "dcf_wacc" not in st.session_state:
+                        st.session_state["dcf_wacc"] = _wacc7_default
+
                     _wacc7 = st.number_input(
                         "WACC (%)",
                         min_value=1.0, max_value=40.0,
-                        value=float(st.session_state.get("dcf_wacc_override", _wacc7_default)),
                         step=0.5, format="%.1f",
                         key="dcf_wacc",
                         help=(
@@ -3563,7 +3570,6 @@ if tab7 is not None:
                             "Podés editarlo manualmente."
                         ),
                     ) / 100
-                    st.session_state["dcf_wacc_override"] = _wacc7 * 100
                     if _wacc_auto7:
                         st.caption(f"Auto: {_wacc_auto7*100:.2f}% · Actual: {_wacc7*100:.1f}%")
 
