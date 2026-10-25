@@ -3,7 +3,7 @@ venv/
 .venv/
 env/
 
-# Python cache (basura tecnica de Python)
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
@@ -12,16 +12,20 @@ __pycache__/
 # Jupyter checkpoints
 .ipynb_checkpoints/
 
-# VS Code config local
+# VS Code
 .vscode/
 
-# Archivos del sistema
+# Sistema
 .DS_Store
 Thumbs.db
 
-# Variables de entorno (si mas adelante tenes API keys)
+# Secrets y variables de entorno
 .env
 .env.local
-# Portfolios personales (datos sensibles)
+.streamlit/secrets.toml
+
+# Datos de usuarios (nunca al repo)
+data/portfolio/*.json
 data/portfolios/*.json
-!data/portfolios/_template.json
+data/alertas/*.json
+!data/alertas/.gitkeep

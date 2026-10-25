@@ -548,9 +548,19 @@ with st.sidebar:
     _ar_countdown_slot = st.empty()
 
     st.markdown("---")
+    st.markdown(
+        "<div style='background:#2a1a1a;border:1px solid #7f1d1d;border-radius:6px;"
+        "padding:8px 10px;font-size:11px;color:#fca5a5;line-height:1.5;'>"
+        "<b>⚠️ DISCLAIMER</b><br>"
+        "Herramienta educativa. No constituye asesoramiento financiero. "
+        "Toda decisión de inversión es responsabilidad exclusiva del usuario."
+        "</div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("")
     with st.expander("ℹ️ Acerca de la app"):
         st.markdown("""
-**Mi Bloomberg Personal v1.0**
+**Mi Bloomberg Personal v2.0**
 Sistema de análisis financiero para inversores argentinos.
 
 **Datos:**
@@ -558,7 +568,7 @@ Sistema de análisis financiero para inversores argentinos.
 - 💵 DolarAPI
 - 🌎 ArgentinaDatos
 
-⚠️ *Solo fines educativos. No es asesoramiento financiero.*
+**GitHub:** [Ver código fuente](https://github.com/tu-usuario/mi-bloomberg-personal)
 """)
 
 # ── MODO OSCURO CSS ───────────────────────────────────────────────────────────
