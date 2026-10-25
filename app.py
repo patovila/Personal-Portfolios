@@ -3367,6 +3367,7 @@ if tab7 is not None:
                 get_datos_base_dcf, calcular_dcf as _calc_dcf,
                 tabla_sensibilidad as _tabla_sens,
                 calcular_escenarios as _calc_esc,
+                calcular_wacc_automatico as _calc_wacc_auto,
             )
 
             st.subheader(f"📐 DCF & Valuación — {ticker}")
@@ -3375,11 +3376,27 @@ if tab7 is not None:
                 "Los sliders actualizan los resultados en tiempo real."
             )
 
+            # ── SECCIÓN 0: PRIMA DE RIESGO (input antes de cargar WACC) ─────────
+            _erp7 = st.number_input(
+                "Prima de riesgo de mercado / ERP (%)",
+                min_value=1.0, max_value=15.0,
+                value=st.session_state.get("dcf_erp_val", 4.5),
+                step=0.5, format="%.1f",
+                key="dcf_erp",
+                help=(
+                    "Retorno histórico extra del mercado sobre la tasa libre de riesgo. "
+                    "Damodaran USA: ~4.5-5.5%. "
+                    "Para mercados emergentes puede usarse 6-8%."
+                ),
+            ) / 100
+            st.session_state["dcf_erp_val"] = _erp7 * 100
+
             # ── SECCIÓN 1: DATOS BASE ─────────────────────────────────────────────
             st.markdown("### 📋 Datos base")
 
             if st.button("🔄 Recargar datos", key="dcf_reload_btn"):
                 get_datos_base_dcf.clear()
+                _calc_wacc_auto.clear()
 
             _db7 = get_datos_base_dcf(ticker)
 
@@ -3497,14 +3514,61 @@ if tab7 is not None:
                         st.caption(f"Con 5 años se usa {_g1_7*100:.0f}% todo el período.")
 
                 with _s2c2:
-                    st.markdown("**Tasas de descuento**")
-                    _wacc7 = st.slider(
-                        "WACC / Tasa de descuento (%)",
-                        min_value=5, max_value=25, value=10, step=1,
+                    st.markdown("**WACC (Tasa de descuento)**")
+
+                    # Calcular WACC automático
+                    _wacc_data7 = _calc_wacc_auto(ticker, erp=_erp7)
+                    _wacc_auto7 = _wacc_data7.get("wacc")
+
+                    # Advertencias de datos faltantes
+                    _adv7 = _wacc_data7.get("advertencias", [])
+                    if _adv7:
+                        with st.expander(f"⚠ {len(_adv7)} aviso(s) — datos incompletos", expanded=False):
+                            for _a7 in _adv7:
+                                st.caption(f"• {_a7}")
+
+                    # Desglose de componentes
+                    if _wacc_auto7 is not None:
+                        with st.expander("Ver componentes del WACC", expanded=False):
+                            _rf7   = _wacc_data7.get("rf", 0)
+                            _b7    = _wacc_data7.get("beta", 0)
+                            _re7c  = _wacc_data7.get("re", 0)
+                            _rd7c  = _wacc_data7.get("rd", 0)
+                            _t7c   = _wacc_data7.get("tax_rate", 0)
+                            _ew7   = _wacc_data7.get("e_weight", 0)
+                            _dw7   = _wacc_data7.get("d_weight", 0)
+                            st.markdown(
+                                f"| | |\n|---|---|\n"
+                                f"| Rf (^TNX 10Y) | {_rf7*100:.2f}% |\n"
+                                f"| Beta | {_b7:.2f} |\n"
+                                f"| ERP | {_erp7*100:.1f}% |\n"
+                                f"| **Re = Rf + β×ERP** | **{_re7c*100:.2f}%** |\n"
+                                f"| Rd (costo deuda) | {_rd7c*100:.2f}% |\n"
+                                f"| Tasa impositiva T | {_t7c*100:.1f}% |\n"
+                                f"| Peso equity E/V | {_ew7*100:.1f}% |\n"
+                                f"| Peso deuda D/V | {_dw7*100:.1f}% |\n"
+                                f"| **WACC calculado** | **{_wacc_auto7*100:.2f}%** |"
+                            )
+
+                    # WACC editable: pre-llenado con el valor calculado
+                    _wacc7_default = round(_wacc_auto7 * 100, 1) if _wacc_auto7 else 10.0
+                    _wacc7 = st.number_input(
+                        "WACC (%)",
+                        min_value=1.0, max_value=40.0,
+                        value=float(st.session_state.get("dcf_wacc_override", _wacc7_default)),
+                        step=0.5, format="%.1f",
                         key="dcf_wacc",
+                        help=(
+                            "Precalculado con CAPM usando beta, Rf (^TNX) y ERP. "
+                            "Podés editarlo manualmente."
+                        ),
                     ) / 100
+                    st.session_state["dcf_wacc_override"] = _wacc7 * 100
+                    if _wacc_auto7:
+                        st.caption(f"Auto: {_wacc_auto7*100:.2f}% · Actual: {_wacc7*100:.1f}%")
+
                     _tg7 = st.slider(
-                        "Tasa terminal / perpetuidad (%)",
+                        "Crecimiento terminal / perpetuidad (%)",
                         min_value=1, max_value=6, value=3, step=1,
                         key="dcf_tg",
                     ) / 100
@@ -3531,8 +3595,8 @@ if tab7 is not None:
                 # Validación WACC > tg
                 if _wacc7 <= _tg7:
                     st.error(
-                        f"WACC ({_wacc7*100:.0f}%) debe ser mayor que la tasa terminal "
-                        f"({_tg7*100:.0f}%). Ajustá los sliders para continuar."
+                        f"WACC ({_wacc7*100:.1f}%) debe ser mayor que la tasa terminal "
+                        f"({_tg7*100:.0f}%). Ajustá los valores para continuar."
                     )
                 else:
                     st.divider()
@@ -3652,8 +3716,13 @@ if tab7 is not None:
 
                     st.divider()
 
-                    # ── SECCIÓN 5: SENSIBILIDAD ───────────────────────────────────
-                    st.markdown("### 📊 Sensibilidad: Valor intrínseco según WACC y Crecimiento")
+                    # ── SECCIÓN 5: SENSIBILIDAD WACC × tg ────────────────────────
+                    st.markdown("### 📊 Sensibilidad: WACC × Crecimiento terminal")
+                    st.caption(
+                        "Verde = acción barata vs precio actual · "
+                        "Rojo = cara · "
+                        "Celda enmarcada = tus supuestos actuales."
+                    )
 
                     try:
                         _df_sens7 = _tabla_sens(
@@ -3661,53 +3730,89 @@ if tab7 is not None:
                             _años7, _sh7_usar, _deu7_raw, _csh7_raw,
                         )
 
-                        _z7   = _df_sens7.values.tolist()
-                        _x7   = list(_df_sens7.columns)
-                        _y7   = list(_df_sens7.index)
+                        _z7_raw = _df_sens7.values.tolist()
+                        _x7     = list(_df_sens7.columns)   # tg labels
+                        _y7     = list(_df_sens7.index)      # wacc labels
 
-                        # Texto para cada celda
-                        _txt7 = [
-                            [f"${v:.2f}" if v is not None else "N/D" for v in row]
-                            for row in _z7
-                        ]
+                        # Coloreo por upside % vs precio actual
+                        # Verde = subvaluado (vi > px), Rojo = sobrevaluado (vi < px)
+                        if _px7 and _px7 > 0:
+                            _z7_up = [
+                                [
+                                    round((v - _px7) / _px7 * 100, 1) if v is not None else None
+                                    for v in row
+                                ]
+                                for row in _z7_raw
+                            ]
+                            _txt7 = [
+                                [
+                                    (f"${v:.2f}\n{u:+.0f}%" if u is not None else "N/D")
+                                    for v, u in zip(row_v, row_u)
+                                ]
+                                for row_v, row_u in zip(_z7_raw, _z7_up)
+                            ]
+                            _colorbar_title = "Upside %"
+                            _zmid = 0
+                        else:
+                            _z7_up = _z7_raw
+                            _txt7 = [
+                                [f"${v:.2f}" if v is not None else "N/D" for v in row]
+                                for row in _z7_raw
+                            ]
+                            _colorbar_title = "USD/acc."
+                            _zmid = None
 
-                        _fig_sens7 = _go7.Figure(_go7.Heatmap(
-                            z=_z7,
+                        _heatmap_kwargs = dict(
+                            z=_z7_up,
                             x=_x7,
                             y=_y7,
                             colorscale="RdYlGn",
                             text=_txt7,
                             texttemplate="%{text}",
                             showscale=True,
-                            colorbar=dict(title="USD/acc."),
+                            colorbar=dict(title=_colorbar_title),
                             hovertemplate=(
-                                "Crecimiento: %{x}<br>WACC: %{y}<br>"
+                                "Tg: %{x}<br>WACC: %{y}<br>"
                                 "Valor intrínseco: %{text}<extra></extra>"
                             ),
-                        ))
+                        )
+                        if _zmid is not None:
+                            _heatmap_kwargs["zmid"] = _zmid
 
-                        # Celda actual = centro (índice 2, 2 en la matriz 5×5)
+                        _fig_sens7 = _go7.Figure(_go7.Heatmap(**_heatmap_kwargs))
+
+                        # Recuadro azul = supuestos actuales (centro = índice 2)
                         _fig_sens7.add_shape(
                             type="rect",
                             xref="x", yref="y",
-                            x0=1.5, x1=2.5,   # columna índice 2 ± 0.5
-                            y0=1.5, y1=2.5,   # fila índice 2 ± 0.5
+                            x0=1.5, x1=2.5,
+                            y0=1.5, y1=2.5,
                             line=dict(color="#2563EB", width=3),
                             fillcolor="rgba(0,0,0,0)",
                         )
 
+                        # Anotación del precio actual
+                        if _px7:
+                            _fig_sens7.add_annotation(
+                                x=0.5, y=1.0, xref="paper", yref="paper",
+                                text=f"Precio mercado: ${_px7:.2f}",
+                                showarrow=False,
+                                font=dict(size=11, color="#2563EB"),
+                                bgcolor="rgba(37,99,235,0.1)",
+                                bordercolor="#2563EB",
+                                borderwidth=1,
+                                borderpad=4,
+                                xanchor="center",
+                            )
+
                         _fig_sens7.update_layout(
-                            xaxis_title="Tasa crecimiento años 1–5",
+                            xaxis_title="Crecimiento terminal (tg)",
                             yaxis_title="WACC",
-                            height=360,
+                            height=380,
                             template="plotly_white",
-                            margin=dict(l=60, r=20, t=20, b=60),
+                            margin=dict(l=60, r=20, t=50, b=60),
                         )
                         st.plotly_chart(_fig_sens7, use_container_width=True)
-                        st.caption(
-                            "Celda enmarcada en azul = supuestos actuales. "
-                            "Verde = mayor valor intrínseco, Rojo = menor valor."
-                        )
 
                     except Exception as _e_sens:
                         st.warning(f"No se pudo generar la tabla de sensibilidad: {_e_sens}")
@@ -3781,12 +3886,16 @@ if tab7 is not None:
                         except Exception as _e_fl7:
                             st.warning(f"No se pudo graficar flujos: {_e_fl7}")
 
+                    _wacc_auto_str = (
+                        f" (auto {_wacc_auto7*100:.2f}%)"
+                        if _wacc_auto7 else ""
+                    )
                     st.caption(
                         f"DCF | FCF base: {_sym7}{_fcf7_usar/1e9:.3f}B ({_cur7}) | "
-                        f"WACC: {_wacc7*100:.0f}% | "
+                        f"WACC: {_wacc7*100:.1f}%{_wacc_auto_str} | "
                         f"Crecimiento: {_g1_7*100:.0f}% / {_g2_7*100:.0f}% | "
                         f"Tasa terminal: {_tg7*100:.0f}% | {_años7} años. "
-                        "Análisis educativo — no es recomendación de inversión."
+                        "⚠️ Análisis educativo — no constituye asesoramiento financiero."
                     )
 
 # ══════════════════════════════════════════════════════════════════
