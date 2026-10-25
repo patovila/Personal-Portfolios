@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import pandas as pd
-import yfinance as yf
 import streamlit as st
 
-from src.datos import get_ticker_info_safe, get_ticker_adr
+from src.datos import get_ticker_adr
+from src.data_layer import get_precios, get_info, get_fundamentals, normalize_debt_equity
 
 
 # Métricas donde un valor MENOR es mejor
@@ -33,11 +33,10 @@ METRICAS: list[str] = [
 ]
 
 
-@st.cache_data(ttl=86400, show_spinner=False)
 def _revenue_cagr(ticker_adr: str) -> float | None:
-    """Revenue CAGR ~3 años desde financials. Cache 24h."""
+    """Revenue CAGR ~3 años desde financials. Delega a data_layer (cache 24h)."""
     try:
-        fin = yf.Ticker(ticker_adr).financials
+        fin = get_fundamentals(ticker_adr)["pl"]
         if fin.empty or "Total Revenue" not in fin.index:
             return None
         serie = fin.loc["Total Revenue"].dropna()
@@ -63,36 +62,9 @@ def _var_hist(df: pd.DataFrame | None) -> float | None:
     return float((c.iloc[-1] - c.iloc[0]) / c.iloc[0] * 100)
 
 
-@st.cache_data(ttl=300, show_spinner=False)
 def _batch_hist(tickers: tuple, period: str) -> dict[str, pd.DataFrame]:
-    """Batch download de historial. Cache 5 min."""
-    if not tickers:
-        return {}
-    unique = list(tickers)
-    try:
-        raw = yf.download(
-            " ".join(unique),
-            period=period,
-            interval="1d",
-            group_by="ticker",
-            auto_adjust=True,
-            progress=False,
-            threads=True,
-        )
-    except Exception:
-        return {tk: pd.DataFrame() for tk in unique}
-    if raw is None or raw.empty:
-        return {tk: pd.DataFrame() for tk in unique}
-    result: dict[str, pd.DataFrame] = {}
-    if len(unique) == 1:
-        result[unique[0]] = raw if "Close" in raw.columns else pd.DataFrame()
-    else:
-        for tk in unique:
-            try:
-                result[tk] = raw[tk]
-            except (KeyError, TypeError):
-                result[tk] = pd.DataFrame()
-    return result
+    """Batch download de historial. Delega a data_layer.get_precios (cache 5 min)."""
+    return get_precios(list(tickers), period)
 
 
 @st.cache_data(ttl=3600)
@@ -111,7 +83,7 @@ def get_datos_comparador(tickers: tuple) -> pd.DataFrame:
     columnas: dict[str, list] = {}
     for tk in tickers:
         tk_fund = get_ticker_adr(tk)
-        info    = get_ticker_info_safe(tk_fund)
+        info    = get_info(tk_fund)
 
         def _safe(k: str, decs: int = 2):
             v = info.get(k)
@@ -146,7 +118,7 @@ def get_datos_comparador(tickers: tuple) -> pd.DataFrame:
             _pct("profitMargins"),                         # Margen Neto %
             _revenue_cagr(tk_fund),                        # Revenue CAGR 3a %
             _pct("returnOnEquity"),                        # ROE %
-            _safe("debtToEquity"),                         # Deuda/Equity
+            normalize_debt_equity(info.get("debtToEquity")), # Deuda/Equity
             _pct("dividendYield"),                         # Dividend Yield %
             _safe("beta"),                                 # Beta
             round(v1d, 2) if v1d is not None else None,   # Var 1 día %
@@ -156,36 +128,17 @@ def get_datos_comparador(tickers: tuple) -> pd.DataFrame:
     return pd.DataFrame(columnas, index=METRICAS)
 
 
-@st.cache_data(ttl=300)
 def performance_relativa(tickers: tuple, periodo: str = "1y") -> pd.DataFrame:
-    """Precios históricos normalizados base 100 desde inicio del período. Cache 5 min.
-
-    Retorna DataFrame con fecha como índice, un ticker por columna.
-    """
+    """Precios históricos normalizados base 100. Delega a data_layer.get_precios."""
     if not tickers:
         return pd.DataFrame()
-    try:
-        raw = yf.download(
-            tickers=" ".join(tickers),
-            period=periodo,
-            interval="1d",
-            group_by="ticker",
-            auto_adjust=True,
-            progress=False,
-            threads=True,
-        )
-    except Exception:
-        return pd.DataFrame()
-    if raw is None or raw.empty:
-        return pd.DataFrame()
+    data = get_precios(list(tickers), periodo)
 
     closes = pd.DataFrame()
     for tk in tickers:
-        try:
-            serie = raw["Close"] if len(tickers) == 1 else raw[tk]["Close"]
-            closes[tk] = serie.dropna()
-        except Exception:
-            continue
+        df_tk = data.get(tk, pd.DataFrame())
+        if not df_tk.empty and "Close" in df_tk.columns:
+            closes[tk] = df_tk["Close"].dropna()
 
     if closes.empty or closes.shape[0] < 2:
         return pd.DataFrame()

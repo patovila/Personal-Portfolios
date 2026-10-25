@@ -1,34 +1,19 @@
 """Funciones para cargar datos de yfinance."""
 import json
-import time
 from pathlib import Path
-import yfinance as yf
 import streamlit as st
 
+from src.data_layer import get_info, get_precios
 
-@st.cache_data(ttl=86400, show_spinner=False)
+
 def get_ticker_info_safe(ticker: str) -> dict:
-    """yf.Ticker.info con cache 24h y fallback vacío ante fallos de red."""
-    try:
-        info = yf.Ticker(ticker).info
-        if not info or len(info) < 5:
-            return {}
-        return info
-    except Exception:
-        return {}
+    """yf.Ticker.info con cache 24 h. Delega a data_layer.get_info."""
+    return get_info(ticker)
 
 
 def _fetch_info(ticker: str) -> dict:
-    """Descarga yf.Ticker.info con reintentos ante rate-limit (429)."""
-    for intento in range(3):
-        try:
-            return yf.Ticker(ticker).info
-        except Exception as e:
-            if "too many requests" in str(e).lower() or "429" in str(e):
-                time.sleep(2 ** intento)   # 1 s, 2 s, 4 s
-            else:
-                raise
-    return yf.Ticker(ticker).info  # último intento sin captura
+    """Descarga yf.Ticker.info. Delega a data_layer.get_info (con retry y cache)."""
+    return get_info(ticker)
 
 # ---------------------------------------------------------------------------
 # Mapa de tickers argentinos: ADR NYSE ↔ local BYMA (.BA)
@@ -108,9 +93,9 @@ def cargar_ticker(ticker):
         precio_local = None
         precio_moneda = None
         try:
-            hist_local = yf.Ticker(tk_local).history(period="2d")
-            if not hist_local.empty:
-                precio_local  = float(hist_local["Close"].iloc[-1])
+            df_local = get_precios([tk_local], "2d").get(tk_local)
+            if df_local is not None and not df_local.empty and "Close" in df_local.columns:
+                precio_local  = float(df_local["Close"].dropna().iloc[-1])
                 precio_moneda = "ARS"
         except Exception:
             pass
@@ -192,17 +177,17 @@ def mostrar_ticker(ticker):
     print("=" * 50)
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def cargar_universo(ruta="data/tickers.json"):
-    """Carga el archivo JSON con todos los tickers organizados."""
+    """Carga el archivo JSON con todos los tickers organizados. Cache 1 h."""
     archivo = Path(ruta)
     if not archivo.exists():
-        print(f"No se encontro el archivo {ruta}")
         return None
-    
-    with open(archivo, "r", encoding="utf-8") as f:
-        universo = json.load(f)
-    
-    return universo
+    try:
+        with open(archivo, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
 
 
 def listar_categorias(universo):

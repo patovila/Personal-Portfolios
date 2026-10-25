@@ -10,13 +10,20 @@ Convenciones de tipos de activo (campo posicion["tipo"]):
 """
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import streamlit as st
-import yfinance as yf
+
+from src.data_layer import get_precios
+from src import storage
+
+
+_PORTFOLIO_VACIO: dict = {
+    "configuracion": {"tipo_cambio_ars_usd": 1000},
+    "posiciones": [],
+    "metadata": {},
+}
 
 
 # ---------- carga ----------
@@ -27,20 +34,9 @@ def cargar_portfolio(user_id: str = "pato") -> dict:
     session_state es la fuente de verdad durante la sesión.
     El JSON en disco actúa como backup (se pierde en redeployment de Cloud).
     """
-    ss_key = f"portfolio_{user_id}"
-    if ss_key in st.session_state:
-        return st.session_state[ss_key]
-    ruta = Path("data/portfolio") / f"{user_id}.json"
-    if ruta.exists():
-        try:
-            with open(ruta, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except Exception:
-            data = {"configuracion": {"tipo_cambio_ars_usd": 1000}, "posiciones": [], "metadata": {}}
-    else:
-        data = {"configuracion": {"tipo_cambio_ars_usd": 1000}, "posiciones": [], "metadata": {}}
-    st.session_state[ss_key] = data
-    return data
+    import json
+    default = json.loads(json.dumps(_PORTFOLIO_VACIO))  # deep copy
+    return storage.load("portfolio", user_id, default=default)
 
 
 # ---------- valuacion ----------
@@ -55,10 +51,10 @@ def _precio_actual_ars(posicion: dict, tipo_cambio: float) -> float | None:
         return None
 
     try:
-        hist = yf.Ticker(ticker).history(period="5d")
-        if hist.empty:
+        df = get_precios([ticker], "5d").get(ticker)
+        if df is None or df.empty or "Close" not in df.columns:
             return None
-        precio = float(hist["Close"].iloc[-1])
+        precio = float(df["Close"].dropna().iloc[-1])
     except Exception:
         return None
 
@@ -237,29 +233,18 @@ def comparar_vs_benchmark(
     tickers = list({_ticker_para_historico(p) for p in posiciones if p.get("ticker")})
     todos = tickers + [benchmark]
 
-    try:
-        data = yf.download(
-            todos,
-            period=periodo,
-            progress=False,
-            auto_adjust=True,
-            group_by="ticker",
-        )
-    except Exception as e:
-        return {"error": f"No se pudieron descargar precios: {e}"}
-
-    if data is None or data.empty:
+    data = get_precios(todos, periodo)
+    if not any(not v.empty for v in data.values()):
         return {"error": "Sin datos historicos"}
 
-    # Armar DataFrame de Close por ticker (yfinance varia el shape segun n)
+    # Armar DataFrame de Close por ticker
     closes = pd.DataFrame()
     for tk in todos:
         try:
-            if len(todos) == 1:
-                serie = data["Close"]
-            else:
-                serie = data[tk]["Close"]
-            closes[tk] = serie
+            df_tk = data.get(tk, pd.DataFrame())
+            if df_tk.empty or "Close" not in df_tk.columns:
+                continue
+            closes[tk] = df_tk["Close"]
         except Exception:
             continue
 
@@ -326,14 +311,7 @@ def guardar_portfolio(nombre: str, portfolio: dict) -> None:
     from datetime import date
     portfolio.setdefault("metadata", {})
     portfolio["metadata"]["fecha_actualizacion"] = date.today().isoformat()
-    st.session_state[f"portfolio_{nombre}"] = portfolio
-    try:
-        ruta = Path("data/portfolio") / f"{nombre}.json"
-        ruta.parent.mkdir(parents=True, exist_ok=True)
-        with open(ruta, "w", encoding="utf-8") as f:
-            json.dump(portfolio, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass  # Filesystem puede ser read-only en Streamlit Cloud
+    storage.save("portfolio", nombre, portfolio)
 
 
 def agregar_posicion(

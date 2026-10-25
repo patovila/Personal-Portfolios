@@ -1,8 +1,156 @@
 """DCF y valuación: descuento de flujos de caja para valor intrínseco."""
-import yfinance as yf
 import pandas as pd
 import streamlit as st
+
 from src.datos import get_ticker_adr, get_ticker_local, is_ticker_argentino
+from src.data_layer import get_info, get_fundamentals, get_precios
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WACC automático (CAPM)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def calcular_wacc_automatico(ticker: str, erp: float = 0.045) -> dict:
+    """Calcula WACC usando CAPM. Cache 1 hora.
+
+    WACC = (E/V) × Re + (D/V) × Rd × (1 − T)
+      Re = Rf + beta × ERP   (CAPM)
+      Rf = yield del bono del Tesoro a 10 años (^TNX)
+      ERP = prima de riesgo de mercado (editable, default 4.5%)
+      Rd = gasto_intereses / deuda_total
+      T  = tasa impositiva efectiva
+      E  = market cap  |  D = deuda total  |  V = E + D
+
+    Retorna dict con todos los componentes y lista de advertencias
+    para los datos que no se pudieron obtener.
+    """
+    advertencias = []
+    resultado = {
+        "wacc": None,
+        "rf": None,
+        "beta": None,
+        "erp": erp,
+        "re": None,
+        "rd": None,
+        "tax_rate": None,
+        "e_weight": None,
+        "d_weight": None,
+        "mkt_cap": None,
+        "total_debt": None,
+        "advertencias": advertencias,
+    }
+
+    try:
+        tk_fund = get_ticker_adr(ticker)
+        info = get_info(tk_fund)
+        fund = get_fundamentals(tk_fund)
+
+        # ── Tasa libre de riesgo: yield ^TNX (10Y Treasury) ──────────────────
+        rf = None
+        try:
+            df_tnx = get_precios(("^TNX",), "5d")
+            df_tnx = df_tnx.get("^TNX")
+            if df_tnx is not None and not df_tnx.empty and "Close" in df_tnx.columns:
+                rf_raw = float(df_tnx["Close"].dropna().iloc[-1])
+                rf = rf_raw / 100  # ^TNX cotiza en %, convertir a fracción
+        except Exception:
+            pass
+        if rf is None:
+            rf = 0.045  # fallback razonable si yfinance no responde
+            advertencias.append("Tasa libre de riesgo (^TNX) no disponible — usando 4.5% como fallback.")
+        resultado["rf"] = rf
+
+        # ── Beta ─────────────────────────────────────────────────────────────
+        beta = info.get("beta")
+        if beta is None or beta <= 0:
+            beta = 1.0
+            advertencias.append("Beta no disponible — usando 1.0 (mercado promedio).")
+        resultado["beta"] = beta
+
+        # ── Costo de equity (CAPM) ────────────────────────────────────────────
+        re = rf + beta * erp
+        resultado["re"] = re
+
+        # ── Market cap ───────────────────────────────────────────────────────
+        mkt_cap = info.get("marketCap")
+        if not mkt_cap:
+            px = info.get("currentPrice") or info.get("regularMarketPrice")
+            shares = info.get("sharesOutstanding")
+            if px and shares:
+                mkt_cap = px * shares
+        if not mkt_cap:
+            advertencias.append("Market cap no disponible — no se puede calcular pesos E/D.")
+            return resultado
+        resultado["mkt_cap"] = mkt_cap
+
+        # ── Deuda total ───────────────────────────────────────────────────────
+        total_debt = None
+        try:
+            bs = fund.get("balance", pd.DataFrame())
+            if not bs.empty and "Total Debt" in bs.index:
+                total_debt = float(bs.loc["Total Debt"].iloc[0])
+        except Exception:
+            pass
+        if total_debt is None:
+            total_debt = info.get("totalDebt") or 0
+        resultado["total_debt"] = total_debt
+
+        # ── Costo de deuda ────────────────────────────────────────────────────
+        rd = None
+        try:
+            inc = fund.get("income", pd.DataFrame())
+            if not inc.empty and "Interest Expense" in inc.index:
+                interest = abs(float(inc.loc["Interest Expense"].iloc[0]))
+                if total_debt and total_debt > 0:
+                    rd = interest / total_debt
+        except Exception:
+            pass
+        if rd is None or rd <= 0 or rd > 0.25:
+            rd = 0.05  # fallback: 5% costo de deuda
+            advertencias.append("Gasto de intereses no disponible — usando Rd = 5.0%.")
+        resultado["rd"] = rd
+
+        # ── Tasa impositiva efectiva ──────────────────────────────────────────
+        tax_rate = None
+        try:
+            inc = fund.get("income", pd.DataFrame())
+            if not inc.empty:
+                ebt_row = next(
+                    (r for r in ["Pretax Income", "Income Before Tax"] if r in inc.index),
+                    None,
+                )
+                tax_row = next(
+                    (r for r in ["Tax Provision", "Income Tax Expense"] if r in inc.index),
+                    None,
+                )
+                if ebt_row and tax_row:
+                    ebt = float(inc.loc[ebt_row].iloc[0])
+                    tax = abs(float(inc.loc[tax_row].iloc[0]))
+                    if ebt and ebt > 0:
+                        tax_rate = min(tax / ebt, 0.40)  # cap a 40%
+        except Exception:
+            pass
+        if tax_rate is None or tax_rate <= 0:
+            tax_rate = 0.25
+            advertencias.append("Tasa impositiva no disponible — usando T = 25%.")
+        resultado["tax_rate"] = tax_rate
+
+        # ── Pesos E y D ───────────────────────────────────────────────────────
+        v = mkt_cap + (total_debt or 0)
+        e_weight = mkt_cap / v
+        d_weight = (total_debt or 0) / v
+        resultado["e_weight"] = e_weight
+        resultado["d_weight"] = d_weight
+
+        # ── WACC final ────────────────────────────────────────────────────────
+        wacc = e_weight * re + d_weight * rd * (1 - tax_rate)
+        resultado["wacc"] = round(wacc, 4)
+
+    except Exception as exc:
+        advertencias.append(f"Error inesperado calculando WACC: {exc}")
+
+    return resultado
 
 
 @st.cache_data(ttl=3600)
@@ -19,15 +167,15 @@ def get_datos_base_dcf(ticker):
         tk_fund = get_ticker_adr(ticker)     # ADR para fundamentals
         tk_px   = get_ticker_local(ticker)   # .BA para precio local
 
-        t    = yf.Ticker(tk_fund)
-        info = t.info
+        info = get_info(tk_fund)
+        fund = get_fundamentals(tk_fund)
 
         # FCF desde cashflow statement
         fcf_base = None
         fcf_anio = None
         fcf_serie = {}
         try:
-            cf = t.cashflow
+            cf = fund["cashflow"]
             if not cf.empty and "Free Cash Flow" in cf.index:
                 serie = cf.loc["Free Cash Flow"].dropna()
                 if not serie.empty:
@@ -41,7 +189,7 @@ def get_datos_base_dcf(ticker):
         deuda = None
         cash = None
         try:
-            bs = t.balance_sheet
+            bs = fund["balance"]
             if not bs.empty:
                 if "Total Debt" in bs.index:
                     deuda = float(bs.loc["Total Debt"].iloc[0])
@@ -61,9 +209,9 @@ def get_datos_base_dcf(ticker):
         precio_moneda  = None
         if es_ar:
             try:
-                hist_local = yf.Ticker(tk_px).history(period="2d")
-                if not hist_local.empty:
-                    precio_actual = float(hist_local["Close"].iloc[-1])
+                df_local = get_precios([tk_px], "2d").get(tk_px)
+                if df_local is not None and not df_local.empty and "Close" in df_local.columns:
+                    precio_actual = float(df_local["Close"].dropna().iloc[-1])
                     precio_moneda = "ARS"
             except Exception:
                 pass
@@ -141,25 +289,25 @@ def calcular_dcf(fcf_base, g1, g2, wacc, tg, años, shares, deuda, cash):
     }
 
 
-def tabla_sensibilidad(fcf_base, g1_base, g2, wacc_base, tg, años, shares, deuda, cash):
-    """Matriz 5×5: filas = WACC ± 2 pp, columnas = g1 ± 2 pp.
+def tabla_sensibilidad(fcf_base, g1, g2, wacc_base, tg_base, años, shares, deuda, cash):
+    """Matriz 5×5: filas = WACC ± 2 pp, columnas = tasa terminal (tg) ± 2 pp.
 
     Retorna DataFrame con valor intrínseco (USD/acción) en cada celda.
     Celdas donde WACC ≤ tg quedan en None.
     """
     waccs = [round(wacc_base + d / 100, 4) for d in range(-2, 3)]
-    gs    = [round(g1_base   + d / 100, 4) for d in range(-2, 3)]
+    tgs   = [round(tg_base   + d / 100, 4) for d in range(-2, 3)]
 
     data = {}
-    for g in gs:
-        label = f"{g*100:.0f}%"
+    for tg in tgs:
+        label = f"{tg*100:.0f}%"
         data[label] = []
         for w in waccs:
-            if w <= tg or g < 0:
+            if w <= tg or tg < 0:
                 data[label].append(None)
             else:
                 try:
-                    res = calcular_dcf(fcf_base, g, g2, w, tg, años, shares, deuda, cash)
+                    res = calcular_dcf(fcf_base, g1, g2, w, tg, años, shares, deuda, cash)
                     data[label].append(res["valor_intrinseco"])
                 except Exception:
                     data[label].append(None)

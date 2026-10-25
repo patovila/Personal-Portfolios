@@ -1,14 +1,14 @@
 """Métricas financieras avanzadas."""
-import yfinance as yf
 import numpy as np
 import pandas as pd
+
+from src.data_layer import get_precios
 
 
 def variaciones(ticker):
     """Variaciones de precio en distintos períodos."""
-    t = yf.Ticker(ticker)
-    hist = t.history(period="6y")
-    
+    hist = get_precios([ticker], "5y").get(ticker, pd.DataFrame())
+
     if hist.empty:
         return None
     
@@ -41,9 +41,8 @@ def variaciones(ticker):
 
 def metricas_avanzadas(ticker, periodo="5y", tasa_libre_riesgo=0.04):
     """Calcula CAGR, volatilidad, Sharpe, max drawdown, etc."""
-    t = yf.Ticker(ticker)
-    hist = t.history(period=periodo)
-    
+    hist = get_precios([ticker], periodo).get(ticker, pd.DataFrame())
+
     if hist.empty:
         return None
     
@@ -93,11 +92,13 @@ def metricas_avanzadas(ticker, periodo="5y", tasa_libre_riesgo=0.04):
 
 
 def matriz_correlacion(tickers, periodo="2y"):
-    """Calcula correlaciones entre activos."""
+    """Calcula correlaciones entre activos usando batch download."""
+    batch = get_precios(list(tickers), periodo)
     data = {}
     for ticker in tickers:
-        hist = yf.Ticker(ticker).history(period=periodo)["Close"]
-        data[ticker] = hist.pct_change().dropna()
-    
+        df_tk = batch.get(ticker, pd.DataFrame())
+        if not df_tk.empty and "Close" in df_tk.columns:
+            data[ticker] = df_tk["Close"].pct_change().dropna()
+
     df = pd.DataFrame(data)
     return df.corr()

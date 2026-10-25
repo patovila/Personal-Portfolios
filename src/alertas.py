@@ -1,14 +1,14 @@
 """Sistema de alertas de precio: take profit, stop loss, variación diaria."""
 from __future__ import annotations
 
-import json
 from datetime import datetime
-from pathlib import Path
 from uuid import uuid4
 
 import pandas as pd
 import streamlit as st
-import yfinance as yf
+
+from src.data_layer import get_precios
+from src import storage
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -20,32 +20,12 @@ def cargar_alertas(portfolio_name: str) -> list:
 
     session_state es la fuente de verdad durante la sesión.
     """
-    ss_key = f"alertas_{portfolio_name}"
-    if ss_key in st.session_state:
-        return st.session_state[ss_key]
-    ruta = Path("data/alertas") / f"{portfolio_name}.json"
-    if ruta.exists():
-        try:
-            with open(ruta, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except Exception:
-            data = []
-    else:
-        data = []
-    st.session_state[ss_key] = data
-    return data
+    return storage.load("alertas", portfolio_name, default=[])
 
 
 def guardar_alertas(portfolio_name: str, alertas: list) -> None:
     """Guarda alertas: session_state primero, luego JSON como backup."""
-    st.session_state[f"alertas_{portfolio_name}"] = alertas
-    try:
-        ruta = Path("data/alertas") / f"{portfolio_name}.json"
-        ruta.parent.mkdir(parents=True, exist_ok=True)
-        with open(ruta, "w", encoding="utf-8") as f:
-            json.dump(alertas, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass  # Filesystem puede ser read-only en Streamlit Cloud
+    storage.save("alertas", portfolio_name, alertas)
 
 
 def nueva_alerta(ticker: str, tipo: str, valor: float) -> dict:
@@ -73,16 +53,18 @@ def get_precios_para_alertas(tickers: tuple) -> dict:
     Recibe tuple (hashable) para compatibilidad con st.cache_data.
     Retorna {ticker: {"precio": float, "variacion_dia": float}}.
     """
+    batch = get_precios(list(tickers), "2d")
     resultado = {}
     for ticker in tickers:
         try:
-            hist = yf.Ticker(ticker).history(period="2d")
-            if hist.empty:
+            df = batch.get(ticker, pd.DataFrame())
+            if df.empty or "Close" not in df.columns:
                 continue
-            precio = float(hist["Close"].iloc[-1])
+            close = df["Close"].dropna()
+            precio = float(close.iloc[-1])
             variacion = 0.0
-            if len(hist) >= 2:
-                prev = float(hist["Close"].iloc[-2])
+            if len(close) >= 2:
+                prev = float(close.iloc[-2])
                 if prev:
                     variacion = (precio - prev) / prev * 100
             resultado[ticker] = {"precio": precio, "variacion_dia": variacion}
