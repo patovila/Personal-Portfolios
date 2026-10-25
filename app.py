@@ -1788,7 +1788,26 @@ if tab4 is not None:
             st.error(f"❌ Error cargando el portfolio: {e}")
             portfolio = None
 
-        if portfolio:
+        if portfolio is None:
+            st.error("Error cargando el portfolio. Recargá la página.")
+            st.stop()
+
+        # Aviso sesión: datos no persisten entre visitas
+        _tiene_posiciones = len(portfolio.get("posiciones", [])) > 0
+        if not _tiene_posiciones:
+            st.info(
+                "**Tu cartera está vacía.**\n\n"
+                "Agregá posiciones en la pestaña **✏️ Gestionar Portfolio** "
+                "o importá un JSON guardado previamente.\n\n"
+                "⚠️ Los datos se guardan **solo en esta sesión del navegador** — "
+                "si cerrás la pestaña, se borran. Usá el botón **Exportar** para guardar tu cartera."
+            )
+        else:
+            st.caption(
+                "ℹ️ Los datos se guardan en esta sesión. Usá **Exportar cartera** antes de cerrar."
+            )
+
+        if True:  # estructura preservada
             config = portfolio.get("configuracion", {})
             tipo_cambio = config.get("tipo_cambio_ars_usd", 1)
 
@@ -2223,10 +2242,10 @@ if tab4 is not None:
                     st.download_button(
                         "📥 Exportar mi cartera",
                         data=_json.dumps(portfolio, ensure_ascii=False, indent=2),
-                        file_name=f"portfolio_pato_{_date.today()}.json",
+                        file_name=f"mi_cartera_{_date.today()}.json",
                         mime="application/json",
                         use_container_width=True,
-                        help="Descargá tu cartera como JSON para guardarlo localmente",
+                        help="Guardá tu cartera como JSON. Podés reimportarla en tu próxima visita.",
                     )
 
                 with _io_c2:
@@ -2264,7 +2283,11 @@ if tab4 is not None:
                 st.markdown("#### 📋 Posiciones actuales")
 
                 if not _pos_list:
-                    st.info("No hay posiciones en el portfolio.")
+                    st.info(
+                        "No tenés posiciones cargadas todavía. "
+                        "Agregá tu primera posición en la sección de abajo, "
+                        "o importá una cartera guardada previamente."
+                    )
                 else:
                     _hc1, _hc2, _hc3, _hc4, _hc5 = st.columns([2, 1, 2, 2, 1])
                     _hc1.markdown("**Ticker**")
